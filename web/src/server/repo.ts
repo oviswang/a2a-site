@@ -76,6 +76,68 @@ export function createUser(args: { handle: string; displayName?: string | null }
   return u || { id: -1, handle, displayName: args.displayName || null, createdAt: now };
 }
 
+export type Notification = {
+  id: string;
+  kind: string;
+  text: string;
+  link: string | null;
+  createdAt: string;
+  readAt: string | null;
+};
+
+function notifyHuman(handle: string, kind: string, text: string, link?: string | null) {
+  const db = getDb();
+  const now = nowIso();
+  const h = normalizeUserHandle(handle);
+  if (!h) return;
+
+  // Ensure a minimal user record exists.
+  if (!getUserByHandle(h)) {
+    try {
+      createUser({ handle: h });
+    } catch {
+      // ignore
+    }
+  }
+  ensureIdentity(h, 'human');
+
+  const id = `n-${Math.random().toString(16).slice(2, 6)}${Date.now().toString(16).slice(-4)}`;
+  db.prepare('INSERT INTO notifications (id, user_handle, kind, text, link, created_at, read_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+    id,
+    h,
+    kind,
+    text,
+    link || null,
+    now,
+    null
+  );
+}
+
+export function listNotifications(args: { userHandle: string; limit?: number }) {
+  const db = getDb();
+  const h = normalizeUserHandle(args.userHandle);
+  const limit = Math.max(1, Math.min(200, args.limit || 50));
+  const rows = db
+    .prepare('SELECT id, kind, text, link, created_at, read_at FROM notifications WHERE user_handle=? ORDER BY created_at DESC LIMIT ?')
+    .all(h, limit) as Array<{ id: string; kind: string; text: string; link: string | null; created_at: string; read_at: string | null }>;
+  return rows.map((r) => ({ id: r.id, kind: r.kind, text: r.text, link: r.link, createdAt: r.created_at, readAt: r.read_at }));
+}
+
+export function unreadNotificationCount(userHandle: string) {
+  const db = getDb();
+  const h = normalizeUserHandle(userHandle);
+  const r = db.prepare('SELECT COUNT(1) as c FROM notifications WHERE user_handle=? AND read_at IS NULL').get(h) as { c: number };
+  return r?.c || 0;
+}
+
+export function markNotificationRead(args: { id: string; userHandle: string }) {
+  const db = getDb();
+  const h = normalizeUserHandle(args.userHandle);
+  const now = nowIso();
+  db.prepare('UPDATE notifications SET read_at=? WHERE id=? AND user_handle=?').run(now, args.id, h);
+  return { ok: true };
+}
+
 function slugify(input: string) {
   return String(input || '')
     .trim()
@@ -723,8 +785,18 @@ export function proposalAction(args: {
 }) {
   const db = getDb();
   const prRow = db
-    .prepare('SELECT id, project_id, file_path, new_content, status, task_id FROM proposals WHERE id=?')
-    .get(args.id) as { id: string; project_id: number; file_path: string; new_content: string; status: string; task_id: string | null } | undefined;
+    .prepare('SELECT id, project_id, file_path, new_content, status, task_id, author_handle, author_type FROM proposals WHERE id=?')
+    .get(args.id) as {
+      id: string;
+      project_id: number;
+      file_path: string;
+      new_content: string;
+      status: string;
+      task_id: string | null;
+      author_handle: string;
+      author_type: string;
+    }
+    | undefined;
   if (!prRow) throw new Error('proposal_not_found');
 
   const now = nowIso();
@@ -765,6 +837,12 @@ export function proposalAction(args: {
         now,
         `Proposal approved: ${args.id} by @${actorHandle} (${actorType})`
       );
+      const link = `/proposals/${args.id}/review`;
+      if (prRow.author_type === 'human') notifyHuman(prRow.author_handle, 'proposal.approved', `Your proposal ${args.id} was approved`, link);
+      else {
+        const ow = getIdentity(prRow.author_handle)?.ownerHandle;
+        if (ow) notifyHuman(ow, 'proposal.approved', `Your agent’s proposal ${args.id} was approved`, link);
+      }
     }
 
     if (args.action === 'request_changes') {
@@ -782,6 +860,12 @@ export function proposalAction(args: {
         now,
         `Changes requested: ${args.id} by @${actorHandle} (${actorType})`
       );
+      const link = `/proposals/${args.id}/review`;
+      if (prRow.author_type === 'human') notifyHuman(prRow.author_handle, 'proposal.changes_requested', `Changes requested on your proposal ${args.id}`, link);
+      else {
+        const ow = getIdentity(prRow.author_handle)?.ownerHandle;
+        if (ow) notifyHuman(ow, 'proposal.changes_requested', `Changes requested on your agent’s proposal ${args.id}`, link);
+      }
     }
 
     if (args.action === 'reject') {
@@ -824,6 +908,12 @@ export function proposalAction(args: {
         now,
         `Merged ${args.id} into ${prRow.file_path} by @${actorHandle} (${actorType})`
       );
+      const link = `/proposals/${args.id}/review`;
+      if (prRow.author_type === 'human') notifyHuman(prRow.author_handle, 'proposal.merged', `Your proposal ${args.id} was merged`, link);
+      else {
+        const ow = getIdentity(prRow.author_handle)?.ownerHandle;
+        if (ow) notifyHuman(ow, 'proposal.merged', `Your agent’s proposal ${args.id} was merged`, link);
+      }
 
       if (prRow.task_id) {
         db.prepare('UPDATE tasks SET status=?, updated_at=? WHERE id=?').run('completed', now, prRow.task_id);
@@ -862,8 +952,8 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
 
   // If there is a pending invite, accept it (works for both open/restricted).
   const inv = db
-    .prepare('SELECT id, role FROM invitations WHERE project_id=? AND invitee_handle=? AND invitee_type=? AND status=?')
-    .get(p.id, args.actorHandle, args.actorType, 'pending') as { id: string; role: string } | undefined;
+    .prepare('SELECT id, role, created_by_handle, created_by_type FROM invitations WHERE project_id=? AND invitee_handle=? AND invitee_type=? AND status=?')
+    .get(p.id, args.actorHandle, args.actorType, 'pending') as { id: string; role: string; created_by_handle: string; created_by_type: string } | undefined;
   if (inv) {
     const role = (inv.role === 'owner' ? 'owner' : inv.role === 'maintainer' ? 'maintainer' : 'contributor') as MemberRole;
     const tx = db.transaction(() => {
@@ -877,6 +967,9 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
       );
       db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `@${args.actorHandle} joined (invite)`);
     });
+    if (inv.created_by_type === 'human') {
+      notifyHuman(inv.created_by_handle, 'invite.accepted', `@${args.actorHandle} accepted an invite to /${p.slug}`, `/projects/${p.slug}#people`);
+    }
     tx();
     return { mode: 'joined' as const, role };
   }
@@ -929,11 +1022,19 @@ export function reviewJoinRequest(args: {
         now
       );
       db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(r.project_id, now, `Access approved for @${r.member_handle}`);
+      if (r.member_type !== 'agent') {
+        const slugRow = db.prepare('SELECT slug FROM projects WHERE id=?').get(r.project_id) as { slug: string } | undefined;
+        if (slugRow) notifyHuman(r.member_handle, 'join.approved', `Your access request was approved for /${slugRow.slug}`, `/projects/${slugRow.slug}`);
+      }
     }
 
     if (args.action === 'reject') {
       db.prepare('UPDATE join_requests SET status=?, reviewed_by=?, reviewed_at=? WHERE id=?').run('rejected', args.actorHandle, now, r.id);
       db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(r.project_id, now, `Access rejected for @${r.member_handle}`);
+      if (r.member_type !== 'agent') {
+        const slugRow = db.prepare('SELECT slug FROM projects WHERE id=?').get(r.project_id) as { slug: string } | undefined;
+        if (slugRow) notifyHuman(r.member_handle, 'join.rejected', `Your access request was rejected for /${slugRow.slug}`, `/projects/${slugRow.slug}`);
+      }
     }
   });
 
@@ -1003,6 +1104,10 @@ export function createInvitation(args: {
     now,
     `Invited @${args.inviteeHandle} (${args.inviteeType}) as ${args.role}`
   );
+
+  if (args.inviteeType === 'human') {
+    notifyHuman(args.inviteeHandle, 'invite.created', `You were invited to /${p.slug} as ${args.role}`, `/projects/${p.slug}#people`);
+  }
 
   return { ok: true };
 }

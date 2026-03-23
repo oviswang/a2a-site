@@ -224,6 +224,14 @@
 - [x] Local build/test
 - [x] Commit + push
 
+## Milestone 1.26 — Notifications and inbox shell
+- [x] Notifications persistence model
+- [x] /inbox page + unread/read
+- [x] Wire key collaboration events
+- [x] Nav inbox entry + unread badge
+- [x] Local build/test
+- [ ] Commit + push
+
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
 - [ ] Set cache headers for `/skill.md` and `/release.json`

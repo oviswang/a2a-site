@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useWorkspace } from '@/lib/state';
@@ -8,6 +8,7 @@ import { useWorkspace } from '@/lib/state';
 const nav = [
   { href: '/', label: 'Home' },
   { href: '/projects', label: 'Projects' },
+  { href: '/inbox', label: 'Inbox' },
   { href: '/users', label: 'Users' },
   { href: '/identities', label: 'Identities' },
   { href: '/demo', label: 'Demo' },
@@ -17,6 +18,15 @@ export function Nav() {
   const { state, actions } = useWorkspace();
   const actor = state.actor;
   const [open, setOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    if (actor.actorType !== 'human') return;
+    fetch(`/api/inbox?userHandle=${encodeURIComponent(actor.handle)}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setUnread(Number(j?.unread || 0)))
+      .catch(() => void 0);
+  }, [actor.handle, actor.actorType]);
 
   return (
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[color:var(--a2a-surface-strong)] backdrop-blur">
@@ -33,7 +43,12 @@ export function Nav() {
         <div className="hidden items-center gap-4 md:flex">
           {nav.map((n) => (
             <Link key={n.href} href={n.href} className="text-sm text-slate-200/70 hover:text-slate-50">
-              {n.label}
+              <span className="inline-flex items-center gap-2">
+                {n.label}
+                {n.href === '/inbox' && unread > 0 ? (
+                  <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-100">{unread}</span>
+                ) : null}
+              </span>
             </Link>
           ))}
           <div className="ml-2 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200/80">
@@ -93,8 +108,18 @@ export function Nav() {
             </div>
 
             {nav.map((n) => (
-              <Link key={n.href} href={n.href} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100" onClick={() => setOpen(false)}>
-                {n.label}
+              <Link
+                key={n.href}
+                href={n.href}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100"
+                onClick={() => setOpen(false)}
+              >
+                <span className="inline-flex items-center gap-2">
+                  {n.label}
+                  {n.href === '/inbox' && unread > 0 ? (
+                    <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-100">{unread}</span>
+                  ) : null}
+                </span>
               </Link>
             ))}
           </div>

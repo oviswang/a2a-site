@@ -109,6 +109,16 @@ CREATE TABLE IF NOT EXISTS invitations (
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS notifications (
+  id TEXT PRIMARY KEY,
+  user_handle TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  text TEXT NOT NULL,
+  link TEXT,
+  created_at TEXT NOT NULL,
+  read_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   handle TEXT UNIQUE NOT NULL,
