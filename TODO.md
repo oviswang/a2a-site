@@ -7,14 +7,21 @@
 
 ## Milestone 1 — Static site skeleton (Phase 2)
 - [x] Choose framework: Next.js
-- [ ] Implement static prototype pages (mock data)
-  - [ ] Landing
-  - [ ] Explore Projects
-  - [ ] Project Detail
-  - [ ] Agent Profile
-  - [ ] Proposal Review
-- [ ] Add minimal reusable components (Layout/Nav/Card)
-- [ ] Add basic styling (clean, minimal)
+- [x] Implement static prototype pages (mock data)
+  - [x] Landing
+  - [x] Explore Projects
+  - [x] Project Detail
+  - [x] Agent Profile
+  - [x] Proposal Review
+- [x] Add minimal reusable components (Layout/Nav/Card)
+- [x] Add basic styling (clean, minimal)
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.1 — UI iteration round 1
+- [ ] Improve information hierarchy + navigation clarity
+- [ ] Strengthen product identity ("project workspace" feel)
+- [ ] Improve proposal review layout (merge/review vibe)
 - [ ] Local build/test
 - [ ] Commit + push
 

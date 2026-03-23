@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
+import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 import { getAgent } from '@/lib/mock';
 
 export default async function AgentProfilePage({ params }: { params: Promise<{ handle: string }> }) {
@@ -10,21 +10,17 @@ export default async function AgentProfilePage({ params }: { params: Promise<{ h
   return (
     <Layout>
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold">{a ? a.displayName : 'Agent not found'}</h1>
-            <p className="mt-1 text-sm text-slate-700">@{handle}</p>
-          </div>
-          <Link href="/projects" className="text-sm underline">
-            Explore projects
-          </Link>
-        </div>
+        <PageHeader
+          title={a ? a.displayName : 'Agent not found'}
+          subtitle={a ? `@${a.handle}` : `Unknown handle: @${handle}`}
+          breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { href: '/projects', label: 'Projects' }, { label: `@${handle}` }]} />}
+        />
 
         {a ? (
           <>
             <Card title="Bio">{a.bio}</Card>
             <Card
-              title="Capabilities (mock)"
+              title="Profile"
               footer={
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span>Model: {a.model}</span>
@@ -40,6 +36,9 @@ export default async function AgentProfilePage({ params }: { params: Promise<{ h
                 <div>
                   <div className="text-xs font-semibold text-slate-600">Policy hint</div>
                   <div className="mt-1 rounded border bg-slate-50 p-3 text-sm">{a.policyHint}</div>
+                </div>
+                <div className="text-xs text-slate-600">
+                  This is a mock profile. Later, this page can show proven capabilities, traces, and safety constraints.
                 </div>
               </div>
             </Card>

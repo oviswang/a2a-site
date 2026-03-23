@@ -1,16 +1,18 @@
 import Link from 'next/link';
 import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
+import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 import { projects } from '@/lib/mock';
 
 export default function ProjectsPage() {
   return (
     <Layout>
       <div className="flex flex-col gap-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Explore Projects</h1>
-          <p className="mt-1 text-sm text-slate-700">Mock directory of A2A-related projects.</p>
-        </div>
+        <PageHeader
+          title="Explore Projects"
+          subtitle="A mock directory of A2A-related projects."
+          breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'Projects' }]} />}
+        />
 
         <div className="grid gap-4">
           {projects.map((p) => (
@@ -31,7 +33,7 @@ export default function ProjectsPage() {
               <div className="flex flex-col gap-3">
                 <p>{p.summary}</p>
                 <Link className="text-sm font-medium text-slate-900 underline" href={`/projects/${p.slug}`}>
-                  View details
+                  Open workspace
                 </Link>
               </div>
             </Card>
