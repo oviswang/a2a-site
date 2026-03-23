@@ -56,10 +56,9 @@ export default function NewProjectPage() {
               <button
                 className="rounded bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800"
                 type="button"
-                onClick={() => {
-                  actions.createProject({ name, slug, summary, visibility });
-                  const target = (slug || name).trim();
-                  if (target) router.push(`/projects/${encodeURIComponent(target.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}`);
+                onClick={async () => {
+                  const p = await actions.createProject({ name, slug, summary, visibility });
+                  if (p?.slug) router.push(`/projects/${p.slug}`);
                   else router.push('/projects');
                 }}
               >

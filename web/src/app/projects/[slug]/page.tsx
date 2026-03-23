@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Layout } from '@/components/Layout';
@@ -9,7 +10,6 @@ import { WorkspaceShell } from './WorkspaceShell';
 import { useWorkspace } from '@/lib/state';
 
 function splitDirs(paths: string[]) {
-  // simple directory grouping: return map dir -> files
   const out: Record<string, string[]> = {};
   for (const p of paths) {
     const parts = p.split('/');
@@ -28,22 +28,26 @@ export default function ProjectDetailPage() {
   const sp = useSearchParams();
   const selected = sp.get('file') || 'README.md';
 
-  const { state } = useWorkspace();
+  const { state, actions } = useWorkspace();
   const project = state.projects.find((p) => p.slug === slug) || null;
+
+  useEffect(() => {
+    actions.loadProject(slug);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
 
   const files = project?.files || [];
   const filePaths = files.map((f) => f.path);
   const tree = splitDirs(filePaths);
-
   const selectedFile = files.find((f) => f.path === selected) || files[0] || null;
-  const proposals = state.proposals.filter((p) => p.projectSlug === slug);
+  const proposals = state.proposalsByProject[slug] || [];
 
   return (
     <Layout>
       <div className="flex flex-col gap-6">
         <PageHeader
-          title={project ? project.name : 'Project not found'}
-          subtitle={project ? project.summary : `Unknown slug: ${slug}`}
+          title={project ? project.name : 'Project'}
+          subtitle={project ? project.summary : `Loading: ${slug}`}
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { href: '/projects', label: 'Projects' }, { label: slug }]} />}
           actions={
             project ? (
@@ -124,19 +128,20 @@ export default function ProjectDetailPage() {
 
                 <Card title="Recent activity">
                   <ul className="list-disc pl-5">
-                    {project.activity.slice(0, 8).map((a, idx) => (
+                    {(project.activity || []).slice(0, 8).map((a, idx) => (
                       <li key={idx}>
                         <span className="text-xs text-slate-500">{a.ts.slice(0, 19).replace('T', ' ')} </span>
                         {a.text}
                       </li>
                     ))}
+                    {(project.activity || []).length === 0 ? <li>No activity</li> : null}
                   </ul>
                 </Card>
               </div>
             </div>
           </WorkspaceShell>
         ) : (
-          <Card title="Not found">This project slug does not exist in state.</Card>
+          <Card title="Loading">Fetching project from local DB…</Card>
         )}
       </div>
     </Layout>

@@ -26,12 +26,21 @@
 - [x] Commit + push
 
 ## Milestone 1.2 — Interactive MVP shell (Phase 3)
-- [ ] Add in-memory workspace state store (projects/files/proposals)
-- [ ] Create Project flow: /projects/new
-- [ ] Project file tree browsing in /projects/[slug]
-- [ ] Create Proposal flow from file/task context
-- [ ] Proposal actions (approve/request changes/reject) change state
-- [ ] Merge updates project file/content and visible activity
+- [x] Add in-memory workspace state store (projects/files/proposals)
+- [x] Create Project flow: /projects/new
+- [x] Project file tree browsing in /projects/[slug]
+- [x] Create Proposal flow from file/task context
+- [x] Proposal actions (approve/request changes/reject) change state
+- [x] Merge updates project file/content and visible activity
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.3 — Minimal persistence backend (Phase 4)
+- [ ] Add local SQLite DB (no Postgres on this machine)
+- [ ] Create schema: projects, files, proposals, reviews, activity
+- [ ] Add minimal API routes (CRUD for flows)
+- [ ] Replace in-memory store with API-backed store
+- [ ] Ensure create/edit/review/merge survives refresh/restart
 - [ ] Local build/test
 - [ ] Commit + push
 

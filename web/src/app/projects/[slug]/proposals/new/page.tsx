@@ -77,9 +77,9 @@ export default function NewProposalPage() {
                   disabled={disabled}
                   className="rounded bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
                   type="button"
-                  onClick={() => {
-                    actions.createProposal({ projectSlug: slug, title, summary, authorHandle, filePath, newContent });
-                    router.push(`/projects/${slug}`);
+                  onClick={async () => {
+                    await actions.createProposal({ projectSlug: slug, title, summary, authorHandle, filePath, newContent });
+                    router.push(`/projects/${slug}?file=${encodeURIComponent(filePath)}`);
                   }}
                 >
                   Submit proposal

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
@@ -24,8 +24,12 @@ export default function ProposalReviewPage() {
   const router = useRouter();
 
   const { state, actions } = useWorkspace();
-  const pr = state.proposals.find((p) => p.id === id) || null;
-  const project = pr ? state.projects.find((p) => p.slug === pr.projectSlug) : null;
+  const pr = state.proposalsById[id] || null;
+  const project = pr ? state.projects.find((p) => p.slug === pr.projectSlug) || null : null;
+
+  useEffect(() => {
+    actions.loadProposal(id).catch(() => void 0);
+  }, [actions, id]);
 
   const canMerge = useMemo(() => pr && pr.status === 'approved', [pr]);
 
@@ -33,8 +37,8 @@ export default function ProposalReviewPage() {
     <Layout>
       <div className="flex flex-col gap-6">
         <PageHeader
-          title={pr ? pr.title : 'Proposal not found'}
-          subtitle={pr && project ? `Project: ${project.name} • File: ${pr.filePath}` : `ID: ${id}`}
+          title={pr ? pr.title : 'Proposal'}
+          subtitle={pr && project ? `Project: ${project.name} • File: ${pr.filePath}` : `Loading: ${id}`}
           breadcrumbs={
             <Breadcrumbs
               items={[
@@ -51,21 +55,21 @@ export default function ProposalReviewPage() {
                 <button
                   className="rounded bg-emerald-600 px-3 py-2 text-sm text-white hover:bg-emerald-500"
                   type="button"
-                  onClick={() => actions.proposalAction(pr.id, 'approve')}
+                  onClick={() => actions.proposalAction(pr.id, 'approve').catch(() => void 0)}
                 >
                   Approve
                 </button>
                 <button
                   className="rounded bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-500"
                   type="button"
-                  onClick={() => actions.proposalAction(pr.id, 'request_changes')}
+                  onClick={() => actions.proposalAction(pr.id, 'request_changes').catch(() => void 0)}
                 >
                   Request changes
                 </button>
                 <button
                   className="rounded border px-3 py-2 text-sm hover:bg-slate-50"
                   type="button"
-                  onClick={() => actions.proposalAction(pr.id, 'reject')}
+                  onClick={() => actions.proposalAction(pr.id, 'reject').catch(() => void 0)}
                 >
                   Reject
                 </button>
@@ -124,20 +128,20 @@ export default function ProposalReviewPage() {
                   className="w-full rounded bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
                   type="button"
                   onClick={() => {
-                    actions.proposalAction(pr.id, 'merge');
-                    router.push(`/projects/${pr.projectSlug}?file=${encodeURIComponent(pr.filePath)}`);
+                    actions
+                      .proposalAction(pr.id, 'merge')
+                      .then(() => router.push(`/projects/${pr.projectSlug}?file=${encodeURIComponent(pr.filePath)}`))
+                      .catch(() => void 0);
                   }}
                 >
                   Merge into workspace
                 </button>
-                <div className="mt-2 text-xs text-slate-600">
-                  Merge is enabled only after approval. Changes apply to project file content in memory.
-                </div>
+                <div className="mt-2 text-xs text-slate-600">Merge is enabled only after approval.</div>
               </Card>
             </aside>
           </div>
         ) : (
-          <Card title="Not found">This proposal ID does not exist in state.</Card>
+          <Card title="Loading">Fetching proposal from local DB…</Card>
         )}
       </div>
     </Layout>
