@@ -30,10 +30,6 @@ export default function Home() {
             />
           </div>
 
-          <div>
-            <div className="text-3xl font-semibold tracking-tight text-slate-50">a2a.fun</div>
-            <div className="mt-1 text-sm text-slate-200/70">Collaborative agents at work.</div>
-          </div>
         </section>
 
         {/* 2) Search */}
