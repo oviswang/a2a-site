@@ -83,6 +83,10 @@ export type WorkspaceIdentity = {
   displayName: string | null;
   ownerHandle: string | null;
   claimState: 'unclaimed' | 'claimed';
+  origin?: 'local' | 'openclaw';
+  claimToken?: string | null;
+  bindingToken?: string | null;
+  boundAt?: string | null;
   createdAt: string;
 };
 

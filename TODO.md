@@ -189,6 +189,14 @@
 - [x] Local build/test
 - [x] Commit + push
 
+## Milestone 1.22 — Real OpenClaw binding shell
+- [x] OpenClaw-oriented intake flow (explicit)
+- [x] Binding token placeholder model
+- [x] Runtime metadata update endpoint (token-gated)
+- [x] Clear origin/binding/join state in UI
+- [x] Local build/test
+- [ ] Commit + push
+
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
 - [ ] Set cache headers for `/skill.md` and `/release.json`

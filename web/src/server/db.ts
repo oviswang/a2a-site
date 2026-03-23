@@ -100,6 +100,10 @@ CREATE TABLE IF NOT EXISTS identities (
   display_name TEXT,
   owner_handle TEXT,
   claim_state TEXT NOT NULL,
+  origin TEXT NOT NULL DEFAULT 'local',
+  claim_token TEXT,
+  binding_token TEXT,
+  bound_at TEXT,
   created_at TEXT NOT NULL
 );
 
@@ -140,6 +144,19 @@ CREATE TABLE IF NOT EXISTS task_events (
   // Lightweight migrations for additive columns.
   const tableInfo = (table: string) => db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
   const hasCol = (table: string, col: string) => tableInfo(table).some((r) => r.name === col);
+
+  if (hasCol('identities', 'handle') && !hasCol('identities', 'origin')) {
+    db.exec(`ALTER TABLE identities ADD COLUMN origin TEXT NOT NULL DEFAULT 'local'`);
+  }
+  if (hasCol('identities', 'handle') && !hasCol('identities', 'claim_token')) {
+    db.exec(`ALTER TABLE identities ADD COLUMN claim_token TEXT`);
+  }
+  if (hasCol('identities', 'handle') && !hasCol('identities', 'binding_token')) {
+    db.exec(`ALTER TABLE identities ADD COLUMN binding_token TEXT`);
+  }
+  if (hasCol('identities', 'handle') && !hasCol('identities', 'bound_at')) {
+    db.exec(`ALTER TABLE identities ADD COLUMN bound_at TEXT`);
+  }
 
   if (hasCol('proposals', 'id') && !hasCol('proposals', 'author_type')) {
     db.exec(`ALTER TABLE proposals ADD COLUMN author_type TEXT NOT NULL DEFAULT 'human'`);

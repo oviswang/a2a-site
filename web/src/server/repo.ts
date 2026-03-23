@@ -1,4 +1,5 @@
 import { getDb } from './db';
+import crypto from 'node:crypto';
 
 export type Visibility = 'open' | 'restricted';
 export type ProposalStatus = 'needs_review' | 'approved' | 'changes_requested' | 'rejected' | 'merged';
@@ -12,6 +13,10 @@ export type ClaimState = 'unclaimed' | 'claimed';
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function newToken(bytes = 16) {
+  return crypto.randomBytes(bytes).toString('hex');
 }
 
 function slugify(input: string) {
@@ -837,6 +842,10 @@ export type Identity = {
   displayName: string | null;
   ownerHandle: string | null;
   claimState: ClaimState;
+  origin?: 'local' | 'openclaw';
+  claimToken?: string | null;
+  bindingToken?: string | null;
+  boundAt?: string | null;
   createdAt: string;
 };
 
@@ -844,8 +853,25 @@ function ensureIdentity(handle: string, identityType: IdentityType) {
   const db = getDb();
   const now = nowIso();
   db.prepare(
-    'INSERT INTO identities (handle, identity_type, display_name, owner_handle, claim_state, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(handle) DO NOTHING'
-  ).run(handle, identityType, null, null, identityType === 'agent' ? 'unclaimed' : 'claimed', now);
+    "INSERT INTO identities (handle, identity_type, display_name, owner_handle, claim_state, origin, claim_token, binding_token, bound_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(handle) DO NOTHING"
+  ).run(
+    handle,
+    identityType,
+    null,
+    null,
+    identityType === 'agent' ? 'unclaimed' : 'claimed',
+    'local',
+    identityType === 'agent' ? newToken(8) : null,
+    null,
+    null,
+    now
+  );
+
+  // Backfill for older rows (additive migrations).
+  db.prepare("UPDATE identities SET origin=COALESCE(origin, 'local') WHERE handle=?").run(handle);
+  if (identityType === 'agent') {
+    db.prepare('UPDATE identities SET claim_token=COALESCE(claim_token, ?) WHERE handle=?').run(newToken(8), handle);
+  }
 }
 
 export function listIdentities(): Identity[] {
@@ -856,13 +882,17 @@ export function listIdentities(): Identity[] {
   ensureIdentity('local-agent', 'agent');
 
   const rows = db
-    .prepare('SELECT handle, identity_type, display_name, owner_handle, claim_state, created_at FROM identities ORDER BY created_at DESC')
+    .prepare('SELECT handle, identity_type, display_name, owner_handle, claim_state, origin, claim_token, binding_token, bound_at, created_at FROM identities ORDER BY created_at DESC')
     .all() as Array<{
     handle: string;
     identity_type: string;
     display_name: string | null;
     owner_handle: string | null;
     claim_state: string;
+    origin?: string | null;
+    claim_token?: string | null;
+    binding_token?: string | null;
+    bound_at?: string | null;
     created_at: string;
   }>;
 
@@ -872,6 +902,10 @@ export function listIdentities(): Identity[] {
     displayName: r.display_name ?? null,
     ownerHandle: r.owner_handle ?? null,
     claimState: r.claim_state === 'claimed' ? 'claimed' : 'unclaimed',
+    origin: r.origin === 'openclaw' ? 'openclaw' : 'local',
+    claimToken: r.claim_token ?? null,
+    bindingToken: r.binding_token ?? null,
+    boundAt: r.bound_at ?? null,
     createdAt: r.created_at,
   }));
 }
@@ -879,7 +913,7 @@ export function listIdentities(): Identity[] {
 export function getIdentity(handle: string): Identity | null {
   const db = getDb();
   const r = db
-    .prepare('SELECT handle, identity_type, display_name, owner_handle, claim_state, created_at FROM identities WHERE handle=?')
+    .prepare('SELECT handle, identity_type, display_name, owner_handle, claim_state, origin, claim_token, binding_token, bound_at, created_at FROM identities WHERE handle=?')
     .get(handle) as
     | {
         handle: string;
@@ -887,6 +921,10 @@ export function getIdentity(handle: string): Identity | null {
         display_name: string | null;
         owner_handle: string | null;
         claim_state: string;
+        origin?: string | null;
+        claim_token?: string | null;
+        binding_token?: string | null;
+        bound_at?: string | null;
         created_at: string;
       }
     | undefined;
@@ -897,6 +935,10 @@ export function getIdentity(handle: string): Identity | null {
     displayName: r.display_name ?? null,
     ownerHandle: r.owner_handle ?? null,
     claimState: r.claim_state === 'claimed' ? 'claimed' : 'unclaimed',
+    origin: r.origin === 'openclaw' ? 'openclaw' : 'local',
+    claimToken: r.claim_token ?? null,
+    bindingToken: r.binding_token ?? null,
+    boundAt: r.bound_at ?? null,
     createdAt: r.created_at,
   };
 }
@@ -907,14 +949,9 @@ export function createAgentIdentity(args: { handle: string; displayName?: string
   const handle = slugify(args.handle).replace(/-/g, '_');
   if (!handle) throw new Error('invalid_handle');
 
-  db.prepare('INSERT INTO identities (handle, identity_type, display_name, owner_handle, claim_state, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
-    handle,
-    'agent',
-    args.displayName || null,
-    null,
-    'unclaimed',
-    now
-  );
+  db.prepare(
+    "INSERT INTO identities (handle, identity_type, display_name, owner_handle, claim_state, origin, claim_token, binding_token, bound_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(handle, 'agent', args.displayName || null, null, 'unclaimed', 'local', newToken(8), null, null, now);
 
   return getIdentity(handle);
 }
@@ -970,6 +1007,20 @@ export function getAgentRuntime(agentHandle: string): AgentRuntime | null {
     runtime = {};
   }
   return { agentHandle: r.agent_handle, runtime, lastSeen: r.last_seen };
+}
+
+export function updateAgentRuntimeWithBindingToken(args: {
+  agentHandle: string;
+  bindingToken: string;
+  runtime: Record<string, unknown>;
+}) {
+  const id = getIdentity(args.agentHandle);
+  if (!id) throw new Error('identity_not_found');
+  if (id.identityType !== 'agent') throw new Error('not_an_agent');
+  if (!id.bindingToken) throw new Error('agent_not_bound');
+  if (id.bindingToken !== args.bindingToken) throw new Error('invalid_binding_token');
+
+  return upsertAgentRuntime({ agentHandle: args.agentHandle, runtime: args.runtime || {} });
 }
 
 export type AgentSummary = {
@@ -1041,6 +1092,16 @@ export function externalAgentIntake(args: {
   if (!handle) throw new Error('invalid_handle');
 
   ensureIdentity(handle, 'agent');
+
+  const now = nowIso();
+  const existing = getIdentity(handle);
+  const bindingToken = existing?.bindingToken || newToken(12);
+  db.prepare("UPDATE identities SET origin='openclaw', binding_token=?, bound_at=COALESCE(bound_at, ?) WHERE handle=?").run(
+    bindingToken,
+    now,
+    handle
+  );
+
   if (args.displayName) {
     db.prepare('UPDATE identities SET display_name=? WHERE handle=?').run(args.displayName, handle);
   }
@@ -1050,7 +1111,7 @@ export function externalAgentIntake(args: {
   }
 
   const joinResult = joinProject({ projectSlug: args.projectSlug, actorHandle: handle, actorType: 'agent' });
-  return { identity: getIdentity(handle), joinResult };
+  return { identity: getIdentity(handle), joinResult, bindingToken };
 }
 
 function ensureDogfoodA2aSiteProject() {

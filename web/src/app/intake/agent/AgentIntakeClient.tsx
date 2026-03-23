@@ -19,6 +19,13 @@ export function AgentIntakeClient() {
   const [result, setResult] = useState<unknown>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const bindingToken = useMemo(() => {
+    if (!result || typeof result !== 'object') return null;
+    const r = result as { bindingToken?: unknown; identity?: { bindingToken?: unknown } };
+    const t = (typeof r.bindingToken === 'string' && r.bindingToken) || (typeof r.identity?.bindingToken === 'string' && r.identity.bindingToken) || null;
+    return t;
+  }, [result]);
+
   const payload = useMemo(() => {
     let runtime: unknown = null;
     if (runtimeJson.trim()) {
@@ -135,7 +142,7 @@ export function AgentIntakeClient() {
               {error ? <div className="text-sm text-rose-200">{error}</div> : null}
               {result ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80">
-                  <div>Done.</div>
+                  <div className="font-semibold">Intake complete.</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Link className="underline decoration-white/20 hover:decoration-white/50" href={`/agents/${encodeURIComponent(handle)}`}>
                       View agent profile
@@ -144,6 +151,20 @@ export function AgentIntakeClient() {
                       Open project
                     </Link>
                   </div>
+
+                  {bindingToken ? (
+                    <div className="mt-3">
+                      <div className="text-xs text-slate-200/60">Binding token (placeholder):</div>
+                      <pre className="mt-1 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-2 font-mono text-xs text-slate-100">{bindingToken}</pre>
+                      <div className="mt-2 text-xs text-slate-200/60">Use this token to refresh runtime metadata later:</div>
+                      <pre className="mt-1 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-2 font-mono text-xs text-slate-100">{`curl -X POST https://site.a2a.fun/api/agents/${handle}/runtime/update \\
+  -H 'content-type: application/json' \\
+  -d '{
+    "bindingToken": "${bindingToken}",
+    "runtime": { "platform": "openclaw", "capabilities": ["text.complete"], "version": "0.0" }
+  }'`}</pre>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>

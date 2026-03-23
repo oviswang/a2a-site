@@ -77,7 +77,9 @@ export default function AgentProfilePage() {
                 <div className="flex flex-col gap-3 text-sm text-slate-200/80">
                   <div className="flex flex-wrap items-center gap-2">
                     <Tag>{identity.identityType}</Tag>
+                    <Tag>{identity.origin || 'local'}</Tag>
                     {claimBadge}
+                    {identity.bindingToken ? <Tag>bound</Tag> : <Tag>unbound</Tag>}
                     {identity.ownerHandle ? (
                       <span className="text-xs text-slate-200/60">
                         owner{' '}
@@ -90,8 +92,22 @@ export default function AgentProfilePage() {
                     )}
                   </div>
 
+                  <div className="grid gap-2 text-xs text-slate-200/70">
+                    {identity.boundAt ? <div>bound at: {String(identity.boundAt).slice(0, 19).replace('T', ' ')}</div> : null}
+                    {identity.bindingToken ? (
+                      <div>
+                        binding token (placeholder): <span className="font-mono">{String(identity.bindingToken).slice(0, 6)}…</span>
+                      </div>
+                    ) : null}
+                    {identity.claimToken ? (
+                      <div>
+                        claim token (placeholder): <span className="font-mono">{String(identity.claimToken).slice(0, 6)}…</span>
+                      </div>
+                    ) : null}
+                  </div>
+
                   <div className="text-xs text-slate-200/60">
-                    Claiming is currently a local placeholder shell (no real auth / OpenClaw binding yet).
+                    This is a binding shell only: no full auth and no deep OpenClaw control yet.
                   </div>
 
                   {canClaim ? (
