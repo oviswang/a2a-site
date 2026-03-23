@@ -352,26 +352,91 @@ export default function ProjectDetailPage() {
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="font-mono text-xs text-slate-50">{selectedFile ? selectedFile.path : '—'}</div>
-                        <div className="text-xs text-slate-200/60">
-                          updated {selectedFile?.updatedAt || '—'}
-                          {selectedFile?.lastActorHandle ? (
-                            <span className="ml-2">
-                              by @{selectedFile.lastActorHandle} ({selectedFile.lastActorType || '—'})
-                            </span>
-                          ) : null}
-                          {selectedFile?.lastProposalId ? (
-                            <span className="ml-2">
-                              via{' '}
-                              <Link className="underline decoration-white/30 hover:decoration-white/60" href={`/proposals/${encodeURIComponent(selectedFile.lastProposalId)}/review`}>
-                                {selectedFile.lastProposalId}
-                              </Link>
-                            </span>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-200/60">
+                          <span>
+                            updated {selectedFile?.updatedAt || '—'}
+                            {selectedFile?.lastActorHandle ? (
+                              <span className="ml-2">
+                                by @{selectedFile.lastActorHandle} ({selectedFile.lastActorType || '—'})
+                              </span>
+                            ) : null}
+                            {selectedFile?.lastProposalId ? (
+                              <span className="ml-2">
+                                via{' '}
+                                <Link
+                                  className="underline decoration-white/30 hover:decoration-white/60"
+                                  href={`/proposals/${encodeURIComponent(selectedFile.lastProposalId)}/review`}
+                                >
+                                  {selectedFile.lastProposalId}
+                                </Link>
+                              </span>
+                            ) : null}
+                          </span>
+
+                          {selectedFile ? (
+                            <Link
+                              className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100 hover:bg-white/10"
+                              href={`/projects/${slug}/proposals/new?file=${encodeURIComponent(selectedFile.path)}`}
+                            >
+                              Propose change
+                            </Link>
                           ) : null}
                         </div>
                       </div>
-                      <pre className="mt-3 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-4 text-xs leading-relaxed text-slate-100">
+
+                      <div
+                        className={`mt-3 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-4 leading-relaxed text-slate-100 ${
+                          selectedFile?.path?.toLowerCase().endsWith('.md') ? 'text-sm' : 'font-mono text-xs'
+                        }`}
+                      >
                         {selectedFile?.content || '—'}
-                      </pre>
+                      </div>
+
+                      {selectedFile ? (
+                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                            <div className="text-xs font-semibold text-slate-200/70">Related proposals</div>
+                            <div className="mt-2 grid gap-1 text-xs">
+                              {proposals
+                                .filter((p) => p.filePath === selectedFile.path)
+                                .slice(0, 5)
+                                .map((p) => (
+                                  <Link
+                                    key={p.id}
+                                    className="rounded-xl px-2 py-1 text-slate-100 hover:bg-white/5"
+                                    href={`/proposals/${encodeURIComponent(p.id)}/review`}
+                                  >
+                                    <span className="font-mono">{p.id}</span> · {p.status}
+                                  </Link>
+                                ))}
+                              {proposals.filter((p) => p.filePath === selectedFile.path).length === 0 ? (
+                                <div className="text-slate-200/60">None</div>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                            <div className="text-xs font-semibold text-slate-200/70">Related tasks</div>
+                            <div className="mt-2 grid gap-1 text-xs">
+                              {tasks
+                                .filter((t) => t.filePath === selectedFile.path)
+                                .slice(0, 5)
+                                .map((t) => (
+                                  <Link
+                                    key={t.id}
+                                    className="rounded-xl px-2 py-1 text-slate-100 hover:bg-white/5"
+                                    href={`/tasks/${encodeURIComponent(t.id)}`}
+                                  >
+                                    <span className="font-mono">{t.id}</span> · {t.status}
+                                  </Link>
+                                ))}
+                              {tasks.filter((t) => t.filePath === selectedFile.path).length === 0 ? (
+                                <div className="text-slate-200/60">None</div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>
