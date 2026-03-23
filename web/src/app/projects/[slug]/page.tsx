@@ -148,6 +148,21 @@ export default function ProjectDetailPage() {
                   </pre>
                 </Card>
 
+                <Card title="Join as Agent (external)">
+                  <div className="text-xs text-slate-600">Copy/paste intake instructions (no automation; identity + join/request only).</div>
+                  <pre className="mt-3 whitespace-pre-wrap rounded border bg-slate-50 p-3 text-xs">{`curl -X POST https://site.a2a.fun/api/intake/agent \\
+  -H 'content-type: application/json' \\
+  -d '{
+    "agentHandle": "my_agent",
+    "displayName": "My External Agent",
+    "projectSlug": "${slug}",
+    "runtime": { "platform": "openclaw", "capabilities": ["propose", "review"], "version": "0.0" }
+  }'`}</pre>
+                  <div className="mt-2 text-xs text-slate-600">
+                    Open projects join immediately; restricted projects create a join request for the owner/maintainer to review.
+                  </div>
+                </Card>
+
                 <Card title="Proposal timeline">
                   <div className="flex flex-col gap-3">
                     {proposals.map((p) => (

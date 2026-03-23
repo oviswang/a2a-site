@@ -71,11 +71,19 @@
 - [x] Commit + push
 
 ## Milestone 1.7 — Minimal identity + claim shell (Phase 8)
-- [ ] Persist identities (human/agent)
-- [ ] Identities page: list/create/select acting identity
-- [ ] Agent profile: show owner/claim state + richer fields
-- [ ] Claim/unclaim placeholder flow (local)
-- [ ] Member cards improved for role/type clarity
+- [x] Persist identities (human/agent)
+- [x] Identities page: list/create/select acting identity
+- [x] Agent profile: show owner/claim state + richer fields
+- [x] Claim/unclaim placeholder flow (local)
+- [x] Member cards improved for role/type clarity
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.8 — External agent integration shell (Phase 9)
+- [ ] Project page: “Join as Agent” instructions (OpenClaw-friendly)
+- [ ] Intake endpoint: external agent can create identity + join/request access
+- [ ] Persist minimal runtime/capability metadata (no execution)
+- [ ] Agent profile: show runtime/capability info
 - [ ] Local build/test
 - [ ] Commit + push
 

@@ -576,3 +576,67 @@ export function claimAgentIdentity(args: { handle: string; ownerHandle: string }
 
   return getIdentity(args.handle);
 }
+
+function normalizeHandle(input: string) {
+  return slugify(input).replace(/-/g, '_');
+}
+
+export type AgentRuntime = {
+  agentHandle: string;
+  runtime: Record<string, unknown>;
+  lastSeen: string;
+};
+
+export function upsertAgentRuntime(args: { agentHandle: string; runtime: Record<string, unknown> }) {
+  const db = getDb();
+  const now = nowIso();
+
+  ensureIdentity(args.agentHandle, 'agent');
+
+  db.prepare(
+    `INSERT INTO agent_runtime (agent_handle, runtime_json, last_seen)
+     VALUES (?, ?, ?)
+     ON CONFLICT(agent_handle) DO UPDATE SET runtime_json=excluded.runtime_json, last_seen=excluded.last_seen`
+  ).run(args.agentHandle, JSON.stringify(args.runtime || {}), now);
+
+  return getAgentRuntime(args.agentHandle);
+}
+
+export function getAgentRuntime(agentHandle: string): AgentRuntime | null {
+  const db = getDb();
+  const r = db
+    .prepare('SELECT agent_handle, runtime_json, last_seen FROM agent_runtime WHERE agent_handle=?')
+    .get(agentHandle) as { agent_handle: string; runtime_json: string; last_seen: string } | undefined;
+  if (!r) return null;
+  let runtime: Record<string, unknown> = {};
+  try {
+    runtime = JSON.parse(r.runtime_json || '{}');
+  } catch {
+    runtime = {};
+  }
+  return { agentHandle: r.agent_handle, runtime, lastSeen: r.last_seen };
+}
+
+export function externalAgentIntake(args: {
+  agentHandle: string;
+  displayName?: string | null;
+  projectSlug: string;
+  runtime?: Record<string, unknown> | null;
+}) {
+  const db = getDb();
+
+  const handle = normalizeHandle(args.agentHandle);
+  if (!handle) throw new Error('invalid_handle');
+
+  ensureIdentity(handle, 'agent');
+  if (args.displayName) {
+    db.prepare('UPDATE identities SET display_name=? WHERE handle=?').run(args.displayName, handle);
+  }
+
+  if (args.runtime) {
+    upsertAgentRuntime({ agentHandle: handle, runtime: args.runtime });
+  }
+
+  const joinResult = joinProject({ projectSlug: args.projectSlug, actorHandle: handle, actorType: 'agent' });
+  return { identity: getIdentity(handle), joinResult };
+}

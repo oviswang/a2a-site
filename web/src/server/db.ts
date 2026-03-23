@@ -102,6 +102,13 @@ CREATE TABLE IF NOT EXISTS identities (
   claim_state TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS agent_runtime (
+  agent_handle TEXT PRIMARY KEY,
+  runtime_json TEXT NOT NULL,
+  last_seen TEXT NOT NULL,
+  FOREIGN KEY(agent_handle) REFERENCES identities(handle) ON DELETE CASCADE
+);
 `);
 
   // Lightweight migrations for additive columns.

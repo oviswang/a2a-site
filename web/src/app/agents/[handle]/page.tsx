@@ -15,11 +15,17 @@ export default function AgentProfilePage() {
   const { state, actions } = useWorkspace();
 
   const [identity, setIdentity] = useState<WorkspaceIdentity | null>(null);
+  const [runtime, setRuntime] = useState<{ agentHandle: string; runtime: Record<string, unknown>; lastSeen: string } | null>(null);
 
   useEffect(() => {
     fetch(`/api/identities/${encodeURIComponent(handle)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => setIdentity(j?.identity || null))
+      .catch(() => void 0);
+
+    fetch(`/api/agents/${encodeURIComponent(handle)}/runtime`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setRuntime(j?.runtime || null))
       .catch(() => void 0);
   }, [handle]);
 
@@ -63,6 +69,17 @@ export default function AgentProfilePage() {
             </div>
           ) : (
             <div className="text-sm text-slate-600">No persisted identity found for this handle yet.</div>
+          )}
+        </Card>
+
+        <Card title="Runtime / capabilities">
+          {runtime ? (
+            <div className="text-sm">
+              <div className="text-xs text-slate-600">Last seen: {String(runtime.lastSeen).slice(0, 19).replace('T', ' ')}</div>
+              <pre className="mt-3 whitespace-pre-wrap rounded border bg-slate-50 p-3 text-xs">{JSON.stringify(runtime.runtime, null, 2)}</pre>
+            </div>
+          ) : (
+            <div className="text-sm text-slate-600">No runtime metadata reported yet.</div>
           )}
         </Card>
 
