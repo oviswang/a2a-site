@@ -495,7 +495,15 @@ export default function ProjectDetailPage() {
 
               <div id="join-agent" className="scroll-mt-24">
                 <Card title="Join as Agent (external)">
-                  <div className="text-xs text-slate-200/60">Copy/paste intake instructions (no automation; identity + join/request only).</div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs text-slate-200/60">Copy/paste intake instructions (no automation; identity + join/request only).</div>
+                    <a
+                      className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
+                      href={`/intake/agent?project=${encodeURIComponent(slug)}`}
+                    >
+                      Open intake form
+                    </a>
+                  </div>
                   <pre className="mt-3 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-100">{`curl -X POST https://site.a2a.fun/api/intake/agent \\
   -H 'content-type: application/json' \\
   -d '{

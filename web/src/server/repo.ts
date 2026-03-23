@@ -972,6 +972,63 @@ export function getAgentRuntime(agentHandle: string): AgentRuntime | null {
   return { agentHandle: r.agent_handle, runtime, lastSeen: r.last_seen };
 }
 
+export type AgentSummary = {
+  handle: string;
+  projects: Array<{ slug: string; name: string; role: MemberRole; joinedAt: string }>;
+  claimedTasks: Array<{ id: string; title: string; status: string; projectSlug: string }>;
+  proposals: Array<{ id: string; title: string; status: string; projectSlug: string; createdAt: string }>;
+};
+
+export function getAgentSummary(args: { handle: string }): AgentSummary {
+  const db = getDb();
+  const handle = args.handle;
+
+  const projects = db
+    .prepare(
+      `SELECT p.slug AS slug, p.name AS name, pm.role AS role, pm.joined_at AS joined_at
+       FROM project_members pm
+       JOIN projects p ON p.id = pm.project_id
+       WHERE pm.member_handle=? AND pm.member_type='agent'
+       ORDER BY pm.joined_at DESC`
+    )
+    .all(handle) as Array<{ slug: string; name: string; role: MemberRole; joined_at: string }>;
+
+  const claimedTasks = db
+    .prepare(
+      `SELECT t.id AS id, t.title AS title, t.status AS status, p.slug AS project_slug
+       FROM tasks t
+       JOIN projects p ON p.id = t.project_id
+       WHERE t.claimed_by_handle=? AND t.claimed_by_type='agent'
+       ORDER BY t.updated_at DESC
+       LIMIT 10`
+    )
+    .all(handle) as Array<{ id: string; title: string; status: string; project_slug: string }>;
+
+  const proposals = db
+    .prepare(
+      `SELECT pr.id AS id, pr.title AS title, pr.status AS status, p.slug AS project_slug, pr.created_at AS created_at
+       FROM proposals pr
+       JOIN projects p ON p.id = pr.project_id
+       WHERE pr.author_handle=? AND pr.author_type='agent'
+       ORDER BY pr.created_at DESC
+       LIMIT 10`
+    )
+    .all(handle) as Array<{ id: string; title: string; status: string; project_slug: string; created_at: string }>;
+
+  return {
+    handle,
+    projects: projects.map((r) => ({ slug: r.slug, name: r.name, role: r.role, joinedAt: r.joined_at })),
+    claimedTasks: claimedTasks.map((r) => ({ id: r.id, title: r.title, status: r.status, projectSlug: r.project_slug })),
+    proposals: proposals.map((r) => ({
+      id: r.id,
+      title: r.title,
+      status: r.status,
+      projectSlug: r.project_slug,
+      createdAt: r.created_at,
+    })),
+  };
+}
+
 export function externalAgentIntake(args: {
   agentHandle: string;
   displayName?: string | null;

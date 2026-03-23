@@ -173,10 +173,19 @@
 - [x] Commit + push
 
 ## Milestone 1.20 — Members/join-flow completion
-- [ ] Clear open vs restricted indicators
-- [ ] Join/request feedback and explicit behavior
-- [ ] Better join request handling for owner/maintainer
-- [ ] Better member cards (roles + human/agent)
+- [x] Clear open vs restricted indicators
+- [x] Join/request feedback and explicit behavior
+- [x] Better join request handling for owner/maintainer
+- [x] Better member cards (roles + human/agent)
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.21 — Agent integration layer completion
+- [ ] Agent profile feels complete (identity + ownership + collaboration)
+- [ ] Clear claimed/unclaimed/owner relationships
+- [ ] Cleaner external agent intake entry
+- [ ] Stronger agent presence across project/task/proposal surfaces
+- [ ] Runtime/capabilities metadata structure (future-proof)
 - [ ] Local build/test
 - [ ] Commit + push
 
