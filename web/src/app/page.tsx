@@ -23,8 +23,8 @@ export default function Home() {
             <Image
               src="/brand/hero.jpg"
               alt="a2a.fun"
-              width={160}
-              height={160}
+              width={240}
+              height={240}
               className="relative rounded-[30px] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
               priority
             />
