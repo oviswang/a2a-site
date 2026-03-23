@@ -1,22 +1,21 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/Status';
-import { useWorkspace } from '@/lib/state';
+import { useWorkspace, type WorkspaceProposal } from '@/lib/state';
 
-function DiffLine({ type, text }: { type: '+' | '-' | '~'; text: string }) {
-  const cls = type === '+' ? 'text-emerald-700' : type === '-' ? 'text-rose-700' : 'text-slate-700';
-  return (
-    <div className={`font-mono text-xs ${cls}`}>
-      <span className="mr-2">{type}</span>
-      {text}
-    </div>
-  );
-}
+type ReviewEvent = {
+  action: string;
+  actorHandle: string | null;
+  actorType: 'human' | 'agent' | null;
+  note: string | null;
+  createdAt: string;
+};
 
 export default function ProposalReviewPage() {
   const params = useParams<{ id: string }>();
@@ -24,21 +23,45 @@ export default function ProposalReviewPage() {
   const router = useRouter();
 
   const { state, actions } = useWorkspace();
-  const pr = state.proposalsById[id] || null;
-  const project = pr ? state.projects.find((p) => p.slug === pr.projectSlug) || null : null;
+  const [pr, setPr] = useState<WorkspaceProposal | null>(null);
+  const [reviews, setReviews] = useState<ReviewEvent[]>([]);
+
+  const [note, setNote] = useState('');
+  const [comment, setComment] = useState('');
+
+  const [editSummary, setEditSummary] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editNote, setEditNote] = useState('');
+
+  async function refresh() {
+    const res = await fetch(`/api/proposals/${encodeURIComponent(id)}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const j = (await res.json()) as { proposal: WorkspaceProposal; reviews?: ReviewEvent[] };
+    setPr(j.proposal);
+    setReviews(j.reviews || []);
+
+    // Initialize edit form once.
+    if (!editContent) {
+      setEditSummary(j.proposal.summary || '');
+      setEditContent(j.proposal.newContent || '');
+    }
+  }
 
   useEffect(() => {
-    actions.loadProposal(id).catch(() => void 0);
-  }, [actions, id]);
+    refresh().catch(() => void 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
+  const project = pr ? state.projects.find((p) => p.slug === pr.projectSlug) || null : null;
   const canMerge = useMemo(() => pr && pr.status === 'approved', [pr]);
+  const isAuthor = useMemo(() => pr && state.actor.handle === pr.authorHandle, [pr, state.actor.handle]);
 
   return (
     <Layout>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={pr ? pr.title : 'Proposal'}
-          subtitle={pr && project ? `Project: ${project.name} • File: ${pr.filePath}` : `Loading: ${id}`}
+          subtitle={pr && project ? `Project: ${project.name} • File: ${pr.filePath}` : `ID: ${id}`}
           breadcrumbs={
             <Breadcrumbs
               items={[
@@ -49,115 +72,231 @@ export default function ProposalReviewPage() {
               ]}
             />
           }
-          actions={
-            pr ? (
-              <>
-                <button
-                  className="rounded bg-emerald-600 px-3 py-2 text-sm text-white hover:bg-emerald-500"
-                  type="button"
-                  onClick={() => actions.proposalAction(pr.id, 'approve').catch(() => void 0)}
-                >
-                  Approve
-                </button>
-                <button
-                  className="rounded bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-500"
-                  type="button"
-                  onClick={() => actions.proposalAction(pr.id, 'request_changes').catch(() => void 0)}
-                >
-                  Request changes
-                </button>
-                <button
-                  className="rounded border px-3 py-2 text-sm hover:bg-slate-50"
-                  type="button"
-                  onClick={() => actions.proposalAction(pr.id, 'reject').catch(() => void 0)}
-                >
-                  Reject
-                </button>
-              </>
-            ) : null
-          }
         />
 
         {pr ? (
-          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
             <div className="flex flex-col gap-6">
-              <Card title="Summary">
-                <div className="flex flex-col gap-3">
-                  <div className="text-sm text-slate-700">{pr.summary}</div>
-                  <div className="rounded border bg-slate-50 p-4">
-                    <div className="text-xs font-semibold text-slate-600">Diff (mock)</div>
-                    <div className="mt-2 flex flex-col gap-1">
-                      <DiffLine type="~" text={`edit ${pr.filePath}`} />
-                      <DiffLine type="+" text="update headings and steps" />
-                      <DiffLine type="+" text="clarify verification" />
-                    </div>
+              <Card title="Proposed change">
+                <div className="flex flex-col gap-2 text-sm">
+                  <div className="text-slate-200/80">{pr.summary}</div>
+                  <div className="text-xs text-slate-200/60">
+                    Target file: <span className="font-mono">{pr.filePath}</span>
+                    {pr.taskId ? (
+                      <>
+                        {' '}· task{' '}
+                        <Link className="font-mono underline decoration-white/30 hover:decoration-white/60" href={`/tasks/${encodeURIComponent(pr.taskId)}`}>
+                          {pr.taskId}
+                        </Link>
+                      </>
+                    ) : null}
                   </div>
                 </div>
               </Card>
 
-              <Card title="Proposed new content">
-                <pre className="whitespace-pre-wrap rounded-2xl border border-white/10 bg-white/5 p-4 font-mono text-xs leading-relaxed">{pr.newContent}</pre>
+              <Card title="New content">
+                <pre className="whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-4 font-mono text-xs leading-relaxed text-slate-100">
+                  {pr.newContent}
+                </pre>
               </Card>
+
+              <Card title="Review timeline">
+                <div className="flex flex-col gap-2">
+                  {reviews.map((r, idx) => (
+                    <div key={idx} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-xs text-slate-200/70">{String(r.createdAt).slice(0, 19).replace('T', ' ')}</div>
+                        <div className="text-xs text-slate-200/60">
+                          {r.actorHandle ? `@${r.actorHandle}` : 'system'} {r.actorType ? `(${r.actorType})` : ''}
+                        </div>
+                      </div>
+                      <div className="mt-1 text-sm text-slate-50">{r.action}</div>
+                      {r.note ? <div className="mt-2 text-sm text-slate-200/80">{r.note}</div> : null}
+                    </div>
+                  ))}
+                  {reviews.length === 0 ? <div className="text-sm text-slate-200/60">No review events yet</div> : null}
+                </div>
+
+                <div className="mt-4 grid gap-2">
+                  <textarea
+                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                    rows={3}
+                    placeholder="Add a comment…"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="w-fit rounded-2xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25"
+                    onClick={async () => {
+                      if (!comment.trim()) return;
+                      await actions.proposalAction(pr.id, 'comment', comment.trim());
+                      setComment('');
+                      await refresh();
+                    }}
+                  >
+                    Post comment
+                  </button>
+                </div>
+              </Card>
+
+              {isAuthor && pr.status === 'changes_requested' ? (
+                <Card title="Author response">
+                  <div className="text-xs text-slate-200/60">Edit and resubmit to move the proposal back to needs_review.</div>
+                  <div className="mt-3 grid gap-2">
+                    <label className="grid gap-1">
+                      <span className="text-xs font-semibold text-slate-200/70">Summary</span>
+                      <textarea
+                        className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                        rows={2}
+                        value={editSummary}
+                        onChange={(e) => setEditSummary(e.target.value)}
+                      />
+                    </label>
+                    <label className="grid gap-1">
+                      <span className="text-xs font-semibold text-slate-200/70">Updated content</span>
+                      <textarea
+                        className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs text-slate-100"
+                        rows={12}
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                      />
+                    </label>
+                    <label className="grid gap-1">
+                      <span className="text-xs font-semibold text-slate-200/70">Resubmission note (optional)</span>
+                      <input
+                        className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                        value={editNote}
+                        onChange={(e) => setEditNote(e.target.value)}
+                        placeholder="e.g. addressed feedback and clarified steps"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="w-fit rounded-2xl bg-emerald-700 px-3 py-2 text-sm text-white hover:bg-emerald-600"
+                      onClick={async () => {
+                        const res = await fetch(`/api/proposals/${encodeURIComponent(pr.id)}/update`, {
+                          method: 'POST',
+                          headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({
+                            actorHandle: state.actor.handle,
+                            actorType: state.actor.actorType,
+                            newContent: editContent,
+                            summary: editSummary,
+                            note: editNote || null,
+                          }),
+                        });
+                        if (!res.ok) return;
+                        setEditNote('');
+                        await refresh();
+                      }}
+                    >
+                      Resubmit for review
+                    </button>
+                  </div>
+                </Card>
+              ) : null}
             </div>
 
             <aside className="flex flex-col gap-4">
-              <Card title="Metadata">
-                <div className="flex flex-col gap-2 text-sm">
+              <Card title="Status">
+                <div className="flex flex-col gap-3 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Status</span>
+                    <span className="text-slate-200/60">Status</span>
                     <StatusBadge status={pr.status} />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Author</span>
+                    <span className="text-slate-200/60">Author</span>
                     <span>
-                      @{pr.authorHandle} <span className="text-xs text-slate-600">({pr.authorType})</span>
+                      @{pr.authorHandle} <span className="text-xs text-slate-200/60">({pr.authorType})</span>
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Reviewer (acting)</span>
+                    <span className="text-slate-200/60">Reviewer (acting)</span>
                     <span className="font-mono text-xs">
-                      @{state.actor.handle} <span className="text-slate-600">({state.actor.actorType})</span>
+                      @{state.actor.handle} <span className="text-slate-200/60">({state.actor.actorType})</span>
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Created</span>
+                    <span className="text-slate-200/60">Created</span>
                     <span>{pr.createdAt}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600">File</span>
-                    <Tag>{pr.filePath}</Tag>
-                  </div>
-                  {pr.taskId ? (
+                  {pr.updatedAt ? (
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-600">Task</span>
-                      <a className="font-mono text-xs underline" href={`/tasks/${encodeURIComponent(pr.taskId)}`}>
-                        {pr.taskId}
-                      </a>
+                      <span className="text-slate-200/60">Updated</span>
+                      <span>{String(pr.updatedAt).slice(0, 10)}</span>
                     </div>
                   ) : null}
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-200/60">File</span>
+                    <Tag>{pr.filePath}</Tag>
+                  </div>
                 </div>
               </Card>
 
-              <Card title="Merge">
-                <button
-                  disabled={!canMerge}
-                  className="w-full rounded bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
-                  type="button"
-                  onClick={() => {
-                    actions
-                      .proposalAction(pr.id, 'merge')
-                      .then(() => router.push(`/projects/${pr.projectSlug}?file=${encodeURIComponent(pr.filePath)}`))
-                      .catch(() => void 0);
-                  }}
-                >
-                  Merge into workspace
-                </button>
-                <div className="mt-2 text-xs text-slate-600">Merge is enabled only after approval.</div>
+              <Card title="Review actions">
+                <textarea
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                  rows={3}
+                  placeholder="Review note (optional)…"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    className="rounded-2xl bg-emerald-700 px-3 py-2 text-sm text-white hover:bg-emerald-600"
+                    type="button"
+                    onClick={async () => {
+                      await actions.proposalAction(pr.id, 'approve', note.trim() || undefined);
+                      setNote('');
+                      await refresh();
+                    }}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    className="rounded-2xl bg-amber-700 px-3 py-2 text-sm text-white hover:bg-amber-600"
+                    type="button"
+                    onClick={async () => {
+                      await actions.proposalAction(pr.id, 'request_changes', note.trim() || undefined);
+                      setNote('');
+                      await refresh();
+                    }}
+                  >
+                    Request changes
+                  </button>
+                  <button
+                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                    type="button"
+                    onClick={async () => {
+                      await actions.proposalAction(pr.id, 'reject', note.trim() || undefined);
+                      setNote('');
+                      await refresh();
+                    }}
+                  >
+                    Reject
+                  </button>
+                </div>
+                <div className="mt-4">
+                  <button
+                    disabled={!canMerge}
+                    className="w-full rounded-2xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25 disabled:opacity-50"
+                    type="button"
+                    onClick={async () => {
+                      await actions.proposalAction(pr.id, 'merge', note.trim() || undefined);
+                      setNote('');
+                      router.push(`/projects/${pr.projectSlug}?file=${encodeURIComponent(pr.filePath)}`);
+                    }}
+                  >
+                    Merge into workspace
+                  </button>
+                  <div className="mt-2 text-xs text-slate-200/60">Merge is enabled only after approval.</div>
+                </div>
               </Card>
             </aside>
           </div>
         ) : (
-          <Card title="Loading">Fetching proposal from local DB…</Card>
+          <Card title="Loading">Fetching proposal…</Card>
         )}
       </div>
     </Layout>

@@ -158,10 +158,17 @@
 - [x] Commit + push
 
 ## Milestone 1.18 — Project workspace completion
-- [ ] Workspace shell: clearer navigation between areas
-- [ ] Project page: unified sections (overview/tasks/proposals/files/decisions/people/timeline)
-- [ ] Improve at-a-glance project state
-- [ ] Mobile + desktop layout polish
+- [x] Workspace shell: clearer navigation between areas
+- [x] Project page: unified sections (overview/tasks/proposals/files/decisions/people/timeline)
+- [x] Improve at-a-glance project state
+- [x] Mobile + desktop layout polish
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.19 — Proposal/review completion
+- [ ] Request-changes loop (reviewer → author update → resubmit)
+- [ ] Persist and display review notes/comments
+- [ ] Proposal review timeline
 - [ ] Local build/test
 - [ ] Commit + push
 

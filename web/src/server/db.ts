@@ -147,6 +147,9 @@ CREATE TABLE IF NOT EXISTS task_events (
   if (hasCol('proposals', 'id') && !hasCol('proposals', 'task_id')) {
     db.exec(`ALTER TABLE proposals ADD COLUMN task_id TEXT`);
   }
+  if (hasCol('proposals', 'id') && !hasCol('proposals', 'updated_at')) {
+    db.exec(`ALTER TABLE proposals ADD COLUMN updated_at TEXT`);
+  }
 
   if (hasCol('reviews', 'id') && !hasCol('reviews', 'actor_handle')) {
     db.exec(`ALTER TABLE reviews ADD COLUMN actor_handle TEXT`);

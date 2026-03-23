@@ -61,6 +61,7 @@ export type WorkspaceProposal = {
   authorHandle: string;
   authorType: 'human' | 'agent';
   createdAt: string;
+  updatedAt?: string | null;
   status: 'needs_review' | 'approved' | 'changes_requested' | 'rejected' | 'merged';
   summary: string;
   filePath: string;
@@ -119,7 +120,11 @@ const Ctx = createContext<{
       newContent: string;
       taskId?: string | null;
     }) => Promise<WorkspaceProposal | null>;
-    proposalAction: (id: string, action: 'approve' | 'request_changes' | 'reject' | 'merge') => Promise<WorkspaceProposal | null>;
+    proposalAction: (
+      id: string,
+      action: 'approve' | 'request_changes' | 'reject' | 'merge' | 'comment',
+      note?: string
+    ) => Promise<WorkspaceProposal | null>;
     loadProposal: (id: string) => Promise<WorkspaceProposal | null>;
   };
 } | null>(null);
@@ -356,12 +361,12 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function proposalAction(id: string, action: 'approve' | 'request_changes' | 'reject' | 'merge') {
+  async function proposalAction(id: string, action: 'approve' | 'request_changes' | 'reject' | 'merge' | 'comment', note?: string) {
     try {
       const res = await fetch(`/api/proposals/${encodeURIComponent(id)}/action`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action, actorHandle: state.actor.handle, actorType: state.actor.actorType }),
+        body: JSON.stringify({ action, note: note || null, actorHandle: state.actor.handle, actorType: state.actor.actorType }),
       });
       const data = await json<{ ok: boolean; proposal: WorkspaceProposal }>(res);
 

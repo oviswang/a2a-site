@@ -49,6 +49,7 @@ type ProposalRow = {
   author_handle: string;
   author_type?: string;
   created_at: string;
+  updated_at?: string | null;
   status: string;
   summary: string;
   file_path: string;
@@ -511,7 +512,7 @@ export function createProposal(args: {
   ensureIdentity(args.authorHandle || 'baseline', args.authorType);
 
   db.prepare(
-    'INSERT INTO proposals (id, project_id, title, author_handle, author_type, created_at, status, summary, file_path, new_content, task_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO proposals (id, project_id, title, author_handle, author_type, created_at, updated_at, status, summary, file_path, new_content, task_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(
     id,
     p.id,
@@ -519,6 +520,7 @@ export function createProposal(args: {
     args.authorHandle || 'baseline',
     args.authorType === 'agent' ? 'agent' : 'human',
     created,
+    nowIso(),
     'needs_review',
     args.summary.trim() || 'No summary',
     args.filePath,
@@ -534,7 +536,7 @@ export function createProposal(args: {
 export function getProposal(id: string) {
   const db = getDb();
   const pr = db
-    .prepare('SELECT id, project_id, title, author_handle, author_type, created_at, status, summary, file_path, new_content, task_id FROM proposals WHERE id=?')
+    .prepare('SELECT id, project_id, title, author_handle, author_type, created_at, updated_at, status, summary, file_path, new_content, task_id FROM proposals WHERE id=?')
     .get(id) as ProposalRow | undefined;
   if (!pr) return null;
 
@@ -547,6 +549,7 @@ export function getProposal(id: string) {
     authorHandle: pr.author_handle,
     authorType: (pr.author_type === 'agent' ? 'agent' : 'human') as MemberType,
     createdAt: pr.created_at,
+    updatedAt: pr.updated_at || pr.created_at,
     status: pr.status as ProposalStatus,
     summary: pr.summary,
     filePath: pr.file_path,
@@ -555,9 +558,76 @@ export function getProposal(id: string) {
   };
 }
 
+export type ProposalReviewEvent = {
+  action: string;
+  actorHandle: string | null;
+  actorType: MemberType | null;
+  note: string | null;
+  createdAt: string;
+};
+
+export function listProposalReviews(proposalId: string): ProposalReviewEvent[] {
+  const db = getDb();
+  const rows = db
+    .prepare('SELECT action, actor_handle, actor_type, note, created_at FROM reviews WHERE proposal_id=? ORDER BY id ASC')
+    .all(proposalId) as Array<{ action: string; actor_handle: string | null; actor_type: string | null; note: string | null; created_at: string }>;
+
+  return rows.map((r) => ({
+    action: r.action,
+    actorHandle: r.actor_handle,
+    actorType: r.actor_type === 'agent' ? 'agent' : r.actor_type === 'human' ? 'human' : null,
+    note: r.note,
+    createdAt: r.created_at,
+  }));
+}
+
+export function updateProposal(args: {
+  id: string;
+  actorHandle: string;
+  actorType: MemberType;
+  newContent: string;
+  summary: string;
+  note?: string | null;
+}) {
+  const db = getDb();
+  const pr = db
+    .prepare('SELECT id, project_id, author_handle FROM proposals WHERE id=?')
+    .get(args.id) as { id: string; project_id: number; author_handle: string } | undefined;
+  if (!pr) throw new Error('proposal_not_found');
+  if (pr.author_handle !== args.actorHandle) throw new Error('not_author');
+
+  ensureIdentity(args.actorHandle, args.actorType);
+
+  const now = nowIso();
+  db.prepare('UPDATE proposals SET new_content=?, summary=?, status=?, updated_at=? WHERE id=?').run(
+    args.newContent,
+    args.summary,
+    'needs_review',
+    now,
+    args.id
+  );
+
+  db.prepare('INSERT INTO reviews (proposal_id, action, actor_handle, actor_type, note, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+    args.id,
+    'update',
+    args.actorHandle,
+    args.actorType,
+    args.note || null,
+    now
+  );
+
+  db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
+    pr.project_id,
+    now,
+    `Proposal updated: ${args.id} by @${args.actorHandle} (${args.actorType})`
+  );
+
+  return getProposal(args.id);
+}
+
 export function proposalAction(args: {
   id: string;
-  action: 'approve' | 'request_changes' | 'reject' | 'merge';
+  action: 'approve' | 'request_changes' | 'reject' | 'merge' | 'comment';
   actorHandle?: string;
   actorType?: MemberType;
   note?: string;
@@ -574,6 +644,23 @@ export function proposalAction(args: {
   ensureIdentity(actorHandle, actorType);
 
   const tx = db.transaction(() => {
+    if (args.action === 'comment') {
+      db.prepare('INSERT INTO reviews (proposal_id, action, actor_handle, actor_type, note, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+        args.id,
+        'comment',
+        actorHandle,
+        actorType,
+        args.note || null,
+        now
+      );
+      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
+        prRow.project_id,
+        now,
+        `Proposal comment: ${args.id} by @${actorHandle} (${actorType})`
+      );
+      return;
+    }
+
     if (args.action === 'approve') {
       db.prepare('UPDATE proposals SET status=? WHERE id=?').run('approved', args.id);
       db.prepare('INSERT INTO reviews (proposal_id, action, actor_handle, actor_type, note, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
