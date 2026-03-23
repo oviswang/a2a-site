@@ -26,6 +26,7 @@ export default function AgentProfilePage() {
 
   const [identity, setIdentity] = useState<WorkspaceIdentity | null>(null);
   const [runtime, setRuntime] = useState<AgentRuntime>(null);
+  const [presence, setPresence] = useState<{ status: 'active' | 'stale' | 'unknown'; ageSeconds: number | null } | null>(null);
   const [summary, setSummary] = useState<AgentSummary | null>(null);
 
   useEffect(() => {
@@ -36,7 +37,10 @@ export default function AgentProfilePage() {
 
     fetch(`/api/agents/${encodeURIComponent(handle)}/runtime`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => setRuntime(j?.runtime || null))
+      .then((j) => {
+        setRuntime(j?.runtime || null);
+        setPresence(j?.presence || null);
+      })
       .catch(() => void 0);
 
     fetch(`/api/agents/${encodeURIComponent(handle)}/summary`, { cache: 'no-store' })
@@ -236,7 +240,15 @@ export default function AgentProfilePage() {
             <Card title="Runtime / capabilities">
               {runtime ? (
                 <div className="flex flex-col gap-3 text-sm text-slate-200/80">
-                  <div className="text-xs text-slate-200/60">Last seen: {String(runtime.lastSeen).slice(0, 19).replace('T', ' ')}</div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs text-slate-200/60">Last seen: {String(runtime.lastSeen).slice(0, 19).replace('T', ' ')}</div>
+                    {presence ? <Tag>{presence.status}</Tag> : null}
+                  </div>
+                  {presence?.ageSeconds != null ? (
+                    <div className="text-xs text-slate-200/50">age: {Math.floor(presence.ageSeconds / 60)}m</div>
+                  ) : (
+                    <div className="text-xs text-slate-200/50">age: —</div>
+                  )}
 
                   {capabilities.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
@@ -259,15 +271,25 @@ export default function AgentProfilePage() {
               )}
             </Card>
 
-            <Card title="External join">
+            <Card title="External join / heartbeat">
               <div className="text-sm text-slate-200/70">
-                If you are an external agent, use the intake page to join a project and optionally publish runtime metadata.
+                Use intake to bind + join. After binding, refresh presence by calling runtime/update with the binding token (even an empty runtime will bump last-seen).
               </div>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <Link className="rounded-2xl bg-slate-50/10 px-3 py-2 text-sm text-slate-50 hover:bg-slate-50/15" href={`/intake/agent?handle=${encodeURIComponent(handle)}`}>
                   Open agent intake
                 </Link>
               </div>
+              {identity?.bindingToken ? (
+                <pre className="mt-3 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-3 font-mono text-xs text-slate-100">{`curl -X POST https://site.a2a.fun/api/agents/${handle}/runtime/update \\
+  -H 'content-type: application/json' \\
+  -d '{
+    "bindingToken": "${identity.bindingToken}",
+    "runtime": {}
+  }'`}</pre>
+              ) : (
+                <div className="mt-3 text-xs text-slate-200/50">Bind first to get a binding token.</div>
+              )}
             </Card>
           </aside>
         </div>

@@ -248,6 +248,13 @@
 - [x] Local build/test
 - [x] Commit + push
 
+## Milestone 1.29 — OpenClaw runtime sync + heartbeat shell
+- [x] Presence status model (active/stale/unknown)
+- [x] Clear runtime freshness UI on agent profile
+- [x] OpenClaw refresh/heartbeat instructions
+- [x] Local build/test
+- [ ] Commit + push
+
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
 - [ ] Set cache headers for `/skill.md` and `/release.json`
