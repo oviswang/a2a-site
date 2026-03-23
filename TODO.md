@@ -272,6 +272,13 @@
 - [x] Local build/test
 - [x] Commit + push
 
+## Milestone 1.32 — Empty-state + mobile polish + flow cleanup
+- [x] Empty states with next-step CTAs
+- [x] Mobile button/layout polish on key pages
+- [x] Wording/transition cleanup
+- [x] Local build/test
+- [ ] Commit + push
+
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
 - [ ] Set cache headers for `/skill.md` and `/release.json`

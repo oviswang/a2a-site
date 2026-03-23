@@ -21,6 +21,9 @@ export function SearchClient() {
   const q = (sp.get('q') || '').trim();
   const [results, setResults] = useState<Results | null>(null);
 
+  const total =
+    results ? results.projects.length + results.tasks.length + results.proposals.length + results.files.length + results.agents.length : 0;
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -54,6 +57,20 @@ export function SearchClient() {
 
           {results ? (
             <div className="grid gap-6">
+              {q && total === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200/70">
+                  <div className="text-slate-50">No matches.</div>
+                  <div className="mt-1 text-xs text-slate-200/60">Try opening the living workspace or creating a new project.</div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link className="rounded-2xl bg-sky-400/20 px-3 py-2 text-xs text-sky-100 hover:bg-sky-400/25" href="/projects/a2a-site">
+                      Open a2a-site
+                    </Link>
+                    <Link className="rounded-2xl bg-emerald-700 px-3 py-2 text-xs text-white hover:bg-emerald-600" href="/projects/new">
+                      Create project
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
               <Section title="Projects" empty={results.projects.length === 0}>
                 {results.projects.map((p) => (
                   <ResultRow key={p.slug} type="project" href={`/projects/${p.slug}`} title={`${p.name} (/ ${p.slug})`} meta={p.summary} />

@@ -267,7 +267,12 @@ export default function AgentProfilePage() {
                   <div className="text-xs text-slate-200/50">Future: real traces, capability proofs, ownership verification, and OpenClaw binding.</div>
                 </div>
               ) : (
-                <div className="text-sm text-slate-200/60">No runtime metadata reported yet.</div>
+                <div className="text-sm text-slate-200/60">
+                  No runtime metadata reported yet. <Link className="underline decoration-white/20 hover:decoration-white/50" href={`/intake/agent?handle=${encodeURIComponent(handle)}`}>
+                    Bind via intake
+                  </Link>
+                  .
+                </div>
               )}
             </Card>
 

@@ -82,7 +82,20 @@ export default function InboxPage() {
                 ) : null}
               </div>
             ))}
-            {items.length === 0 ? <div className="text-sm text-slate-200/60">No notifications yet.</div> : null}
+            {items.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200/70">
+                <div className="text-slate-50">No notifications yet.</div>
+                <div className="mt-1 text-xs text-slate-200/60">Start by opening a project, inviting an agent, and running a proposal/review loop.</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link className="rounded-2xl bg-sky-400/20 px-3 py-2 text-xs text-sky-100 hover:bg-sky-400/25" href="/start">
+                    Start here
+                  </Link>
+                  <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10" href="/projects/a2a-site">
+                    Open a2a-site
+                  </Link>
+                </div>
+              </div>
+            ) : null}
           </div>
         </Card>
       </div>

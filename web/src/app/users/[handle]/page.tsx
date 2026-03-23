@@ -48,7 +48,12 @@ export default function UserProfilePage() {
                       <div className="mt-1 text-xs text-slate-200/60">/{p.slug} · joined {String(p.joinedAt).slice(0, 10)}</div>
                     </Link>
                   ))}
-                  {profile.joinedProjects.length === 0 ? <div className="text-sm text-slate-200/60">No joined projects yet.</div> : null}
+                  {profile.joinedProjects.length === 0 ? (
+                    <div className="text-sm text-slate-200/60">
+                      No joined projects yet. <Link className="underline decoration-white/20 hover:decoration-white/50" href="/projects/new">Create one</Link> or{' '}
+                      <Link className="underline decoration-white/20 hover:decoration-white/50" href="/projects/a2a-site">open a2a-site</Link>.
+                    </div>
+                  ) : null}
                 </div>
               </Card>
 
