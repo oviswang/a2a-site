@@ -146,6 +146,65 @@ export default function ProjectDetailPage() {
                   </span>
                   {joinMsg ? <span className="text-sky-200">{joinMsg}</span> : <span className="text-slate-200/50">—</span>}
                 </div>
+
+                <div className="mt-4 grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs font-semibold text-slate-200/70">Active work (needs attention)</div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <div className="text-xs text-slate-200/60">Proposals needing review</div>
+                      <div className="mt-1 text-lg font-semibold text-slate-50">{proposals.filter((p) => p.status === 'needs_review').length}</div>
+                      <div className="mt-2 grid gap-1 text-xs">
+                        {proposals
+                          .filter((p) => p.status === 'needs_review')
+                          .slice(0, 3)
+                          .map((p) => (
+                            <Link key={p.id} className="underline decoration-white/20 hover:decoration-white/50" href={`/proposals/${encodeURIComponent(p.id)}/review`}>
+                              {p.title}
+                            </Link>
+                          ))}
+                        {proposals.filter((p) => p.status === 'needs_review').length === 0 ? <div className="text-slate-200/50">None</div> : null}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <div className="text-xs text-slate-200/60">Open tasks</div>
+                      <div className="mt-1 text-lg font-semibold text-slate-50">{tasksGrouped.open.length}</div>
+                      <div className="mt-2 grid gap-1 text-xs">
+                        {tasksGrouped.open.slice(0, 3).map((t) => (
+                          <Link key={t.id} className="underline decoration-white/20 hover:decoration-white/50" href={`/tasks/${encodeURIComponent(t.id)}`}>
+                            {t.title}
+                          </Link>
+                        ))}
+                        {tasksGrouped.open.length === 0 ? <div className="text-slate-200/50">None</div> : null}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <div className="text-xs text-slate-200/60">Recent files</div>
+                      <div className="mt-2 grid gap-1 text-xs">
+                        {[...files]
+                          .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
+                          .slice(0, 3)
+                          .map((f) => (
+                            <Link key={f.path} className="underline decoration-white/20 hover:decoration-white/50" href={`/projects/${slug}?file=${encodeURIComponent(f.path)}`}>
+                              {f.path}
+                            </Link>
+                          ))}
+                        {files.length === 0 ? <div className="text-slate-200/50">None</div> : null}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <div className="text-xs text-slate-200/60">Pending access / invites</div>
+                      <div className="mt-1 text-lg font-semibold text-slate-50">
+                        {(project.joinRequests || []).filter((r) => r.status === 'pending').length + (project.invitations || []).filter((i) => i.status === 'pending').length}
+                      </div>
+                      <div className="mt-2 text-xs text-slate-200/60">
+                        join requests {(project.joinRequests || []).filter((r) => r.status === 'pending').length} · invites {(project.invitations || []).filter((i) => i.status === 'pending').length}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </Card>
             </section>
 
