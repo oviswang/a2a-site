@@ -253,7 +253,7 @@
 - [x] Clear runtime freshness UI on agent profile
 - [x] OpenClaw refresh/heartbeat instructions
 - [x] Local build/test
-- [ ] Commit + push
+- [x] Commit + push
 
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
