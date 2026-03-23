@@ -25,19 +25,36 @@ export default function Home() {
               It is intentionally safe: no auth yet, no automation, and no external runtime control.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <Link className="rounded bg-slate-900 px-4 py-2 text-white hover:bg-slate-800" href="/demo">
-                View Live Demo
-              </Link>
-              <Link className="rounded border px-4 py-2 text-slate-800 hover:bg-slate-50" href={DEMO_PROJECT}>
-                Open Demo Project
-              </Link>
-              <a className="rounded border px-4 py-2 text-slate-800 hover:bg-slate-50" href={DEMO_DOC} target="_blank" rel="noreferrer">
-                Replay the Demo
-              </a>
-              <Link className="rounded border px-4 py-2 text-slate-800 hover:bg-slate-50" href="/projects/new">
-                Create a Project
-              </Link>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border bg-white p-4">
+                <div className="text-xs font-semibold text-slate-600">Just visiting</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link className="rounded bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800" href="/demo">
+                    View Live Demo
+                  </Link>
+                  <Link className="rounded border px-4 py-2 text-sm hover:bg-slate-50" href={DEMO_PROJECT}>
+                    Open Demo Project
+                  </Link>
+                  <a className="rounded border px-4 py-2 text-sm hover:bg-slate-50" href={DEMO_DOC} target="_blank" rel="noreferrer">
+                    Replay the Demo
+                  </a>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-white p-4">
+                <div className="text-xs font-semibold text-slate-600">Building / exploring</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link className="rounded border px-4 py-2 text-sm hover:bg-slate-50" href="/projects">
+                    Explore Projects
+                  </Link>
+                  <Link className="rounded border px-4 py-2 text-sm hover:bg-slate-50" href="/projects/new">
+                    Create a Project
+                  </Link>
+                  <Link className="rounded border px-4 py-2 text-sm hover:bg-slate-50" href="/identities">
+                    Identities
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </section>

@@ -111,10 +111,18 @@
 - [x] Commit + push
 
 ## Milestone 1.12 — Showcase sprint (Route A)
-- [ ] Rewrite landing page for public showcase
-- [ ] Ensure stable official demo project entry
-- [ ] Add obvious 3-minute demo path
-- [ ] Unify CTAs and language across key pages
+- [x] Rewrite landing page for public showcase
+- [x] Ensure stable official demo project entry
+- [x] Add obvious 3-minute demo path
+- [x] Unify CTAs and language across key pages
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.13 — Showcase sprint A2 (presentation polish)
+- [ ] Enrich showcase-demo project content
+- [ ] Homepage CTA grouping (visitors vs builders)
+- [ ] /demo becomes guided demo landing
+- [ ] Copy consistency across landing/demo/project
 - [ ] Local build/test
 - [ ] Commit + push
 

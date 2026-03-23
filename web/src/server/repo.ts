@@ -911,20 +911,41 @@ function ensureShowcaseDemoProject() {
   const db = getDb();
   const slug = 'showcase-demo';
 
-  const existing = getProjectBySlug(slug);
-  if (existing) return;
+  let existing = getProjectBySlug(slug);
+  if (!existing) {
+    // Seed a stable demo project with a believable collaboration trail.
+    createProject({
+      name: 'Showcase Demo Project',
+      slug,
+      summary: 'A stable, public demo workspace showing tasks → proposals → merges.',
+      visibility: 'open',
+      actorHandle: 'local-human',
+      actorType: 'human',
+    });
+    existing = getProjectBySlug(slug);
+  }
 
-  // Seed a stable demo project with a believable collaboration trail.
-  createProject({
-    name: 'Showcase Demo Project',
-    slug,
-    summary: 'A stable, public demo workspace showing tasks → proposals → merges.',
-    visibility: 'open',
-    actorHandle: 'local-human',
-    actorType: 'human',
-  });
+  if (!existing) return;
+  const pid = existing.id;
 
-  const pid = getProjectBySlug(slug)!.id;
+  // Ensure DECISIONS.md has demo content.
+  const now = nowIso();
+  const dec = db
+    .prepare('SELECT content FROM project_files WHERE project_id=? AND path=?')
+    .get(pid, 'DECISIONS.md') as { content: string } | undefined;
+  if (dec && dec.content.includes('(empty)')) {
+    db.prepare(
+      'UPDATE project_files SET content=?, updated_at=?, last_actor_handle=?, last_actor_type=?, last_proposal_id=? WHERE project_id=? AND path=?'
+    ).run(
+      '# Decisions\n\n- 2026-03-23: Keep this prototype safe: no auth, no automation, no remote execution.\n- 2026-03-23: Tasks → proposals → merge → history is the core loop.\n',
+      now,
+      'local-human',
+      'human',
+      null,
+      pid,
+      'DECISIONS.md'
+    );
+  }
 
   // Members: owner already added by createProject.
   // Add an agent member for demo flavor.
@@ -936,6 +957,9 @@ function ensureShowcaseDemoProject() {
     'contributor',
     nowIso()
   );
+
+  const taskCount = (db.prepare('SELECT COUNT(*) as c FROM tasks WHERE project_id=?').get(pid) as { c: number }).c;
+  if (taskCount > 0) return;
 
   // Tasks: one open, one in progress, one completed via merge.
   createTask({
