@@ -1,8 +1,12 @@
+'use client';
+
+import { useMemo } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/Status';
-import { getProposal, getProject, getAgent } from '@/lib/mock';
+import { useWorkspace } from '@/lib/state';
 
 function DiffLine({ type, text }: { type: '+' | '-' | '~'; text: string }) {
   const cls = type === '+' ? 'text-emerald-700' : type === '-' ? 'text-rose-700' : 'text-slate-700';
@@ -14,18 +18,23 @@ function DiffLine({ type, text }: { type: '+' | '-' | '~'; text: string }) {
   );
 }
 
-export default async function ProposalReviewPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const pr = getProposal(id);
-  const project = pr ? getProject(pr.projectSlug) : null;
-  const author = pr ? getAgent(pr.authorHandle) : null;
+export default function ProposalReviewPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id || '';
+  const router = useRouter();
+
+  const { state, actions } = useWorkspace();
+  const pr = state.proposals.find((p) => p.id === id) || null;
+  const project = pr ? state.projects.find((p) => p.slug === pr.projectSlug) : null;
+
+  const canMerge = useMemo(() => pr && pr.status === 'approved', [pr]);
 
   return (
     <Layout>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={pr ? pr.title : 'Proposal not found'}
-          subtitle={pr ? `Reviewing changes for ${project?.name || pr.projectSlug}` : `ID: ${id}`}
+          subtitle={pr && project ? `Project: ${project.name} • File: ${pr.filePath}` : `ID: ${id}`}
           breadcrumbs={
             <Breadcrumbs
               items={[
@@ -39,11 +48,26 @@ export default async function ProposalReviewPage({ params }: { params: Promise<{
           actions={
             pr ? (
               <>
-                <button className="rounded bg-emerald-600 px-3 py-2 text-sm text-white hover:bg-emerald-500" type="button">
+                <button
+                  className="rounded bg-emerald-600 px-3 py-2 text-sm text-white hover:bg-emerald-500"
+                  type="button"
+                  onClick={() => actions.proposalAction(pr.id, 'approve')}
+                >
                   Approve
                 </button>
-                <button className="rounded bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-500" type="button">
+                <button
+                  className="rounded bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-500"
+                  type="button"
+                  onClick={() => actions.proposalAction(pr.id, 'request_changes')}
+                >
                   Request changes
+                </button>
+                <button
+                  className="rounded border px-3 py-2 text-sm hover:bg-slate-50"
+                  type="button"
+                  onClick={() => actions.proposalAction(pr.id, 'reject')}
+                >
+                  Reject
                 </button>
               </>
             ) : null
@@ -59,27 +83,16 @@ export default async function ProposalReviewPage({ params }: { params: Promise<{
                   <div className="rounded border bg-slate-50 p-4">
                     <div className="text-xs font-semibold text-slate-600">Diff (mock)</div>
                     <div className="mt-2 flex flex-col gap-1">
-                      {pr.diffSummary.map((x) => (
-                        <DiffLine key={x} type="+" text={x} />
-                      ))}
-                      <DiffLine type="~" text="review: tighten acceptance criteria" />
-                      <DiffLine type="-" text="remove stale note" />
+                      <DiffLine type="~" text={`edit ${pr.filePath}`} />
+                      <DiffLine type="+" text="update headings and steps" />
+                      <DiffLine type="+" text="clarify verification" />
                     </div>
                   </div>
                 </div>
               </Card>
 
-              <Card title="Risks">
-                <ul className="list-disc pl-5">
-                  {pr.risks.map((x) => (
-                    <li key={x}>{x}</li>
-                  ))}
-                </ul>
-              </Card>
-
-              <Card title="Discussion (mock)">
-                <div className="text-xs text-slate-600">No backend yet. This will become a real comment thread.</div>
-                <div className="mt-3 rounded border bg-white p-3 text-sm text-slate-700">Placeholder: leave a comment…</div>
+              <Card title="Proposed new content">
+                <pre className="whitespace-pre-wrap rounded border bg-white p-4 font-mono text-xs leading-relaxed">{pr.newContent}</pre>
               </Card>
             </div>
 
@@ -92,38 +105,39 @@ export default async function ProposalReviewPage({ params }: { params: Promise<{
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Author</span>
-                    <span>@{author?.handle || pr.authorHandle}</span>
+                    <span>@{pr.authorHandle}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Created</span>
                     <span>{pr.createdAt}</span>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600">File</span>
+                    <Tag>{pr.filePath}</Tag>
+                  </div>
                 </div>
               </Card>
 
-              <Card title="Checks (mock)">
-                <div className="flex flex-col gap-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span>Build</span>
-                    <Tag>pass</Tag>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Docs consistency</span>
-                    <Tag>warn</Tag>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Release signature</span>
-                    <Tag>pass</Tag>
-                  </div>
-                </div>
-                <div className="mt-3 text-xs text-slate-600">
-                  In MVP these are placeholders; later they come from release gates.
+              <Card title="Merge">
+                <button
+                  disabled={!canMerge}
+                  className="w-full rounded bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
+                  type="button"
+                  onClick={() => {
+                    actions.proposalAction(pr.id, 'merge');
+                    router.push(`/projects/${pr.projectSlug}?file=${encodeURIComponent(pr.filePath)}`);
+                  }}
+                >
+                  Merge into workspace
+                </button>
+                <div className="mt-2 text-xs text-slate-600">
+                  Merge is enabled only after approval. Changes apply to project file content in memory.
                 </div>
               </Card>
             </aside>
           </div>
         ) : (
-          <Card title="Not found">This proposal ID does not exist in mock data.</Card>
+          <Card title="Not found">This proposal ID does not exist in state.</Card>
         )}
       </div>
     </Layout>

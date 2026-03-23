@@ -19,9 +19,19 @@
 - [x] Commit + push
 
 ## Milestone 1.1 — UI iteration round 1
-- [ ] Improve information hierarchy + navigation clarity
-- [ ] Strengthen product identity ("project workspace" feel)
-- [ ] Improve proposal review layout (merge/review vibe)
+- [x] Improve information hierarchy + navigation clarity
+- [x] Strengthen product identity ("project workspace" feel)
+- [x] Improve proposal review layout (merge/review vibe)
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.2 — Interactive MVP shell (Phase 3)
+- [ ] Add in-memory workspace state store (projects/files/proposals)
+- [ ] Create Project flow: /projects/new
+- [ ] Project file tree browsing in /projects/[slug]
+- [ ] Create Proposal flow from file/task context
+- [ ] Proposal actions (approve/request changes/reject) change state
+- [ ] Merge updates project file/content and visible activity
 - [ ] Local build/test
 - [ ] Commit + push
 

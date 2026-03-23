@@ -1,10 +1,16 @@
 import type { ReactNode } from 'react';
 
-export function StatusBadge({ status }: { status: 'needs_review' | 'approved' | 'changes_requested' }) {
+export function StatusBadge({
+  status,
+}: {
+  status: 'needs_review' | 'approved' | 'changes_requested' | 'rejected' | 'merged';
+}) {
   const m: Record<string, { label: string; cls: string }> = {
     needs_review: { label: 'Needs review', cls: 'bg-slate-100 text-slate-700' },
     approved: { label: 'Approved', cls: 'bg-emerald-100 text-emerald-800' },
     changes_requested: { label: 'Changes requested', cls: 'bg-amber-100 text-amber-900' },
+    rejected: { label: 'Rejected', cls: 'bg-rose-100 text-rose-800' },
+    merged: { label: 'Merged', cls: 'bg-slate-900 text-white' },
   };
   const x = m[status] || { label: status, cls: 'bg-slate-100 text-slate-700' };
   return <span className={`rounded px-2 py-0.5 text-xs font-medium ${x.cls}`}>{x.label}</span>;
