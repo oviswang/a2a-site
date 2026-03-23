@@ -119,10 +119,17 @@
 - [x] Commit + push
 
 ## Milestone 1.13 — Showcase sprint A2 (presentation polish)
-- [ ] Enrich showcase-demo project content
-- [ ] Homepage CTA grouping (visitors vs builders)
-- [ ] /demo becomes guided demo landing
-- [ ] Copy consistency across landing/demo/project
+- [x] Enrich showcase-demo project content
+- [x] Homepage CTA grouping (visitors vs builders)
+- [x] /demo becomes guided demo landing
+- [x] Copy consistency across landing/demo/project
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.14 — Product continuation (dogfood)
+- [ ] Project page: stronger workspace header + live counters
+- [ ] Members: identity-aware display (displayName/claim/owner)
+- [ ] Proposal list: identity-aware author display
 - [ ] Local build/test
 - [ ] Commit + push
 

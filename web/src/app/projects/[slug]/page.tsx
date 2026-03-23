@@ -54,6 +54,8 @@ export default function ProjectDetailPage() {
   const myMember = project?.members?.find((m) => m.handle === actor.handle) || null;
   const isOwnerOrMaintainer = myMember ? myMember.role === 'owner' || myMember.role === 'maintainer' : false;
 
+  const identityByHandle = new Map(state.identities.map((i) => [i.handle, i] as const));
+
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
 
@@ -127,6 +129,30 @@ export default function ProjectDetailPage() {
               </aside>
 
               <div className="flex flex-col gap-6">
+                <Card title="Workspace status">
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <div className="rounded border bg-slate-50 p-3">
+                      <div className="text-xs text-slate-600">Tasks</div>
+                      <div className="text-lg font-semibold">{tasks.length}</div>
+                      <div className="text-xs text-slate-600">open {tasksGrouped.open.length} · in progress {tasksGrouped.in_progress.length}</div>
+                    </div>
+                    <div className="rounded border bg-slate-50 p-3">
+                      <div className="text-xs text-slate-600">Proposals</div>
+                      <div className="text-lg font-semibold">{proposals.length}</div>
+                      <div className="text-xs text-slate-600">needs review {proposals.filter((p) => p.status === 'needs_review').length}</div>
+                    </div>
+                    <div className="rounded border bg-slate-50 p-3">
+                      <div className="text-xs text-slate-600">Members</div>
+                      <div className="text-lg font-semibold">{project.members?.length || 0}</div>
+                      <div className="text-xs text-slate-600">humans {(project.members || []).filter((m) => m.memberType === 'human').length} · agents {(project.members || []).filter((m) => m.memberType === 'agent').length}</div>
+                    </div>
+                    <div className="rounded border bg-slate-50 p-3">
+                      <div className="text-xs text-slate-600">You</div>
+                      <div className="text-sm font-mono">@{actor.handle}</div>
+                      <div className="text-xs text-slate-600">{actor.actorType}</div>
+                    </div>
+                  </div>
+                </Card>
                 <Card
                   title={selectedFile ? selectedFile.path : 'No file selected'}
                   footer={
@@ -322,7 +348,11 @@ export default function ProjectDetailPage() {
                           </span>
                         </div>
                         <div className="mt-1 text-xs text-slate-600">
-                          Opened by @{p.authorHandle} ({p.authorType}) · file <span className="font-mono">{p.filePath}</span>
+                          Opened by @{p.authorHandle} ({p.authorType})
+                          {identityByHandle.get(p.authorHandle)?.displayName ? (
+                            <span className="text-slate-500"> — {identityByHandle.get(p.authorHandle)?.displayName}</span>
+                          ) : null}
+                          · file <span className="font-mono">{p.filePath}</span>
                           {p.taskId ? (
                             <>
                               {' '}
@@ -373,7 +403,11 @@ export default function ProjectDetailPage() {
                           .filter((m) => m.memberType === 'human')
                           .map((m) => (
                             <li key={m.handle}>
-                              @{m.handle} · {m.role}
+                              @{m.handle}
+                              {identityByHandle.get(m.handle)?.displayName ? (
+                                <span className="text-slate-500"> — {identityByHandle.get(m.handle)?.displayName}</span>
+                              ) : null}
+                              <span className="text-slate-500"> · {m.role}</span>
                             </li>
                           ))}
                         {(project.members || []).filter((m) => m.memberType === 'human').length === 0 ? <li>None</li> : null}
@@ -393,7 +427,15 @@ export default function ProjectDetailPage() {
                                 </Link>
                                 <span className="text-xs text-slate-600">{m.role}</span>
                               </div>
-                              <div className="mt-2 text-xs text-slate-600">Local agent presence (no external binding yet).</div>
+                              <div className="mt-2 text-xs text-slate-600">
+                                {identityByHandle.get(m.handle)?.displayName ? (
+                                  <div>{identityByHandle.get(m.handle)?.displayName}</div>
+                                ) : null}
+                                <div>
+                                  claim: {identityByHandle.get(m.handle)?.claimState || '—'}
+                                  {identityByHandle.get(m.handle)?.ownerHandle ? ` · owner @${identityByHandle.get(m.handle)?.ownerHandle}` : ''}
+                                </div>
+                              </div>
                             </div>
                           ))}
                         {(project.members || []).filter((m) => m.memberType === 'agent').length === 0 ? (
