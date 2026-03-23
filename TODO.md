@@ -151,9 +151,17 @@
 - [x] Commit + push
 
 ## Milestone 1.17 — Homepage strict function-first cleanup
-- [ ] Reduce homepage to launcher-only (logo/name/tagline + search + actions)
-- [ ] Remove all secondary sections and explanatory content
-- [ ] Mobile-first spacing/touch targets
+- [x] Reduce homepage to launcher-only (logo/name/tagline + search + actions)
+- [x] Remove all secondary sections and explanatory content
+- [x] Mobile-first spacing/touch targets
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.18 — Project workspace completion
+- [ ] Workspace shell: clearer navigation between areas
+- [ ] Project page: unified sections (overview/tasks/proposals/files/decisions/people/timeline)
+- [ ] Improve at-a-glance project state
+- [ ] Mobile + desktop layout polish
 - [ ] Local build/test
 - [ ] Commit + push
 

@@ -1,34 +1,54 @@
 import Link from 'next/link';
 
-export function WorkspaceShell({
-  slug,
-  children,
-}: {
-  slug: string;
-  children: React.ReactNode;
-}) {
-  const items = [
-    { href: `/projects/${slug}`, label: 'Overview' },
-    { href: `/projects/${slug}#proposals`, label: 'Proposals' },
-    { href: `/projects/${slug}#agents`, label: 'Agents' },
-  ];
+const baseItems = (slug: string) => [
+  { href: `/projects/${slug}#overview`, label: 'Overview' },
+  { href: `/projects/${slug}#tasks`, label: 'Tasks' },
+  { href: `/projects/${slug}#proposals`, label: 'Proposals' },
+  { href: `/projects/${slug}#files`, label: 'Files' },
+  { href: `/projects/${slug}#decisions`, label: 'Decisions' },
+  { href: `/projects/${slug}#people`, label: 'People' },
+  { href: `/projects/${slug}#timeline`, label: 'Timeline' },
+];
+
+export function WorkspaceShell({ slug, children }: { slug: string; children: React.ReactNode }) {
+  const items = baseItems(slug);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
-      <aside className="rounded-lg border bg-white p-4 shadow-sm">
-        <div className="text-xs font-semibold text-slate-600">Workspace</div>
-        <div className="mt-1 font-mono text-sm text-slate-900">{slug}</div>
-        <div className="mt-4 flex flex-col gap-2 text-sm">
+      {/* Desktop left nav */}
+      <aside className="hidden rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur lg:block">
+        <div className="text-xs font-semibold text-slate-200/70">Workspace</div>
+        <div className="mt-1 font-mono text-sm text-slate-50">{slug}</div>
+        <div className="mt-4 flex flex-col gap-1 text-sm">
           {items.map((it) => (
-            <Link key={it.href} className="rounded px-2 py-1 hover:bg-slate-50" href={it.href}>
+            <Link key={it.href} className="rounded-xl px-3 py-2 text-slate-200/70 hover:bg-white/5 hover:text-slate-50" href={it.href}>
               {it.label}
             </Link>
           ))}
         </div>
-        <div className="mt-4 border-t pt-4 text-xs text-slate-600">
-          Treat markdown as deliverable. Keep diffs reviewable.
+        <div className="mt-4 border-t border-white/10 pt-4 text-xs text-slate-200/60">
+          Operational surface: tasks, proposals, files, decisions, people.
         </div>
       </aside>
+
+      {/* Mobile top nav */}
+      <div className="lg:hidden">
+        <div className="-mx-4 border-b border-white/10 bg-white/5 px-4 py-3 backdrop-blur">
+          <div className="mb-2 text-xs font-semibold text-slate-200/70">Workspace</div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {items.map((it) => (
+              <Link
+                key={it.href}
+                className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-100/90"
+                href={it.href}
+              >
+                {it.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-6">{children}</div>
     </div>
   );
