@@ -101,7 +101,7 @@ export default function ProjectDetailPage() {
         {project ? (
           <WorkspaceShell slug={slug}>
             <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-              <aside className="rounded-lg border bg-white p-4 shadow-sm">
+              <aside className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
                 <div className="text-xs font-semibold text-slate-600">Files</div>
                 <div className="mt-3 flex flex-col gap-3 text-sm">
                   {Object.keys(tree)
@@ -241,7 +241,7 @@ export default function ProjectDetailPage() {
                         </div>
                         <div className="flex flex-col gap-2">
                           {list.map((t) => (
-                            <div key={t.id} className="rounded border bg-white p-3">
+                            <div key={t.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div className="text-sm font-medium">
                                   <Link className="underline" href={`/tasks/${t.id}`}>
@@ -338,7 +338,7 @@ export default function ProjectDetailPage() {
                 <Card title="Proposal timeline">
                   <div className="flex flex-col gap-3">
                     {proposals.map((p) => (
-                      <div key={p.id} className="rounded border bg-white p-3">
+                      <div key={p.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <Link className="text-sm font-medium underline" href={`/proposals/${p.id}/review`}>
                             {p.title}

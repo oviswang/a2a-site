@@ -92,7 +92,7 @@ export default function TaskDetailPage() {
             <Card title="Timeline">
               <div className="flex flex-col gap-2">
                 {events.map((e, idx) => (
-                  <div key={idx} className="rounded border bg-white p-3 text-sm">
+                  <div key={idx} className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <span className="font-mono text-xs text-slate-500">{String(e.ts).slice(0, 19).replace('T', ' ')}</span>

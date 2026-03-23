@@ -96,7 +96,7 @@ export default function ProposalReviewPage() {
               </Card>
 
               <Card title="Proposed new content">
-                <pre className="whitespace-pre-wrap rounded border bg-white p-4 font-mono text-xs leading-relaxed">{pr.newContent}</pre>
+                <pre className="whitespace-pre-wrap rounded-2xl border border-white/10 bg-white/5 p-4 font-mono text-xs leading-relaxed">{pr.newContent}</pre>
               </Card>
             </div>
 

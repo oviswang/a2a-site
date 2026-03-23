@@ -127,9 +127,18 @@
 - [x] Commit + push
 
 ## Milestone 1.14 — Product continuation (dogfood)
-- [ ] Project page: stronger workspace header + live counters
-- [ ] Members: identity-aware display (displayName/claim/owner)
-- [ ] Proposal list: identity-aware author display
+- [x] Project page: stronger workspace header + live counters
+- [x] Members: identity-aware display (displayName/claim/owner)
+- [x] Proposal list: identity-aware author display
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.15 — Brand UI refactor (a2a.fun)
+- [ ] Design tokens + shared UI styling
+- [ ] Navigation + shell brand pass
+- [ ] Landing page hero brand pass (logo-centered)
+- [ ] /demo brand pass
+- [ ] Project / task / proposal / agent pages brand pass (restrained)
 - [ ] Local build/test
 - [ ] Commit + push
 

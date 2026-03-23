@@ -3,10 +3,33 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  /* a2a.fun brand tokens */
+  --a2a-bg: #050816; /* deep blue */
+  --a2a-surface: rgba(15, 23, 42, 0.72); /* slate-900 w/ alpha */
+  --a2a-surface-strong: rgba(15, 23, 42, 0.92);
+  --a2a-border: rgba(148, 163, 184, 0.16);
+  --a2a-text: #e5e7eb; /* slate-200 */
+  --a2a-muted: rgba(226, 232, 240, 0.70);
+  --a2a-brand: #7dd3fc; /* sky-300 */
+  --a2a-brand-strong: #38bdf8; /* sky-400 */
 }
 
 html,
 body {
   height: 100%;
+}
+
+body {
+  background: radial-gradient(1200px 700px at 15% 15%, rgba(56, 189, 248, 0.12), transparent 60%),
+    radial-gradient(900px 600px at 85% 20%, rgba(125, 211, 252, 0.10), transparent 55%),
+    var(--a2a-bg);
+  color: var(--a2a-text);
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(56, 189, 248, 0.25);
 }
