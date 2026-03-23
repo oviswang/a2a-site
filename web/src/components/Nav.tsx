@@ -36,7 +36,7 @@ export function Nav() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <Link href="/" className="flex items-center gap-6 no-underline">
           <Image
-            src="/brand/logo.jpg"
+            src="/brand/logo-20260324.jpg"
             alt="a2a.fun"
             width={34}
             height={34}
