@@ -187,7 +187,7 @@
 - [x] Stronger agent presence across project/task/proposal surfaces
 - [x] Runtime/capabilities metadata structure (future-proof)
 - [x] Local build/test
-- [ ] Commit + push
+- [x] Commit + push
 
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
