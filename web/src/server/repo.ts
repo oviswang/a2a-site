@@ -90,6 +90,7 @@ function getProjectBySlug(slug: string) {
 }
 
 export function listProjects() {
+  ensureShowcaseDemoProject();
   const db = getDb();
   const rows = db
     .prepare('SELECT id, slug, name, summary, visibility, tags_json, created_at FROM projects ORDER BY created_at DESC')
@@ -904,4 +905,73 @@ export function externalAgentIntake(args: {
 
   const joinResult = joinProject({ projectSlug: args.projectSlug, actorHandle: handle, actorType: 'agent' });
   return { identity: getIdentity(handle), joinResult };
+}
+
+function ensureShowcaseDemoProject() {
+  const db = getDb();
+  const slug = 'showcase-demo';
+
+  const existing = getProjectBySlug(slug);
+  if (existing) return;
+
+  // Seed a stable demo project with a believable collaboration trail.
+  createProject({
+    name: 'Showcase Demo Project',
+    slug,
+    summary: 'A stable, public demo workspace showing tasks → proposals → merges.',
+    visibility: 'open',
+    actorHandle: 'local-human',
+    actorType: 'human',
+  });
+
+  const pid = getProjectBySlug(slug)!.id;
+
+  // Members: owner already added by createProject.
+  // Add an agent member for demo flavor.
+  ensureIdentity('demo_ext_agent_showcase', 'agent');
+  db.prepare('INSERT OR IGNORE INTO project_members (project_id, member_handle, member_type, role, joined_at) VALUES (?, ?, ?, ?, ?)').run(
+    pid,
+    'demo_ext_agent_showcase',
+    'agent',
+    'contributor',
+    nowIso()
+  );
+
+  // Tasks: one open, one in progress, one completed via merge.
+  createTask({
+    projectSlug: slug,
+    title: 'Review README messaging',
+    description: 'Make the one-sentence definition tighter and more public-facing.',
+    filePath: 'README.md',
+    actorHandle: 'local-human',
+    actorType: 'human',
+  });
+
+  const t2 = createTask({
+    projectSlug: slug,
+    title: 'Improve quickstart steps',
+    description: 'Ensure the quickstart describes install + verify in a clear order.',
+    filePath: 'docs/quickstart.md',
+    actorHandle: 'demo_ext_agent_showcase',
+    actorType: 'agent',
+  });
+  taskAction({ taskId: t2.id, action: 'claim', actorHandle: 'demo_ext_agent_showcase', actorType: 'agent' });
+  taskAction({ taskId: t2.id, action: 'start', actorHandle: 'demo_ext_agent_showcase', actorType: 'agent' });
+
+  // Proposal linked to task t2, then merged to complete it.
+  const pr = createProposal({
+    projectSlug: slug,
+    title: 'Clarify quickstart verification',
+    summary: 'Add explicit “verify signature + sidecar + text_complete” steps.',
+    authorHandle: 'demo_ext_agent_showcase',
+    authorType: 'agent',
+    filePath: 'docs/quickstart.md',
+    newContent:
+      '## Quickstart (demo)\n\n1) Open /skill.md\n2) Install the node runner\n3) Run verify (signature + sidecar)\n4) Confirm text_complete works\n',
+    taskId: t2.id,
+  });
+  proposalAction({ id: pr!.id, action: 'approve', actorHandle: 'local-human', actorType: 'human' });
+  proposalAction({ id: pr!.id, action: 'merge', actorHandle: 'local-human', actorType: 'human' });
+
+  // Leave one open task visible.
 }

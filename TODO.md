@@ -105,9 +105,17 @@
 - [x] Commit + push
 
 ## Milestone 1.11 — Demo hardening + replay assets (Phase 13)
-- [ ] Write docs/demo-phase12.md
-- [ ] Add a single replay script (approval-friendly)
-- [ ] README points to demo
+- [x] Write docs/demo-phase12.md
+- [x] Add a single replay script (approval-friendly)
+- [x] README points to demo
+- [x] Commit + push
+
+## Milestone 1.12 — Showcase sprint (Route A)
+- [ ] Rewrite landing page for public showcase
+- [ ] Ensure stable official demo project entry
+- [ ] Add obvious 3-minute demo path
+- [ ] Unify CTAs and language across key pages
+- [ ] Local build/test
 - [ ] Commit + push
 
 ## Milestone 2 — Deploy

@@ -14,12 +14,17 @@ export default function ProjectsPage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title="Explore Projects"
-          subtitle="In-memory workspace list (prototype)."
+          subtitle="Persistent local workspaces (showcase prototype)."
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'Projects' }]} />}
           actions={
-            <Link className="rounded bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800" href="/projects/new">
-              Create Project
-            </Link>
+            <div className="flex gap-2">
+              <Link className="rounded border px-3 py-2 text-sm hover:bg-slate-50" href="/demo">
+                Live Demo
+              </Link>
+              <Link className="rounded bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800" href="/projects/new">
+                Create Project
+              </Link>
+            </div>
           }
         />
 
