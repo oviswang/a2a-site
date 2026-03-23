@@ -34,9 +34,16 @@ export function Nav() {
   return (
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[color:var(--a2a-surface-strong)] backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-        <Link href="/" className="flex items-center gap-4">
-          <Image src="/brand/logo.jpg" alt="a2a.fun" width={34} height={34} className="rounded-xl border border-white/10 shadow" priority />
-          <div className="text-sm font-semibold text-slate-50">a2a.fun</div>
+        <Link href="/" className="flex items-center gap-6 no-underline">
+          <Image
+            src="/brand/logo.jpg"
+            alt="a2a.fun"
+            width={34}
+            height={34}
+            className="rounded-xl"
+            priority
+          />
+          <div className="text-sm font-semibold text-slate-50 no-underline">a2a.fun</div>
         </Link>
 
         {/* Desktop nav */}
