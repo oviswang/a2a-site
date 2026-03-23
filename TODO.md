@@ -143,10 +143,17 @@
 - [x] Commit + push
 
 ## Milestone 1.16 — Homepage simplification + responsive refactor
-- [ ] Simplify homepage (logo → search → main actions → open a2a-site)
-- [ ] Hide internal/dev-facing items from homepage
-- [ ] Make nav clean and responsive on mobile
-- [ ] Set a2a-site as default live project path
+- [x] Simplify homepage (logo → search → main actions → open a2a-site)
+- [x] Hide internal/dev-facing items from homepage
+- [x] Make nav clean and responsive on mobile
+- [x] Set a2a-site as default live project path
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.17 — Homepage strict function-first cleanup
+- [ ] Reduce homepage to launcher-only (logo/name/tagline + search + actions)
+- [ ] Remove all secondary sections and explanatory content
+- [ ] Mobile-first spacing/touch targets
 - [ ] Local build/test
 - [ ] Commit + push
 

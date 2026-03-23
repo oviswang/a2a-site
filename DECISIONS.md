@@ -17,3 +17,7 @@ Design intent:
 - Homepage is a clean entry surface (logo → search → primary actions).
 - Avoid internal/dev artifacts (no skill.md/release.json/operator endpoints on homepage).
 - Default live/demo project is **a2a-site** itself (dogfooding over static demo narratives).
+
+## 2026-03-23 — Homepage strict function-first cleanup
+- Homepage content reduced to ONLY: brand (logo/name/tagline), search, and a small set of primary actions.
+- Removed all secondary explanatory sections/cards to keep a “product launcher” feel.
