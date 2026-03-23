@@ -166,9 +166,17 @@
 - [x] Commit + push
 
 ## Milestone 1.19 — Proposal/review completion
-- [ ] Request-changes loop (reviewer → author update → resubmit)
-- [ ] Persist and display review notes/comments
-- [ ] Proposal review timeline
+- [x] Request-changes loop (reviewer → author update → resubmit)
+- [x] Persist and display review notes/comments
+- [x] Proposal review timeline
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.20 — Members/join-flow completion
+- [ ] Clear open vs restricted indicators
+- [ ] Join/request feedback and explicit behavior
+- [ ] Better join request handling for owner/maintainer
+- [ ] Better member cards (roles + human/agent)
 - [ ] Local build/test
 - [ ] Commit + push
 

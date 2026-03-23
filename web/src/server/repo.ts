@@ -795,6 +795,7 @@ export function reviewJoinRequest(args: {
   requestId: string;
   action: 'approve' | 'reject';
   actorHandle: string;
+  role?: MemberRole;
 }) {
   const db = getDb();
   const r = db
@@ -814,7 +815,7 @@ export function reviewJoinRequest(args: {
         r.project_id,
         r.member_handle,
         r.member_type === 'agent' ? 'agent' : 'human',
-        'contributor',
+        args.role || 'contributor',
         now
       );
       db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(r.project_id, now, `Access approved for @${r.member_handle}`);

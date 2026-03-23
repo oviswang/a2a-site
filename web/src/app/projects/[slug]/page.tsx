@@ -58,13 +58,15 @@ export default function ProjectDetailPage() {
 
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
+  const [joinMsg, setJoinMsg] = useState<string | null>(null);
+  const [reqRoles, setReqRoles] = useState<Record<string, 'contributor' | 'maintainer'>>({});
 
   return (
     <Layout>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={project ? project.name : 'Project'}
-          subtitle={project ? project.summary : `Loading: ${slug}`}
+          subtitle={project ? `${project.summary} · ${project.visibility}` : `Loading: ${slug}`}
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { href: '/projects', label: 'Projects' }, { label: slug }]} />}
           actions={
             project ? (
@@ -73,8 +75,13 @@ export default function ProjectDetailPage() {
                   <button
                     type="button"
                     className={`rounded-xl px-3 py-2 text-sm text-white ${project.visibility === 'restricted' ? 'bg-amber-700 hover:bg-amber-600' : 'bg-emerald-700 hover:bg-emerald-600'}`}
-                    onClick={() => {
-                      actions.joinProject(slug).catch(() => void 0);
+                    onClick={async () => {
+                      const r = await actions.joinProject(slug);
+                      if (!r) return;
+                      if (r.mode === 'joined') setJoinMsg('Joined the project.');
+                      else if (r.mode === 'requested') setJoinMsg('Access requested. Waiting for owner/maintainer review.');
+                      else if (r.mode === 'already_member') setJoinMsg('You are already a member.');
+                      await actions.loadProject(slug);
                     }}
                   >
                     {project.visibility === 'restricted' ? 'Request access' : 'Join'}
@@ -127,6 +134,13 @@ export default function ProjectDetailPage() {
                     <div className="text-sm font-mono text-slate-50">@{actor.handle}</div>
                     <div className="text-xs text-slate-200/60">{actor.actorType}</div>
                   </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/80">
+                  <span>
+                    Join mode: <span className="font-semibold">{project.visibility}</span>
+                  </span>
+                  {joinMsg ? <span className="text-sky-200">{joinMsg}</span> : <span className="text-slate-200/50">—</span>}
                 </div>
               </Card>
             </section>
@@ -439,11 +453,26 @@ export default function ProjectDetailPage() {
                         <li key={r.id}>
                           @{r.handle} ({r.memberType}) — {r.status}
                           {r.status === 'pending' ? (
-                            <span className="ml-2 inline-flex gap-2">
+                            <span className="ml-2 inline-flex flex-wrap items-center gap-2">
+                              <select
+                                className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                                value={reqRoles[r.id] || 'contributor'}
+                                onChange={(e) =>
+                                  setReqRoles((s) => ({
+                                    ...s,
+                                    [r.id]: e.target.value === 'maintainer' ? 'maintainer' : 'contributor',
+                                  }))
+                                }
+                              >
+                                <option value="contributor">contributor</option>
+                                <option value="maintainer">maintainer</option>
+                              </select>
                               <button
                                 className="rounded-xl bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
                                 type="button"
-                                onClick={() => actions.reviewJoinRequest(r.id, 'approve').then(() => actions.loadProject(slug))}
+                                onClick={() =>
+                                  actions.reviewJoinRequest(r.id, 'approve', reqRoles[r.id] || 'contributor').then(() => actions.loadProject(slug))
+                                }
                               >
                                 Approve
                               </button>

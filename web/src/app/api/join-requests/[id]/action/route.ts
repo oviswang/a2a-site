@@ -13,10 +13,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!allowed.has(action)) return NextResponse.json({ ok: false, error: 'invalid_action' }, { status: 400 });
 
   try {
+    const role = b.role === 'maintainer' ? 'maintainer' : b.role === 'owner' ? 'owner' : 'contributor';
     const result = reviewJoinRequest({
       requestId: id,
       action: action as 'approve' | 'reject',
       actorHandle: String(b.actorHandle || 'local-human'),
+      role,
     });
     return NextResponse.json({ ok: true, result });
   } catch (e: unknown) {

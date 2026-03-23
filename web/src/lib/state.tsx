@@ -110,7 +110,7 @@ const Ctx = createContext<{
     createTask: (args: { projectSlug: string; title: string; description?: string; filePath?: string | null }) => Promise<WorkspaceTask | null>;
     taskAction: (taskId: string, action: 'claim' | 'unclaim' | 'start' | 'complete') => Promise<boolean>;
     joinProject: (projectSlug: string) => Promise<{ mode: string } | null>;
-    reviewJoinRequest: (requestId: string, action: 'approve' | 'reject') => Promise<boolean>;
+    reviewJoinRequest: (requestId: string, action: 'approve' | 'reject', role?: 'contributor' | 'maintainer') => Promise<boolean>;
     createProposal: (args: {
       projectSlug: string;
       title: string;
@@ -298,12 +298,12 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function reviewJoinRequest(requestId: string, action: 'approve' | 'reject') {
+  async function reviewJoinRequest(requestId: string, action: 'approve' | 'reject', role?: 'contributor' | 'maintainer') {
     try {
       const res = await fetch(`/api/join-requests/${encodeURIComponent(requestId)}/action`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action, actorHandle: state.actor.handle }),
+        body: JSON.stringify({ action, role: role || 'contributor', actorHandle: state.actor.handle }),
       });
       const data = await json<{ ok: boolean }>(res);
       // Reload all projects to refresh joinRequests/members where relevant.
