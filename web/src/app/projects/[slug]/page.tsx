@@ -374,18 +374,26 @@ export default function ProjectDetailPage() {
                           </span>
 
                           {selectedFile ? (
-                            <Link
-                              className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100 hover:bg-white/10"
-                              href={`/projects/${slug}/proposals/new?file=${encodeURIComponent(selectedFile.path)}`}
-                            >
-                              Propose change
-                            </Link>
+                            <>
+                              <Link
+                                className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100 hover:bg-white/10"
+                                href={`/projects/${slug}?file=${encodeURIComponent(selectedFile.path)}#tasks`}
+                              >
+                                Create task
+                              </Link>
+                              <Link
+                                className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100 hover:bg-white/10"
+                                href={`/projects/${slug}/proposals/new?file=${encodeURIComponent(selectedFile.path)}`}
+                              >
+                                Propose change
+                              </Link>
+                            </>
                           ) : null}
                         </div>
                       </div>
 
                       <div
-                        className={`mt-3 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-4 leading-relaxed text-slate-100 ${
+                        className={`mt-3 max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-4 leading-relaxed text-slate-100 ${
                           selectedFile?.path?.toLowerCase().endsWith('.md') ? 'text-sm' : 'font-mono text-xs'
                         }`}
                       >
@@ -406,7 +414,7 @@ export default function ProjectDetailPage() {
                                     className="rounded-xl px-2 py-1 text-slate-100 hover:bg-white/5"
                                     href={`/proposals/${encodeURIComponent(p.id)}/review`}
                                   >
-                                    <span className="font-mono">{p.id}</span> · {p.status}
+                                    <span className="font-mono">{p.id}</span> · {p.status} · {String(p.createdAt).slice(0, 10)}
                                   </Link>
                                 ))}
                               {proposals.filter((p) => p.filePath === selectedFile.path).length === 0 ? (
