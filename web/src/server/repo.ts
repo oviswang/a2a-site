@@ -3,6 +3,10 @@ import { getDb } from './db';
 export type Visibility = 'open' | 'restricted';
 export type ProposalStatus = 'needs_review' | 'approved' | 'changes_requested' | 'rejected' | 'merged';
 
+export type MemberType = 'human' | 'agent';
+export type MemberRole = 'owner' | 'maintainer' | 'contributor';
+export type JoinRequestStatus = 'pending' | 'approved' | 'rejected';
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -42,6 +46,18 @@ type ProposalRow = {
 
 type ActivityRow = { ts: string; text: string };
 
+type MemberRow = { member_handle: string; member_type: string; role: string; joined_at: string };
+
+type JoinRequestRow = {
+  id: string;
+  member_handle: string;
+  member_type: string;
+  requested_at: string;
+  status: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+};
+
 function getProjectBySlug(slug: string) {
   const db = getDb();
   return db
@@ -62,6 +78,11 @@ export function listProjects() {
     visibility: (r.visibility === 'restricted' ? 'restricted' : 'open') as Visibility,
     tags: JSON.parse(r.tags_json || '[]') as string[],
     createdAt: r.created_at,
+    files: [],
+    proposals: [],
+    activity: [],
+    members: [],
+    joinRequests: [],
   }));
 }
 
@@ -90,6 +111,29 @@ export function getProject(slug: string) {
     .prepare('SELECT ts, text FROM activity WHERE project_id=? ORDER BY ts DESC LIMIT 50')
     .all(p.id) as ActivityRow[]).map((a) => ({ ts: a.ts, text: a.text }));
 
+  const members = (db
+    .prepare('SELECT member_handle, member_type, role, joined_at FROM project_members WHERE project_id=? ORDER BY role ASC, member_handle ASC')
+    .all(p.id) as MemberRow[]).map((m) => ({
+    handle: m.member_handle,
+    memberType: (m.member_type === 'agent' ? 'agent' : 'human') as MemberType,
+    role: (m.role as MemberRole) || 'contributor',
+    joinedAt: m.joined_at,
+  }));
+
+  const joinRequests = (db
+    .prepare(
+      'SELECT id, member_handle, member_type, requested_at, status, reviewed_by, reviewed_at FROM join_requests WHERE project_id=? ORDER BY requested_at DESC'
+    )
+    .all(p.id) as JoinRequestRow[]).map((r) => ({
+    id: r.id,
+    handle: r.member_handle,
+    memberType: (r.member_type === 'agent' ? 'agent' : 'human') as MemberType,
+    requestedAt: r.requested_at,
+    status: r.status as JoinRequestStatus,
+    reviewedBy: r.reviewed_by,
+    reviewedAt: r.reviewed_at,
+  }));
+
   return {
     slug: p.slug,
     name: p.name,
@@ -100,10 +144,12 @@ export function getProject(slug: string) {
     files,
     proposals,
     activity,
+    members,
+    joinRequests,
   };
 }
 
-export function createProject(args: { name: string; slug?: string; summary: string; visibility: Visibility }) {
+export function createProject(args: { name: string; slug?: string; summary: string; visibility: Visibility; actorHandle: string; actorType: MemberType }) {
   const db = getDb();
   const slug = args.slug && args.slug.trim() ? slugify(args.slug) : slugify(args.name);
   if (!slug) throw new Error('invalid_slug');
@@ -125,7 +171,19 @@ export function createProject(args: { name: string; slug?: string; summary: stri
     const ins = db.prepare('INSERT INTO project_files (project_id, path, content, updated_at) VALUES (?, ?, ?, ?)');
     for (const f of files) ins.run(projectId, f.path, f.content, now);
 
-    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(projectId, now, `Project created (${args.visibility})`);
+    db.prepare('INSERT INTO project_members (project_id, member_handle, member_type, role, joined_at) VALUES (?, ?, ?, ?, ?)').run(
+      projectId,
+      args.actorHandle,
+      args.actorType,
+      'owner',
+      now
+    );
+
+    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
+      projectId,
+      now,
+      `Project created (${args.visibility}) by @${args.actorHandle}`
+    );
   });
 
   tx();
@@ -196,24 +254,23 @@ export function proposalAction(args: { id: string; action: 'approve' | 'request_
   if (!prRow) throw new Error('proposal_not_found');
 
   const now = nowIso();
-  const actor = args.actorHandle || 'reviewer';
 
   const tx = db.transaction(() => {
     if (args.action === 'approve') {
       db.prepare('UPDATE proposals SET status=? WHERE id=?').run('approved', args.id);
-      db.prepare('INSERT INTO reviews (proposal_id, action, actor_handle, note, created_at) VALUES (?, ?, ?, ?, ?)').run(args.id, 'approve', actor, args.note || null, now);
+      db.prepare('INSERT INTO reviews (proposal_id, action, created_at) VALUES (?, ?, ?)').run(args.id, 'approve', now);
       db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(prRow.project_id, now, `Proposal approved: ${args.id}`);
     }
 
     if (args.action === 'request_changes') {
       db.prepare('UPDATE proposals SET status=? WHERE id=?').run('changes_requested', args.id);
-      db.prepare('INSERT INTO reviews (proposal_id, action, actor_handle, note, created_at) VALUES (?, ?, ?, ?, ?)').run(args.id, 'request_changes', actor, args.note || null, now);
+      db.prepare('INSERT INTO reviews (proposal_id, action, created_at) VALUES (?, ?, ?)').run(args.id, 'request_changes', now);
       db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(prRow.project_id, now, `Changes requested: ${args.id}`);
     }
 
     if (args.action === 'reject') {
       db.prepare('UPDATE proposals SET status=? WHERE id=?').run('rejected', args.id);
-      db.prepare('INSERT INTO reviews (proposal_id, action, actor_handle, note, created_at) VALUES (?, ?, ?, ?, ?)').run(args.id, 'reject', actor, args.note || null, now);
+      db.prepare('INSERT INTO reviews (proposal_id, action, created_at) VALUES (?, ?, ?)').run(args.id, 'reject', now);
       db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(prRow.project_id, now, `Proposal rejected: ${args.id}`);
     }
 
@@ -227,11 +284,91 @@ export function proposalAction(args: { id: string; action: 'approve' | 'request_
       ).run(prRow.project_id, prRow.file_path, prRow.new_content, now);
 
       db.prepare('UPDATE proposals SET status=? WHERE id=?').run('merged', args.id);
-      db.prepare('INSERT INTO reviews (proposal_id, action, actor_handle, note, created_at) VALUES (?, ?, ?, ?, ?)').run(args.id, 'merge', actor, args.note || null, now);
+      db.prepare('INSERT INTO reviews (proposal_id, action, created_at) VALUES (?, ?, ?)').run(args.id, 'merge', now);
       db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(prRow.project_id, now, `Merged ${args.id} into ${prRow.file_path}`);
     }
   });
 
   tx();
   return getProposal(args.id);
+}
+
+function isProjectOwnerOrMaintainer(projectId: number, handle: string) {
+  const db = getDb();
+  const row = db
+    .prepare('SELECT role FROM project_members WHERE project_id=? AND member_handle=?')
+    .get(projectId, handle) as { role: string } | undefined;
+  return row?.role === 'owner' || row?.role === 'maintainer';
+}
+
+export function joinProject(args: { projectSlug: string; actorHandle: string; actorType: MemberType }) {
+  const db = getDb();
+  const p = getProjectBySlug(args.projectSlug);
+  if (!p) throw new Error('project_not_found');
+
+  const now = nowIso();
+
+  // Already a member?
+  const existing = db
+    .prepare('SELECT role FROM project_members WHERE project_id=? AND member_handle=?')
+    .get(p.id, args.actorHandle) as { role: string } | undefined;
+  if (existing) return { mode: 'already_member' as const, role: existing.role as MemberRole };
+
+  if ((p.visibility === 'restricted' ? 'restricted' : 'open') === 'open') {
+    db.prepare('INSERT INTO project_members (project_id, member_handle, member_type, role, joined_at) VALUES (?, ?, ?, ?, ?)').run(
+      p.id,
+      args.actorHandle,
+      args.actorType,
+      'contributor',
+      now
+    );
+    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `@${args.actorHandle} joined (open)`);
+    return { mode: 'joined' as const, role: 'contributor' as const };
+  }
+
+  const id = `jr-${Math.random().toString(16).slice(2, 6)}${Date.now().toString(16).slice(-4)}`;
+  db.prepare(
+    'INSERT INTO join_requests (id, project_id, member_handle, member_type, requested_at, status, reviewed_by, reviewed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, p.id, args.actorHandle, args.actorType, now, 'pending', null, null);
+  db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `@${args.actorHandle} requested access`);
+  return { mode: 'requested' as const, requestId: id };
+}
+
+export function reviewJoinRequest(args: {
+  requestId: string;
+  action: 'approve' | 'reject';
+  actorHandle: string;
+}) {
+  const db = getDb();
+  const r = db
+    .prepare('SELECT id, project_id, member_handle, member_type, status FROM join_requests WHERE id=?')
+    .get(args.requestId) as { id: string; project_id: number; member_handle: string; member_type: string; status: string } | undefined;
+  if (!r) throw new Error('request_not_found');
+  if (r.status !== 'pending') throw new Error('request_not_pending');
+
+  if (!isProjectOwnerOrMaintainer(r.project_id, args.actorHandle)) throw new Error('not_allowed');
+
+  const now = nowIso();
+
+  const tx = db.transaction(() => {
+    if (args.action === 'approve') {
+      db.prepare('UPDATE join_requests SET status=?, reviewed_by=?, reviewed_at=? WHERE id=?').run('approved', args.actorHandle, now, r.id);
+      db.prepare('INSERT INTO project_members (project_id, member_handle, member_type, role, joined_at) VALUES (?, ?, ?, ?, ?)').run(
+        r.project_id,
+        r.member_handle,
+        r.member_type === 'agent' ? 'agent' : 'human',
+        'contributor',
+        now
+      );
+      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(r.project_id, now, `Access approved for @${r.member_handle}`);
+    }
+
+    if (args.action === 'reject') {
+      db.prepare('UPDATE join_requests SET status=?, reviewed_by=?, reviewed_at=? WHERE id=?').run('rejected', args.actorHandle, now, r.id);
+      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(r.project_id, now, `Access rejected for @${r.member_handle}`);
+    }
+  });
+
+  tx();
+  return { ok: true };
 }

@@ -36,11 +36,20 @@
 - [x] Commit + push
 
 ## Milestone 1.3 — Minimal persistence backend (Phase 4)
-- [ ] Add local SQLite DB (no Postgres on this machine)
-- [ ] Create schema: projects, files, proposals, reviews, activity
-- [ ] Add minimal API routes (CRUD for flows)
-- [ ] Replace in-memory store with API-backed store
-- [ ] Ensure create/edit/review/merge survives refresh/restart
+- [x] Add local SQLite DB (no Postgres on this machine)
+- [x] Create schema: projects, files, proposals, reviews, activity
+- [x] Add minimal API routes (CRUD for flows)
+- [x] Replace in-memory store with API-backed store
+- [x] Ensure create/edit/review/merge survives refresh/restart
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.4 — Minimal member model (Phase 5)
+- [ ] Add schema: project_members, join_requests
+- [ ] Assign owner on project creation (acting user)
+- [ ] Show members list on project page
+- [ ] Open projects: direct join
+- [ ] Restricted projects: request access + owner review
 - [ ] Local build/test
 - [ ] Commit + push
 

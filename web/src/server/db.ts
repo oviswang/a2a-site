@@ -69,6 +69,30 @@ CREATE TABLE IF NOT EXISTS activity (
   text TEXT NOT NULL,
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS project_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL,
+  member_handle TEXT NOT NULL,
+  member_type TEXT NOT NULL,
+  role TEXT NOT NULL,
+  joined_at TEXT NOT NULL,
+  UNIQUE(project_id, member_handle),
+  FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS join_requests (
+  id TEXT PRIMARY KEY,
+  project_id INTEGER NOT NULL,
+  member_handle TEXT NOT NULL,
+  member_type TEXT NOT NULL,
+  requested_at TEXT NOT NULL,
+  status TEXT NOT NULL,
+  reviewed_by TEXT,
+  reviewed_at TEXT,
+  UNIQUE(project_id, member_handle),
+  FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
 `);
 
   _db = db;

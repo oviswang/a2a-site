@@ -9,14 +9,33 @@ export type WorkspaceFile = {
   updatedAt: string;
 };
 
+export type WorkspaceMember = {
+  handle: string;
+  memberType: 'human' | 'agent';
+  role: 'owner' | 'maintainer' | 'contributor';
+  joinedAt: string;
+};
+
+export type WorkspaceJoinRequest = {
+  id: string;
+  handle: string;
+  memberType: 'human' | 'agent';
+  requestedAt: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+};
+
 export type WorkspaceProject = {
   slug: string;
   name: string;
   summary: string;
-  visibility: 'open' | 'restricted';
+  visibility: 'open' | 'restricted'; // also used as join_mode for now
   tags: string[];
   files: WorkspaceFile[];
   activity: Array<{ ts: string; text: string }>;
+  members: WorkspaceMember[];
+  joinRequests: WorkspaceJoinRequest[];
 };
 
 export type WorkspaceProposal = {
@@ -31,7 +50,10 @@ export type WorkspaceProposal = {
   newContent: string;
 };
 
+export type ActingUser = { handle: string; actorType: 'human' | 'agent' };
+
 type WorkspaceState = {
+  actor: ActingUser;
   projects: WorkspaceProject[];
   proposalsByProject: Record<string, WorkspaceProposal[]>;
   proposalsById: Record<string, WorkspaceProposal>;
@@ -45,6 +67,8 @@ const Ctx = createContext<{
     refreshProjects: () => Promise<void>;
     loadProject: (slug: string) => Promise<void>;
     createProject: (args: { name: string; slug?: string; summary: string; visibility: 'open' | 'restricted' }) => Promise<WorkspaceProject | null>;
+    joinProject: (projectSlug: string) => Promise<{ mode: string } | null>;
+    reviewJoinRequest: (requestId: string, action: 'approve' | 'reject') => Promise<boolean>;
     createProposal: (args: {
       projectSlug: string;
       title: string;
@@ -66,6 +90,7 @@ async function json<T>(res: Response): Promise<T> {
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<WorkspaceState>({
+    actor: { handle: 'local-human', actorType: 'human' },
     projects: [],
     proposalsByProject: {},
     proposalsById: {},
@@ -115,13 +140,44 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(args),
+        body: JSON.stringify({ ...args, actorHandle: state.actor.handle, actorType: state.actor.actorType }),
       });
       const data = await json<{ ok: boolean; project: WorkspaceProject }>(res);
       setState((s) => ({ ...s, projects: [data.project, ...s.projects] }));
       return data.project;
     } catch {
       return null;
+    }
+  }
+
+  async function joinProject(projectSlug: string) {
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectSlug)}/join`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ actorHandle: state.actor.handle, actorType: state.actor.actorType }),
+      });
+      const data = await json<{ ok: boolean; result: { mode: string } }>(res);
+      await loadProject(projectSlug);
+      return data.result;
+    } catch {
+      return null;
+    }
+  }
+
+  async function reviewJoinRequest(requestId: string, action: 'approve' | 'reject') {
+    try {
+      const res = await fetch(`/api/join-requests/${encodeURIComponent(requestId)}/action`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action, actorHandle: state.actor.handle }),
+      });
+      const data = await json<{ ok: boolean }>(res);
+      // Reload all projects to refresh joinRequests/members where relevant.
+      await refreshProjects();
+      return !!data.ok;
+    } catch {
+      return false;
     }
   }
 
@@ -203,7 +259,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const api = {
     state,
-    actions: { refreshProjects, loadProject, createProject, createProposal, proposalAction, loadProposal },
+    actions: { refreshProjects, loadProject, createProject, joinProject, reviewJoinRequest, createProposal, proposalAction, loadProposal },
   };
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;

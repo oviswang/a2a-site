@@ -10,11 +10,14 @@ export async function POST(req: Request) {
   if (!body) return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
 
   try {
+    const b = body as Record<string, unknown>;
     const project = createProject({
-      name: String((body as Record<string, unknown>).name || ''),
-      slug: (body as Record<string, unknown>).slug ? String((body as Record<string, unknown>).slug) : undefined,
-      summary: String((body as Record<string, unknown>).summary || ''),
-      visibility: (body as Record<string, unknown>).visibility === 'restricted' ? 'restricted' : 'open',
+      name: String(b.name || ''),
+      slug: b.slug ? String(b.slug) : undefined,
+      summary: String(b.summary || ''),
+      visibility: b.visibility === 'restricted' ? 'restricted' : 'open',
+      actorHandle: String(b.actorHandle || 'local-human'),
+      actorType: b.actorType === 'agent' ? 'agent' : 'human',
     });
 
     return NextResponse.json({ ok: true, project });

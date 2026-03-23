@@ -42,6 +42,10 @@ export default function ProjectDetailPage() {
   const selectedFile = files.find((f) => f.path === selected) || files[0] || null;
   const proposals = state.proposalsByProject[slug] || [];
 
+  const actor = state.actor;
+  const myMember = project?.members?.find((m) => m.handle === actor.handle) || null;
+  const isOwnerOrMaintainer = myMember ? myMember.role === 'owner' || myMember.role === 'maintainer' : false;
+
   return (
     <Layout>
       <div className="flex flex-col gap-6">
@@ -51,16 +55,32 @@ export default function ProjectDetailPage() {
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { href: '/projects', label: 'Projects' }, { label: slug }]} />}
           actions={
             project ? (
-              <button
-                type="button"
-                className="rounded bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800"
-                onClick={() => {
-                  const fp = selectedFile?.path || 'README.md';
-                  router.push(`/projects/${slug}/proposals/new?file=${encodeURIComponent(fp)}`);
-                }}
-              >
-                Create Proposal
-              </button>
+              <div className="flex flex-wrap gap-2">
+                {!myMember ? (
+                  <button
+                    type="button"
+                    className={`rounded px-3 py-2 text-sm text-white ${project.visibility === 'restricted' ? 'bg-amber-700 hover:bg-amber-600' : 'bg-emerald-700 hover:bg-emerald-600'}`}
+                    onClick={() => {
+                      actions.joinProject(slug).catch(() => void 0);
+                    }}
+                  >
+                    {project.visibility === 'restricted' ? 'Request access' : 'Join project'}
+                  </button>
+                ) : (
+                  <div className="rounded border px-3 py-2 text-sm">Member: @{myMember.handle} ({myMember.role})</div>
+                )}
+
+                <button
+                  type="button"
+                  className="rounded bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800"
+                  onClick={() => {
+                    const fp = selectedFile?.path || 'README.md';
+                    router.push(`/projects/${slug}/proposals/new?file=${encodeURIComponent(fp)}`);
+                  }}
+                >
+                  Create Proposal
+                </button>
+              </div>
             ) : null
           }
         />
@@ -125,6 +145,49 @@ export default function ProjectDetailPage() {
                     {proposals.length === 0 ? <li>No proposals</li> : null}
                   </ul>
                 </Card>
+
+                <Card title="Members">
+                  <div className="text-xs text-slate-600">Join mode: {project.visibility}</div>
+                  <ul className="mt-3 list-disc pl-5">
+                    {(project.members || []).map((m) => (
+                      <li key={m.handle}>
+                        @{m.handle} · {m.memberType} · {m.role}
+                      </li>
+                    ))}
+                    {(project.members || []).length === 0 ? <li>No members yet</li> : null}
+                  </ul>
+                </Card>
+
+                {isOwnerOrMaintainer ? (
+                  <Card title="Join requests">
+                    <ul className="list-disc pl-5">
+                      {(project.joinRequests || []).map((r) => (
+                        <li key={r.id}>
+                          @{r.handle} ({r.memberType}) — {r.status}
+                          {r.status === 'pending' ? (
+                            <span className="ml-2 inline-flex gap-2">
+                              <button
+                                className="rounded bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-500"
+                                type="button"
+                                onClick={() => actions.reviewJoinRequest(r.id, 'approve').then(() => actions.loadProject(slug))}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                className="rounded bg-rose-600 px-2 py-1 text-xs text-white hover:bg-rose-500"
+                                type="button"
+                                onClick={() => actions.reviewJoinRequest(r.id, 'reject').then(() => actions.loadProject(slug))}
+                              >
+                                Reject
+                              </button>
+                            </span>
+                          ) : null}
+                        </li>
+                      ))}
+                      {(project.joinRequests || []).length === 0 ? <li>No join requests</li> : null}
+                    </ul>
+                  </Card>
+                ) : null}
 
                 <Card title="Recent activity">
                   <ul className="list-disc pl-5">
