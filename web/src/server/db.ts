@@ -123,6 +123,8 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   handle TEXT UNIQUE NOT NULL,
   display_name TEXT,
+  default_actor_handle TEXT,
+  default_actor_type TEXT,
   created_at TEXT NOT NULL
 );
 
@@ -178,6 +180,13 @@ CREATE TABLE IF NOT EXISTS task_events (
   // Lightweight migrations for additive columns.
   const tableInfo = (table: string) => db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
   const hasCol = (table: string, col: string) => tableInfo(table).some((r) => r.name === col);
+
+  if (hasCol('users', 'id') && !hasCol('users', 'default_actor_handle')) {
+    db.exec(`ALTER TABLE users ADD COLUMN default_actor_handle TEXT`);
+  }
+  if (hasCol('users', 'id') && !hasCol('users', 'default_actor_type')) {
+    db.exec(`ALTER TABLE users ADD COLUMN default_actor_type TEXT`);
+  }
 
   if (hasCol('identities', 'handle') && !hasCol('identities', 'owner_user_id')) {
     db.exec(`ALTER TABLE identities ADD COLUMN owner_user_id INTEGER`);

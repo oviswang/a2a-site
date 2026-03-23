@@ -54,7 +54,16 @@ export default function LoginPage() {
                 key={u.id}
                 type="button"
                 className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-left hover:bg-white/10"
-                onClick={() => actions.setActor({ handle: u.handle, actorType: 'human' })}
+                onClick={async () => {
+                  actions.setActor({ handle: u.handle, actorType: 'human' });
+                  const res = await fetch(`/api/users/${encodeURIComponent(u.handle)}`, { cache: 'no-store' });
+                  const j = await res.json().catch(() => null);
+                  const prefType = j?.profile?.user?.defaultActorType;
+                  const prefHandle = j?.profile?.user?.defaultActorHandle;
+                  if (prefType && prefHandle) {
+                    actions.setActor({ handle: String(prefHandle), actorType: prefType === 'agent' ? 'agent' : 'human' });
+                  }
+                }}
               >
                 <div>
                   <div className="text-sm text-slate-50">

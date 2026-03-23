@@ -10,6 +10,7 @@ const nav = [
   { href: '/projects', label: 'Projects' },
   { href: '/inbox', label: 'Inbox' },
   { href: '/login', label: 'Sign in' },
+  { href: '/settings', label: 'Settings' },
   { href: '/users', label: 'Users' },
   { href: '/identities', label: 'Identities' },
   { href: '/demo', label: 'Demo' },

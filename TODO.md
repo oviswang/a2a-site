@@ -255,6 +255,15 @@
 - [x] Local build/test
 - [x] Commit + push
 
+## Milestone 1.30 — User profile + settings + preferences
+- [x] /users/[handle] profile page
+- [x] /settings page
+- [x] Default acting identity preference persisted
+- [x] Login uses default preference
+- [x] Nav current-user coherence improvements
+- [x] Local build/test
+- [ ] Commit + push
+
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
 - [ ] Set cache headers for `/skill.md` and `/release.json`

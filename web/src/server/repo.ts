@@ -15,6 +15,8 @@ export type User = {
   id: number;
   handle: string;
   displayName: string | null;
+  defaultActorHandle?: string | null;
+  defaultActorType?: MemberType | null;
   createdAt: string;
 };
 
@@ -36,28 +38,57 @@ export function listUsers(): User[] {
   // Ensure at least one default user exists for the minimal identity layer.
   if (!getUserByHandle('local-human')) {
     const now = nowIso();
-    db.prepare('INSERT INTO users (handle, display_name, created_at) VALUES (?, ?, ?)').run('local-human', 'Local Human', now);
+    db.prepare('INSERT INTO users (handle, display_name, default_actor_handle, default_actor_type, created_at) VALUES (?, ?, ?, ?, ?)').run(
+      'local-human',
+      'Local Human',
+      null,
+      null,
+      now
+    );
     ensureIdentity('local-human', 'human');
     const u = getUserByHandle('local-human');
     if (u) db.prepare('UPDATE identities SET user_id=? WHERE handle=?').run(u.id, 'local-human');
   }
 
-  const rows = db.prepare('SELECT id, handle, display_name, created_at FROM users ORDER BY created_at DESC').all() as Array<{
+  const rows = db.prepare('SELECT id, handle, display_name, default_actor_handle, default_actor_type, created_at FROM users ORDER BY created_at DESC').all() as Array<{
     id: number;
     handle: string;
     display_name: string | null;
+    default_actor_handle: string | null;
+    default_actor_type: string | null;
     created_at: string;
   }>;
-  return rows.map((r) => ({ id: r.id, handle: r.handle, displayName: r.display_name ?? null, createdAt: r.created_at }));
+  return rows.map((r) => ({
+    id: r.id,
+    handle: r.handle,
+    displayName: r.display_name ?? null,
+    defaultActorHandle: r.default_actor_handle ?? null,
+    defaultActorType: r.default_actor_type === 'agent' ? 'agent' : r.default_actor_type === 'human' ? 'human' : null,
+    createdAt: r.created_at,
+  }));
 }
 
 export function getUserByHandle(handle: string): User | null {
   const db = getDb();
-  const r = db.prepare('SELECT id, handle, display_name, created_at FROM users WHERE handle=?').get(handle) as
-    | { id: number; handle: string; display_name: string | null; created_at: string }
+  const r = db.prepare('SELECT id, handle, display_name, default_actor_handle, default_actor_type, created_at FROM users WHERE handle=?').get(handle) as
+    | {
+        id: number;
+        handle: string;
+        display_name: string | null;
+        default_actor_handle: string | null;
+        default_actor_type: string | null;
+        created_at: string;
+      }
     | undefined;
   if (!r) return null;
-  return { id: r.id, handle: r.handle, displayName: r.display_name ?? null, createdAt: r.created_at };
+  return {
+    id: r.id,
+    handle: r.handle,
+    displayName: r.display_name ?? null,
+    defaultActorHandle: r.default_actor_handle ?? null,
+    defaultActorType: r.default_actor_type === 'agent' ? 'agent' : r.default_actor_type === 'human' ? 'human' : null,
+    createdAt: r.created_at,
+  };
 }
 
 export function createUser(args: { handle: string; displayName?: string | null }): User {
@@ -66,7 +97,13 @@ export function createUser(args: { handle: string; displayName?: string | null }
   const handle = normalizeUserHandle(args.handle);
   if (!handle) throw new Error('invalid_handle');
 
-  db.prepare('INSERT INTO users (handle, display_name, created_at) VALUES (?, ?, ?)').run(handle, args.displayName || null, now);
+  db.prepare('INSERT INTO users (handle, display_name, default_actor_handle, default_actor_type, created_at) VALUES (?, ?, ?, ?, ?)').run(
+    handle,
+    args.displayName || null,
+    null,
+    null,
+    now
+  );
 
   // Ensure the corresponding human identity exists and is linked.
   ensureIdentity(handle, 'human');
@@ -74,6 +111,61 @@ export function createUser(args: { handle: string; displayName?: string | null }
   if (u) db.prepare('UPDATE identities SET user_id=? WHERE handle=?').run(u.id, handle);
 
   return u || { id: -1, handle, displayName: args.displayName || null, createdAt: now };
+}
+
+export function updateUserPreferences(args: {
+  handle: string;
+  defaultActorHandle: string | null;
+  defaultActorType: MemberType | null;
+}) {
+  const db = getDb();
+  const handle = normalizeUserHandle(args.handle);
+  const t = args.defaultActorType === 'agent' ? 'agent' : args.defaultActorType === 'human' ? 'human' : null;
+  const h = args.defaultActorHandle ? String(args.defaultActorHandle) : null;
+  db.prepare('UPDATE users SET default_actor_handle=?, default_actor_type=? WHERE handle=?').run(h, t, handle);
+  return getUserByHandle(handle);
+}
+
+export function getUserProfile(handleRaw: string) {
+  const db = getDb();
+  const handle = normalizeUserHandle(handleRaw);
+  const user = getUserByHandle(handle);
+  if (!user) return null;
+
+  const joinedProjects = db
+    .prepare(
+      `SELECT p.slug as slug, p.name as name, pm.role as role, pm.joined_at as joined_at
+       FROM project_members pm JOIN projects p ON p.id=pm.project_id
+       WHERE pm.member_handle=? AND pm.member_type='human'
+       ORDER BY pm.joined_at DESC`
+    )
+    .all(handle) as Array<{ slug: string; name: string; role: string; joined_at: string }>;
+
+  const ownedAgents = db
+    .prepare(
+      `SELECT handle, display_name, claim_state, origin, bound_at
+       FROM identities
+       WHERE identity_type='agent' AND owner_handle=?
+       ORDER BY created_at DESC`
+    )
+    .all(handle) as Array<{ handle: string; display_name: string | null; claim_state: string; origin: string | null; bound_at: string | null }>;
+
+  return {
+    user,
+    joinedProjects: joinedProjects.map((p) => ({
+      slug: p.slug,
+      name: p.name,
+      role: (p.role === 'owner' ? 'owner' : p.role === 'maintainer' ? 'maintainer' : 'contributor') as MemberRole,
+      joinedAt: p.joined_at,
+    })),
+    ownedAgents: ownedAgents.map((a) => ({
+      handle: a.handle,
+      displayName: a.display_name ?? null,
+      claimState: a.claim_state === 'claimed' ? 'claimed' : 'unclaimed',
+      origin: a.origin || 'local',
+      boundAt: a.bound_at,
+    })),
+  };
 }
 
 export type Notification = {
