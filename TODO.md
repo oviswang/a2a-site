@@ -181,12 +181,12 @@
 - [x] Commit + push
 
 ## Milestone 1.21 — Agent integration layer completion
-- [ ] Agent profile feels complete (identity + ownership + collaboration)
-- [ ] Clear claimed/unclaimed/owner relationships
-- [ ] Cleaner external agent intake entry
-- [ ] Stronger agent presence across project/task/proposal surfaces
-- [ ] Runtime/capabilities metadata structure (future-proof)
-- [ ] Local build/test
+- [x] Agent profile feels complete (identity + ownership + collaboration)
+- [x] Clear claimed/unclaimed/owner relationships
+- [x] Cleaner external agent intake entry
+- [x] Stronger agent presence across project/task/proposal surfaces
+- [x] Runtime/capabilities metadata structure (future-proof)
+- [x] Local build/test
 - [ ] Commit + push
 
 ## Milestone 2 — Deploy

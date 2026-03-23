@@ -6,22 +6,14 @@ import { useParams } from 'next/navigation';
 import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
-import { StatusBadge } from '@/components/Status';
 import { getAgent } from '@/lib/mock';
 import { useWorkspace, type WorkspaceIdentity } from '@/lib/state';
 
-type RuntimePayload = {
-  agentHandle: string;
-  lastSeen: string;
-  status: string;
-  model: string | null;
-  capabilities: string[];
-  raw: Record<string, unknown>;
-};
+type AgentRuntime = { agentHandle: string; runtime: Record<string, unknown>; lastSeen: string } | null;
 
 type AgentSummary = {
   handle: string;
-  projects: Array<{ slug: string; name: string; role: string; joinedAt: string }>;
+  projects: Array<{ slug: string; name: string; role: 'owner' | 'maintainer' | 'contributor'; joinedAt: string }>;
   claimedTasks: Array<{ id: string; title: string; status: string; projectSlug: string }>;
   proposals: Array<{ id: string; title: string; status: string; projectSlug: string; createdAt: string }>;
 };
@@ -33,43 +25,41 @@ export default function AgentProfilePage() {
   const { state, actions } = useWorkspace();
 
   const [identity, setIdentity] = useState<WorkspaceIdentity | null>(null);
-  const [runtime, setRuntime] = useState<RuntimePayload | null>(null);
+  const [runtime, setRuntime] = useState<AgentRuntime>(null);
   const [summary, setSummary] = useState<AgentSummary | null>(null);
 
-  async function refresh() {
-    const [idRes, rtRes, sumRes] = await Promise.all([
-      fetch(`/api/identities/${encodeURIComponent(handle)}`, { cache: 'no-store' }),
-      fetch(`/api/agents/${encodeURIComponent(handle)}/runtime`, { cache: 'no-store' }),
-      fetch(`/api/agents/${encodeURIComponent(handle)}/summary`, { cache: 'no-store' }),
-    ]);
-
-    if (idRes.ok) {
-      const j = (await idRes.json().catch(() => null)) as { identity?: WorkspaceIdentity | null } | null;
-      setIdentity(j?.identity || null);
-    }
-    if (rtRes.ok) {
-      const j = (await rtRes.json().catch(() => null)) as { runtime?: RuntimePayload | null } | null;
-      setRuntime(j?.runtime || null);
-    }
-    if (sumRes.ok) {
-      const j = (await sumRes.json().catch(() => null)) as { summary?: AgentSummary | null } | null;
-      setSummary(j?.summary || null);
-    }
-  }
-
   useEffect(() => {
-    refresh().catch(() => void 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetch(`/api/identities/${encodeURIComponent(handle)}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setIdentity(j?.identity || null))
+      .catch(() => void 0);
+
+    fetch(`/api/agents/${encodeURIComponent(handle)}/runtime`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setRuntime(j?.runtime || null))
+      .catch(() => void 0);
+
+    fetch(`/api/agents/${encodeURIComponent(handle)}/summary`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setSummary(j?.summary || null))
+      .catch(() => void 0);
   }, [handle]);
 
-  const canClaim = identity && identity.identityType === 'agent' && identity.claimState === 'unclaimed' && state.actor.actorType === 'human';
-
   const claimBadge = useMemo(() => {
-    if (!identity) return <Tag>untracked</Tag>;
+    if (!identity) return null;
     if (identity.claimState === 'claimed') return <Tag>claimed</Tag>;
-    if (identity.claimState === 'unclaimed') return <Tag>unclaimed</Tag>;
-    return <Tag>{identity.claimState}</Tag>;
+    return <Tag>unclaimed</Tag>;
   }, [identity]);
+
+  const canClaim =
+    identity && identity.identityType === 'agent' && identity.claimState === 'unclaimed' && state.actor.actorType === 'human';
+
+  const capabilities = useMemo(() => {
+    const raw = runtime?.runtime || {};
+    const caps = (raw.capabilities as unknown) || (raw.capability as unknown) || null;
+    if (Array.isArray(caps)) return caps.map(String).slice(0, 12);
+    return [] as string[];
+  }, [runtime]);
 
   return (
     <Layout>
@@ -84,29 +74,30 @@ export default function AgentProfilePage() {
           <div className="flex flex-col gap-6">
             <Card title="Agent identity">
               {identity ? (
-                <div className="flex flex-col gap-2 text-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-slate-200/70">
-                      Type: <span className="font-semibold text-slate-50">{identity.identityType}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {claimBadge}
-                      {identity.ownerHandle ? (
-                        <Link className="text-xs text-sky-200 hover:underline" href={`/agents/${encodeURIComponent(identity.ownerHandle)}`}>
-                          owner @{identity.ownerHandle}
+                <div className="flex flex-col gap-3 text-sm text-slate-200/80">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Tag>{identity.identityType}</Tag>
+                    {claimBadge}
+                    {identity.ownerHandle ? (
+                      <span className="text-xs text-slate-200/60">
+                        owner{' '}
+                        <Link className="underline decoration-white/30 hover:decoration-white/60" href={`/identities`}>
+                          @{identity.ownerHandle}
                         </Link>
-                      ) : (
-                        <span className="text-xs text-slate-200/50">no owner</span>
-                      )}
-                    </div>
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-200/50">no owner recorded</span>
+                    )}
                   </div>
 
-                  <div className="text-xs text-slate-200/60">Local claim shell only (no real auth / OpenClaw binding yet).</div>
+                  <div className="text-xs text-slate-200/60">
+                    Claiming is currently a local placeholder shell (no real auth / OpenClaw binding yet).
+                  </div>
 
                   {canClaim ? (
                     <button
                       type="button"
-                      className="mt-2 w-fit rounded-2xl bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800"
+                      className="w-fit rounded-2xl bg-slate-50/10 px-3 py-2 text-sm text-slate-50 hover:bg-slate-50/15"
                       onClick={async () => {
                         const next = await actions.claimAgentIdentity(identity.handle);
                         if (next) setIdentity(next);
@@ -122,143 +113,145 @@ export default function AgentProfilePage() {
             </Card>
 
             <Card title="Collaboration">
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-200/60">Projects</div>
-                  <div className="text-lg font-semibold text-slate-50">{summary?.projects.length || 0}</div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-200/60">Claimed tasks</div>
-                  <div className="text-lg font-semibold text-slate-50">{summary?.claimedTasks.length || 0}</div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-200/60">Recent proposals</div>
-                  <div className="text-lg font-semibold text-slate-50">{summary?.proposals.length || 0}</div>
-                </div>
-              </div>
+              {summary ? (
+                <div className="grid gap-4">
+                  <div>
+                    <div className="text-xs font-semibold text-slate-200/70">Joined projects</div>
+                    <div className="mt-2 grid gap-2">
+                      {summary.projects.map((p) => (
+                        <div key={p.slug} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                          <div className="min-w-0">
+                            <Link className="text-sm text-slate-50 underline decoration-white/20 hover:decoration-white/50" href={`/projects/${p.slug}`}>
+                              {p.name}
+                            </Link>
+                            <div className="text-xs text-slate-200/60">/{p.slug}</div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Tag>{p.role}</Tag>
+                            <span className="text-xs text-slate-200/50">joined {String(p.joinedAt).slice(0, 10)}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {summary.projects.length === 0 ? <div className="text-sm text-slate-200/60">No joined projects yet.</div> : null}
+                    </div>
+                  </div>
 
-              <div className="mt-4 grid gap-4">
-                <div>
-                  <div className="text-xs font-semibold text-slate-200/70">Joined projects</div>
-                  <div className="mt-2 grid gap-2">
-                    {(summary?.projects || []).slice(0, 8).map((p) => (
-                      <Link
-                        key={p.slug}
-                        className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm hover:bg-white/10"
-                        href={`/projects/${encodeURIComponent(p.slug)}`}
-                      >
-                        <span className="text-slate-50">{p.name}</span>
-                        <span className="text-xs text-slate-200/70">
-                          {p.role} · {String(p.joinedAt).slice(0, 10)}
-                        </span>
-                      </Link>
-                    ))}
-                    {(summary?.projects || []).length === 0 ? <div className="text-sm text-slate-200/60">No project memberships yet.</div> : null}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <div className="text-xs font-semibold text-slate-200/70">Claimed tasks</div>
+                      <div className="mt-2 grid gap-2">
+                        {summary.claimedTasks.map((t) => (
+                          <div key={t.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <Link className="text-sm text-slate-50 underline decoration-white/20 hover:decoration-white/50" href={`/tasks/${encodeURIComponent(t.id)}`}>
+                                {t.title}
+                              </Link>
+                              <Tag>{t.status}</Tag>
+                            </div>
+                            <div className="mt-1 text-xs text-slate-200/60">
+                              project{' '}
+                              <Link className="underline decoration-white/20 hover:decoration-white/50" href={`/projects/${t.projectSlug}`}>
+                                /{t.projectSlug}
+                              </Link>
+                            </div>
+                          </div>
+                        ))}
+                        {summary.claimedTasks.length === 0 ? <div className="text-sm text-slate-200/60">No claimed tasks.</div> : null}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-semibold text-slate-200/70">Authored proposals</div>
+                      <div className="mt-2 grid gap-2">
+                        {summary.proposals.map((p) => (
+                          <div key={p.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <Link
+                                className="text-sm text-slate-50 underline decoration-white/20 hover:decoration-white/50"
+                                href={`/proposals/${encodeURIComponent(p.id)}/review`}
+                              >
+                                {p.title}
+                              </Link>
+                              <Tag>{p.status}</Tag>
+                            </div>
+                            <div className="mt-1 text-xs text-slate-200/60">
+                              /{p.projectSlug} · {String(p.createdAt).slice(0, 10)}
+                            </div>
+                          </div>
+                        ))}
+                        {summary.proposals.length === 0 ? <div className="text-sm text-slate-200/60">No proposals yet.</div> : null}
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                <div>
-                  <div className="text-xs font-semibold text-slate-200/70">Claimed tasks</div>
-                  <div className="mt-2 grid gap-2">
-                    {(summary?.claimedTasks || []).slice(0, 8).map((t) => (
-                      <Link
-                        key={t.id}
-                        className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm hover:bg-white/10"
-                        href={`/tasks/${encodeURIComponent(t.id)}`}
-                      >
-                        <span className="text-slate-50">{t.title}</span>
-                        <span className="text-xs text-slate-200/70">
-                          <Tag>{t.status}</Tag>
-                        </span>
-                      </Link>
-                    ))}
-                    {(summary?.claimedTasks || []).length === 0 ? <div className="text-sm text-slate-200/60">No claimed tasks yet.</div> : null}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold text-slate-200/70">Recent proposals</div>
-                  <div className="mt-2 grid gap-2">
-                    {(summary?.proposals || []).slice(0, 8).map((p) => (
-                      <Link
-                        key={p.id}
-                        className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm hover:bg-white/10"
-                        href={`/proposals/${encodeURIComponent(p.id)}/review`}
-                      >
-                        <span className="text-slate-50">{p.title}</span>
-                        <span className="text-xs text-slate-200/70">
-                          <StatusBadge status={p.status as 'needs_review' | 'approved' | 'changes_requested' | 'rejected' | 'merged'} />
-                        </span>
-                      </Link>
-                    ))}
-                    {(summary?.proposals || []).length === 0 ? <div className="text-sm text-slate-200/60">No proposals yet.</div> : null}
-                  </div>
-                </div>
-              </div>
+              ) : (
+                <div className="text-sm text-slate-200/60">Loading collaboration summary…</div>
+              )}
             </Card>
+
+            {a ? (
+              <Card
+                title="Profile"
+                footer={
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-200/70">
+                    <span>Model: {a.model}</span>
+                    <div className="flex flex-wrap gap-2">
+                      {a.specialties.map((s) => (
+                        <Tag key={s}>{s}</Tag>
+                      ))}
+                    </div>
+                  </div>
+                }
+              >
+                <div className="flex flex-col gap-3">
+                  <div className="text-sm text-slate-200/80">{a.bio}</div>
+                  <div>
+                    <div className="text-xs font-semibold text-slate-200/70">Policy hint</div>
+                    <div className="mt-1 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80">{a.policyHint}</div>
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              <Card title="Profile">This agent is not in the mock dataset yet (identity/runtime may still exist).</Card>
+            )}
           </div>
 
           <aside className="flex flex-col gap-6">
             <Card title="Runtime / capabilities">
               {runtime ? (
-                <div className="flex flex-col gap-3 text-sm">
+                <div className="flex flex-col gap-3 text-sm text-slate-200/80">
                   <div className="text-xs text-slate-200/60">Last seen: {String(runtime.lastSeen).slice(0, 19).replace('T', ' ')}</div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {runtime.model ? <Tag>model: {runtime.model}</Tag> : <Tag>model: unknown</Tag>}
-                    {runtime.capabilities.length ? <Tag>capabilities: {runtime.capabilities.length}</Tag> : <Tag>capabilities: none</Tag>}
-                  </div>
-
-                  {runtime.capabilities.length ? (
+                  {capabilities.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {runtime.capabilities.slice(0, 12).map((c) => (
+                      {capabilities.map((c) => (
                         <Tag key={c}>{c}</Tag>
                       ))}
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="text-xs text-slate-200/50">No normalized capabilities reported yet.</div>
+                  )}
 
-                  <details className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <summary className="cursor-pointer text-xs text-slate-200/70">Raw runtime payload</summary>
-                    <pre className="mt-3 whitespace-pre-wrap font-mono text-xs text-slate-100">{JSON.stringify(runtime.raw, null, 2)}</pre>
-                  </details>
+                  <pre className="whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-100">
+                    {JSON.stringify(runtime.runtime, null, 2)}
+                  </pre>
 
-                  <div className="text-xs text-slate-200/60">This is a placeholder metadata layer for future OpenClaw binding.</div>
+                  <div className="text-xs text-slate-200/50">Future: real traces, capability proofs, ownership verification, and OpenClaw binding.</div>
                 </div>
               ) : (
                 <div className="text-sm text-slate-200/60">No runtime metadata reported yet.</div>
               )}
             </Card>
 
-            {a ? (
-              <Card title="Profile">
-                <div className="flex flex-col gap-3 text-sm">
-                  <div className="text-slate-200/80">{a.bio}</div>
-                  <div className="flex flex-wrap gap-2">
-                    <Tag>model: {a.model}</Tag>
-                    {a.specialties.slice(0, 6).map((s) => (
-                      <Tag key={s}>{s}</Tag>
-                    ))}
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-slate-200/70">Policy hint</div>
-                    <div className="mt-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-100">{a.policyHint}</div>
-                  </div>
-                </div>
-              </Card>
-            ) : (
-              <Card title="Profile">This agent is not in mock dataset (identity may still exist).</Card>
-            )}
-
-            <Card title="External intake">
+            <Card title="External join">
               <div className="text-sm text-slate-200/70">
-                If you are running this agent externally, use the intake form to join a project and report runtime metadata.
+                If you are an external agent, use the intake page to join a project and optionally publish runtime metadata.
               </div>
-              <Link
-                className="mt-3 inline-flex w-fit rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10"
-                href={`/intake/agent?project=a2a-site`}
-              >
-                Open intake
-              </Link>
+              <div className="mt-3">
+                <Link className="rounded-2xl bg-slate-50/10 px-3 py-2 text-sm text-slate-50 hover:bg-slate-50/15" href={`/intake/agent?handle=${encodeURIComponent(handle)}`}>
+                  Open agent intake
+                </Link>
+              </div>
             </Card>
           </aside>
         </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Layout } from '@/components/Layout';
@@ -8,13 +9,15 @@ import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 
 export function AgentIntakeClient() {
   const sp = useSearchParams();
-  const defaultProject = sp.get('project') || 'a2a-site';
+  const handle0 = sp.get('handle') || '';
+  const project0 = sp.get('project') || sp.get('projectSlug') || '';
 
-  const [projectSlug, setProjectSlug] = useState(defaultProject);
-  const [agentHandle, setAgentHandle] = useState('');
+  const [handle, setHandle] = useState(handle0);
   const [displayName, setDisplayName] = useState('');
+  const [projectSlug, setProjectSlug] = useState(project0);
   const [runtimeJson, setRuntimeJson] = useState('');
-  const [result, setResult] = useState<string>('');
+  const [result, setResult] = useState<unknown>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const payload = useMemo(() => {
     let runtime: unknown = null;
@@ -22,101 +25,136 @@ export function AgentIntakeClient() {
       try {
         runtime = JSON.parse(runtimeJson);
       } catch {
-        runtime = { parse_error: true, raw: runtimeJson };
+        runtime = '__invalid_json__';
       }
     }
-
-    return {
-      agentHandle,
-      displayName: displayName || null,
-      projectSlug,
-      runtime,
-    };
-  }, [agentHandle, displayName, projectSlug, runtimeJson]);
+    return { agentHandle: handle, displayName: displayName || null, projectSlug, runtime };
+  }, [handle, displayName, projectSlug, runtimeJson]);
 
   return (
     <Layout>
       <div className="flex flex-col gap-6">
         <PageHeader
-          title="External agent intake"
-          subtitle="A clean entry point for agents to join a project + report basic runtime metadata (no auth yet)."
-          breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { href: '/projects', label: 'Projects' }, { label: 'Agent intake' }]} />}
+          title="Agent intake"
+          subtitle="A clean external entry to join projects as an agent (no auth yet)."
+          breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'Agent intake' }]} />}
         />
 
-        <Card title="Join a project as an agent">
-          <div className="grid gap-3 text-sm">
-            <label className="grid gap-1">
-              <div className="text-xs font-semibold text-slate-200/70">Project slug</div>
-              <input
-                className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
-                value={projectSlug}
-                onChange={(e) => setProjectSlug(e.target.value)}
-              />
-            </label>
-            <label className="grid gap-1">
-              <div className="text-xs font-semibold text-slate-200/70">Agent handle</div>
-              <input
-                className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-slate-100"
-                placeholder="e.g. local-agent"
-                value={agentHandle}
-                onChange={(e) => setAgentHandle(e.target.value)}
-              />
-            </label>
-            <label className="grid gap-1">
-              <div className="text-xs font-semibold text-slate-200/70">Display name (optional)</div>
-              <input
-                className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
-                placeholder="e.g. Build Bot"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-              />
-            </label>
-            <label className="grid gap-1">
-              <div className="text-xs font-semibold text-slate-200/70">Runtime JSON (optional)</div>
-              <textarea
-                className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs text-slate-100"
-                rows={8}
-                placeholder='{"model":"gpt-4.1","capabilities":["text","tools"]}'
-                value={runtimeJson}
-                onChange={(e) => setRuntimeJson(e.target.value)}
-              />
-            </label>
+        <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
+          <Card title="Submit intake">
+            <div className="grid gap-3 text-sm">
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-slate-200/70">Agent handle</span>
+                <input
+                  className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                  value={handle}
+                  onChange={(e) => setHandle(e.target.value)}
+                  placeholder="e.g. demo-agent"
+                />
+              </label>
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="rounded-2xl bg-emerald-700 px-3 py-2 text-sm text-white hover:bg-emerald-600"
-                onClick={async () => {
-                  setResult('');
-                  const res = await fetch('/api/intake/agent', {
-                    method: 'POST',
-                    headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify(payload),
-                  });
-                  const text = await res.text();
-                  setResult(text);
-                }}
-              >
-                Submit intake
-              </button>
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-slate-200/70">Display name (optional)</span>
+                <input
+                  className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="e.g. Demo Agent"
+                />
+              </label>
+
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-slate-200/70">Project slug</span>
+                <input
+                  className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                  value={projectSlug}
+                  onChange={(e) => setProjectSlug(e.target.value)}
+                  placeholder="e.g. a2a-site"
+                />
+              </label>
+
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-slate-200/70">Runtime metadata (optional JSON)</span>
+                <textarea
+                  className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs text-slate-100"
+                  rows={8}
+                  value={runtimeJson}
+                  onChange={(e) => setRuntimeJson(e.target.value)}
+                  placeholder='{"capabilities":["text.complete"],"version":"0.1"}'
+                />
+              </label>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-2xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25"
+                  onClick={async () => {
+                    setError(null);
+                    setResult(null);
+
+                    if (payload.runtime === '__invalid_json__') {
+                      setError('Runtime JSON is invalid.');
+                      return;
+                    }
+                    if (!payload.agentHandle.trim() || !payload.projectSlug.trim()) {
+                      setError('agentHandle and projectSlug are required.');
+                      return;
+                    }
+
+                    const res = await fetch('/api/intake/agent', {
+                      method: 'POST',
+                      headers: { 'content-type': 'application/json' },
+                      body: JSON.stringify({
+                        agentHandle: payload.agentHandle,
+                        displayName: payload.displayName,
+                        projectSlug: payload.projectSlug,
+                        runtime: payload.runtime,
+                      }),
+                    });
+                    const j = await res.json().catch(() => null);
+                    if (!res.ok || !j?.ok) {
+                      setError(j?.error || 'Intake failed');
+                      return;
+                    }
+                    setResult(j);
+                  }}
+                >
+                  Submit intake
+                </button>
+
+                {projectSlug ? (
+                  <Link
+                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10"
+                    href={`/projects/${encodeURIComponent(projectSlug)}#join-agent`}
+                  >
+                    Back to project join
+                  </Link>
+                ) : null}
+              </div>
+
+              {error ? <div className="text-sm text-rose-200">{error}</div> : null}
+              {result ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80">
+                  <div>Done.</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Link className="underline decoration-white/20 hover:decoration-white/50" href={`/agents/${encodeURIComponent(handle)}`}>
+                      View agent profile
+                    </Link>
+                    <Link className="underline decoration-white/20 hover:decoration-white/50" href={`/projects/${encodeURIComponent(projectSlug)}`}>
+                      Open project
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
             </div>
-          </div>
-        </Card>
+          </Card>
 
-        <Card title="Payload / result">
-          <div className="grid gap-3">
-            <pre className="whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-4 font-mono text-xs text-slate-100">
+          <Card title="Payload preview">
+            <pre className="whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-3 font-mono text-xs text-slate-100">
               {JSON.stringify(payload, null, 2)}
             </pre>
-            {result ? (
-              <pre className="whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-4 font-mono text-xs text-slate-100">
-                {result}
-              </pre>
-            ) : (
-              <div className="text-sm text-slate-200/60">No result yet.</div>
-            )}
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
     </Layout>
   );
