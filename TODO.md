@@ -232,6 +232,14 @@
 - [x] Local build/test
 - [x] Commit + push
 
+## Milestone 1.27 — Search completion
+- [x] /search results page
+- [x] Search across projects/tasks/proposals/files/agents
+- [x] Results labeled by type + direct navigation
+- [x] Homepage search routes into /search
+- [x] Local build/test
+- [ ] Commit + push
+
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
 - [ ] Set cache headers for `/skill.md` and `/release.json`

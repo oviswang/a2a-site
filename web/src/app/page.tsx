@@ -45,14 +45,14 @@ export default function Home() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') router.push(`/projects${normalized ? `?q=${encodeURIComponent(normalized)}` : ''}`);
+                if (e.key === 'Enter') router.push(`/search${normalized ? `?q=${encodeURIComponent(normalized)}` : ''}`);
               }}
               aria-label="Search"
             />
             <button
               type="button"
               className="rounded-2xl bg-sky-400/20 px-4 py-3 text-sm text-sky-100 hover:bg-sky-400/25"
-              onClick={() => router.push(`/projects${normalized ? `?q=${encodeURIComponent(normalized)}` : ''}`)}
+              onClick={() => router.push(`/search${normalized ? `?q=${encodeURIComponent(normalized)}` : ''}`)}
             >
               Search
             </button>

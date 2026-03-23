@@ -138,6 +138,71 @@ export function markNotificationRead(args: { id: string; userHandle: string }) {
   return { ok: true };
 }
 
+export type SearchResults = {
+  q: string;
+  projects: Array<{ slug: string; name: string; summary: string }>;
+  tasks: Array<{ id: string; title: string; status: string; projectSlug: string }>;
+  proposals: Array<{ id: string; title: string; status: string; projectSlug: string; filePath: string }>;
+  files: Array<{ projectSlug: string; path: string }>;
+  agents: Array<{ handle: string; displayName: string | null; origin: string }>; // from identities
+};
+
+export function searchAll(qRaw: string): SearchResults {
+  const db = getDb();
+  const q = (qRaw || '').trim();
+  const like = `%${q.replace(/%/g, '')}%`;
+  if (!q) return { q: '', projects: [], tasks: [], proposals: [], files: [], agents: [] };
+
+  const projects = db
+    .prepare('SELECT slug, name, summary FROM projects WHERE slug LIKE ? OR name LIKE ? OR summary LIKE ? ORDER BY created_at DESC LIMIT 10')
+    .all(like, like, like) as Array<{ slug: string; name: string; summary: string }>;
+
+  const tasks = db
+    .prepare(
+      `SELECT t.id as id, t.title as title, t.status as status, p.slug as project_slug
+       FROM tasks t JOIN projects p ON p.id=t.project_id
+       WHERE t.id LIKE ? OR t.title LIKE ? OR t.description LIKE ?
+       ORDER BY t.updated_at DESC LIMIT 10`
+    )
+    .all(like, like, like) as Array<{ id: string; title: string; status: string; project_slug: string }>;
+
+  const proposals = db
+    .prepare(
+      `SELECT pr.id as id, pr.title as title, pr.status as status, pr.file_path as file_path, p.slug as project_slug
+       FROM proposals pr JOIN projects p ON p.id=pr.project_id
+       WHERE pr.id LIKE ? OR pr.title LIKE ? OR pr.summary LIKE ? OR pr.file_path LIKE ?
+       ORDER BY pr.created_at DESC LIMIT 10`
+    )
+    .all(like, like, like, like) as Array<{ id: string; title: string; status: string; file_path: string; project_slug: string }>;
+
+  const files = db
+    .prepare(
+      `SELECT pf.path as path, p.slug as project_slug
+       FROM project_files pf JOIN projects p ON p.id=pf.project_id
+       WHERE pf.path LIKE ? OR pf.content LIKE ?
+       ORDER BY pf.updated_at DESC LIMIT 10`
+    )
+    .all(like, like) as Array<{ path: string; project_slug: string }>;
+
+  const agents = db
+    .prepare(
+      `SELECT handle, display_name, origin
+       FROM identities
+       WHERE identity_type='agent' AND (handle LIKE ? OR display_name LIKE ?)
+       ORDER BY created_at DESC LIMIT 10`
+    )
+    .all(like, like) as Array<{ handle: string; display_name: string | null; origin: string | null }>;
+
+  return {
+    q,
+    projects,
+    tasks: tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, projectSlug: t.project_slug })),
+    proposals: proposals.map((p) => ({ id: p.id, title: p.title, status: p.status, projectSlug: p.project_slug, filePath: p.file_path })),
+    files: files.map((f) => ({ projectSlug: f.project_slug, path: f.path })),
+    agents: agents.map((a) => ({ handle: a.handle, displayName: a.display_name ?? null, origin: a.origin || 'local' })),
+  };
+}
+
 function slugify(input: string) {
   return String(input || '')
     .trim()
