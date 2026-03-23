@@ -240,6 +240,14 @@
 - [x] Local build/test
 - [x] Commit + push
 
+## Milestone 1.28 — Minimal auth/login realism
+- [x] /login page (user selection as sign-in)
+- [x] Sign out flow (return to guest/local-human)
+- [x] Nav/account state consistent
+- [x] Actions clearly operate as signed-in user
+- [x] Local build/test
+- [ ] Commit + push
+
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
 - [ ] Set cache headers for `/skill.md` and `/release.json`

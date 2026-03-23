@@ -9,6 +9,7 @@ const nav = [
   { href: '/', label: 'Home' },
   { href: '/projects', label: 'Projects' },
   { href: '/inbox', label: 'Inbox' },
+  { href: '/login', label: 'Sign in' },
   { href: '/users', label: 'Users' },
   { href: '/identities', label: 'Identities' },
   { href: '/demo', label: 'Demo' },
@@ -54,6 +55,11 @@ export function Nav() {
           <div className="ml-2 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200/80">
             <span className="text-slate-200/60">@{actor.handle}</span>
             <span className="rounded-lg bg-sky-400/10 px-1.5 py-0.5 text-sky-200">{actor.actorType}</span>
+            {actor.actorType === 'human' && actor.handle !== 'local-human' ? (
+              <button type="button" className="rounded-lg bg-rose-500/15 px-2 py-1 text-rose-100 hover:bg-rose-500/20" onClick={() => actions.setActor({ handle: 'local-human', actorType: 'human' })}>
+                Sign out
+              </button>
+            ) : null}
             <div className="ml-1 inline-flex overflow-hidden rounded-lg border border-white/10">
               <button
                 type="button"
