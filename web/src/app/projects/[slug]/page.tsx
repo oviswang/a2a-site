@@ -56,6 +56,30 @@ export default function ProjectDetailPage() {
   const isOwnerOrMaintainer = myMember ? myMember.role === 'owner' || myMember.role === 'maintainer' : false;
   const identityByHandle = new Map(state.identities.map((i) => [i.handle, i] as const));
 
+  const activity = project?.activity || [];
+  const kindOf = (text: string) => {
+    if (text.startsWith('Invited')) return 'invite';
+    if (text.startsWith('Invite revoked')) return 'invite';
+    if (text.includes('joined')) return 'member';
+    if (text.startsWith('Task ')) return 'task';
+    if (text.startsWith('Proposal ')) return 'proposal';
+    if (text.startsWith('Changes requested')) return 'review';
+    if (text.startsWith('Merged ')) return 'merge';
+    if (text.startsWith('Role updated')) return 'member';
+    if (text.startsWith('Member removed')) return 'member';
+    if (text.startsWith('Access ')) return 'access';
+    return 'event';
+  };
+  const activityByDay = activity.reduce(
+    (acc, a) => {
+      const day = a.ts.slice(0, 10);
+      acc[day] = acc[day] || [];
+      acc[day].push(a);
+      return acc;
+    },
+    {} as Record<string, Array<{ ts: string; text: string }>>
+  );
+
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
   const [joinMsg, setJoinMsg] = useState<string | null>(null);
@@ -515,10 +539,16 @@ export default function ProjectDetailPage() {
               <Card title="Decisions">
                 <div className="text-xs text-slate-200/60">First-class artifact: DECISIONS.md</div>
                 <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-100">
-                  {(files.find((f) => f.path === 'DECISIONS.md')?.content || '(no DECISIONS.md)')
-                    .split('\n')
-                    .slice(0, 10)
-                    .join('\n')}
+                  {(() => {
+                    const raw = files.find((f) => f.path === 'DECISIONS.md')?.content || '';
+                    if (!raw.trim()) return '(no DECISIONS.md)';
+                    const picked = raw
+                      .split('\n')
+                      .map((l) => l.trimEnd())
+                      .filter((l) => l.startsWith('##') || l.startsWith('- '))
+                      .slice(0, 12);
+                    return picked.length ? picked.join('\n') : raw.split('\n').slice(0, 12).join('\n');
+                  })()}
                 </div>
                 <div className="mt-3">
                   <Link className="text-sm underline decoration-white/30 hover:decoration-white/60" href={`/projects/${slug}?file=${encodeURIComponent('DECISIONS.md')}`}>
@@ -824,14 +854,32 @@ export default function ProjectDetailPage() {
             {/* TIMELINE */}
             <section id="timeline" className="scroll-mt-24">
               <Card title="Timeline">
-                <ul className="list-disc pl-5 text-sm text-slate-200/80">
-                  {project.activity.slice(0, 12).map((a, idx) => (
-                    <li key={idx}>
-                      <span className="text-xs text-slate-200/40">{a.ts.slice(0, 19).replace('T', ' ')} </span>
-                      {a.text}
-                    </li>
-                  ))}
-                </ul>
+                <div className="grid gap-4">
+                  {Object.keys(activityByDay)
+                    .sort()
+                    .reverse()
+                    .slice(0, 7)
+                    .map((day) => (
+                      <div key={day} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <div className="text-xs font-semibold text-slate-200/70">{day}</div>
+                        <div className="mt-2 grid gap-2">
+                          {activityByDay[day].slice(0, 12).map((a, idx) => {
+                            const k = kindOf(a.text);
+                            return (
+                              <div key={idx} className="flex flex-wrap items-start justify-between gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
+                                <div className="min-w-0">
+                                  <div className="text-xs text-slate-200/50">{a.ts.slice(11, 19)}</div>
+                                  <div className="mt-1 text-sm text-slate-50">{a.text}</div>
+                                </div>
+                                <div className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">{k}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  {activity.length === 0 ? <div className="text-sm text-slate-200/60">No activity yet.</div> : null}
+                </div>
               </Card>
             </section>
           </WorkspaceShell>
