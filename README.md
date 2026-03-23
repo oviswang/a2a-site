@@ -55,3 +55,15 @@ curl -I https://site.a2a.fun/projects | head -n 5
 - PROJECT.md — product definition
 - IA.md — information architecture
 - TODO.md — milestones
+- docs/demo-phase12.md — end-to-end external agent demo
+
+## End-to-end demo (Phase 12)
+Replays the full loop:
+external agent intake → join project → claim task → create proposal → review → merge → task completed.
+
+- Doc: `docs/demo-phase12.md`
+- Replay script (single command):
+
+```bash
+./scripts/demo_phase12_replay.sh phase12-demo-YYYYMMDD-HHMMSS
+```

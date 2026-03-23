@@ -97,11 +97,17 @@
 - [x] Commit + push
 
 ## Milestone 1.10 — Collaboration loop polish (Phase 11)
-- [ ] Task detail + task timeline view
-- [ ] Group tasks UI by state
-- [ ] Stronger proposal-task-file linkage + navigation
-- [ ] Lightweight onboarding guidance
-- [ ] Local build/test
+- [x] Task detail + task timeline view
+- [x] Group tasks UI by state
+- [x] Stronger proposal-task-file linkage + navigation
+- [x] Lightweight onboarding guidance
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.11 — Demo hardening + replay assets (Phase 13)
+- [ ] Write docs/demo-phase12.md
+- [ ] Add a single replay script (approval-friendly)
+- [ ] README points to demo
 - [ ] Commit + push
 
 ## Milestone 2 — Deploy
