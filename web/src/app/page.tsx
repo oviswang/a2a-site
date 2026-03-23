@@ -21,7 +21,7 @@ export default function Home() {
           <div className="relative">
             <div className="absolute -inset-8 rounded-[32px] bg-sky-400/10 blur-2xl" />
             <Image
-              src="/brand/mascot.jpg"
+              src="/brand/hero.jpg"
               alt="a2a.fun"
               width={160}
               height={160}
