@@ -7,6 +7,9 @@ export type WorkspaceFile = {
   path: string;
   content: string;
   updatedAt: string;
+  lastActorHandle?: string | null;
+  lastActorType?: 'human' | 'agent' | null;
+  lastProposalId?: string | null;
 };
 
 export type WorkspaceMember = {
@@ -49,6 +52,12 @@ export type WorkspaceProposal = {
   summary: string;
   filePath: string;
   newContent: string;
+  lastReview?: {
+    action: string;
+    actorHandle: string | null;
+    actorType: 'human' | 'agent' | null;
+    createdAt: string;
+  } | null;
 };
 
 export type ActingUser = { handle: string; actorType: 'human' | 'agent' };

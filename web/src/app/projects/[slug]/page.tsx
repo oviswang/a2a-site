@@ -120,7 +120,22 @@ export default function ProjectDetailPage() {
                   title={selectedFile ? selectedFile.path : 'No file selected'}
                   footer={
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <span>Updated {selectedFile?.updatedAt || '—'}</span>
+                      <span>
+                        Updated {selectedFile?.updatedAt || '—'}
+                        {selectedFile?.lastActorHandle ? (
+                          <span className="ml-2 text-xs text-slate-600">
+                            by @{selectedFile.lastActorHandle} ({selectedFile.lastActorType || '—'})
+                          </span>
+                        ) : null}
+                        {selectedFile?.lastProposalId ? (
+                          <span className="ml-2 text-xs">
+                            via{' '}
+                            <Link className="underline" href={`/proposals/${encodeURIComponent(selectedFile.lastProposalId)}/review`}>
+                              {selectedFile.lastProposalId}
+                            </Link>
+                          </span>
+                        ) : null}
+                      </span>
                       <div className="flex flex-wrap gap-2">
                         <Tag>markdown</Tag>
                         <Tag>{project.visibility}</Tag>
@@ -133,17 +148,48 @@ export default function ProjectDetailPage() {
                   </pre>
                 </Card>
 
-                <Card title="Active proposals">
-                  <ul className="list-disc pl-5">
+                <Card title="Proposal timeline">
+                  <div className="flex flex-col gap-3">
                     {proposals.map((p) => (
-                      <li key={p.id}>
-                        <Link className="underline" href={`/proposals/${p.id}/review`}>
-                          {p.title} ({p.status}) — @{p.authorHandle} ({p.authorType})
-                        </Link>
-                      </li>
+                      <div key={p.id} className="rounded border bg-white p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <Link className="text-sm font-medium underline" href={`/proposals/${p.id}/review`}>
+                            {p.title}
+                          </Link>
+                          <span className="text-xs text-slate-600">
+                            {p.createdAt} · {p.status}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-600">
+                          Opened by @{p.authorHandle} ({p.authorType}) · file <span className="font-mono">{p.filePath}</span>
+                        </div>
+                        {p.lastReview ? (
+                          <div className="mt-2 text-xs">
+                            Last review: {p.lastReview.action} by @{p.lastReview.actorHandle || 'unknown'} ({p.lastReview.actorType || '—'}) ·{' '}
+                            {String(p.lastReview.createdAt).slice(0, 19).replace('T', ' ')}
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-xs text-slate-500">No review events yet</div>
+                        )}
+                      </div>
                     ))}
-                    {proposals.length === 0 ? <li>No proposals</li> : null}
-                  </ul>
+                    {proposals.length === 0 ? <div className="text-sm text-slate-600">No proposals</div> : null}
+                  </div>
+                </Card>
+
+                <Card title="Decisions">
+                  <div className="text-xs text-slate-600">First-class artifact: DECISIONS.md</div>
+                  <div className="mt-3 rounded border bg-slate-50 p-3 text-xs">
+                    {(files.find((f) => f.path === 'DECISIONS.md')?.content || '(no DECISIONS.md)')
+                      .split('\n')
+                      .slice(0, 6)
+                      .join('\n')}
+                  </div>
+                  <div className="mt-3">
+                    <Link className="text-sm underline" href={`/projects/${slug}?file=${encodeURIComponent('DECISIONS.md')}`}>
+                      Open DECISIONS.md
+                    </Link>
+                  </div>
                 </Card>
 
                 <Card title="Members">
@@ -219,7 +265,7 @@ export default function ProjectDetailPage() {
                   </Card>
                 ) : null}
 
-                <Card title="Recent activity">
+                <Card title="Workspace timeline">
                   <ul className="list-disc pl-5">
                     {(project.activity || []).slice(0, 8).map((a, idx) => (
                       <li key={idx}>

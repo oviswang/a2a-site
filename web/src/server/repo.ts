@@ -30,7 +30,14 @@ type ProjectRow = {
   created_at: string;
 };
 
-type FileRow = { path: string; content: string; updated_at: string };
+type FileRow = {
+  path: string;
+  content: string;
+  updated_at: string;
+  last_actor_handle?: string | null;
+  last_actor_type?: string | null;
+  last_proposal_id?: string | null;
+};
 
 type ProposalRow = {
   id: string;
@@ -93,21 +100,50 @@ export function getProject(slug: string) {
   if (!p) return null;
 
   const files = (db
-    .prepare('SELECT path, content, updated_at FROM project_files WHERE project_id=? ORDER BY path ASC')
-    .all(p.id) as FileRow[]).map((f) => ({ path: f.path, content: f.content, updatedAt: f.updated_at }));
-
-  const proposals = (db
-    .prepare('SELECT id, title, author_handle, author_type, created_at, status, summary, file_path FROM proposals WHERE project_id=? ORDER BY created_at DESC')
-    .all(p.id) as Array<Pick<ProposalRow, 'id' | 'title' | 'author_handle' | 'author_type' | 'created_at' | 'status' | 'summary' | 'file_path'>>).map((pr) => ({
-    id: pr.id,
-    title: pr.title,
-    authorHandle: pr.author_handle,
-    authorType: (pr.author_type === 'agent' ? 'agent' : 'human') as MemberType,
-    createdAt: pr.created_at,
-    status: pr.status as ProposalStatus,
-    summary: pr.summary,
-    filePath: pr.file_path,
+    .prepare('SELECT path, content, updated_at, last_actor_handle, last_actor_type, last_proposal_id FROM project_files WHERE project_id=? ORDER BY path ASC')
+    .all(p.id) as FileRow[]).map((f) => ({
+    path: f.path,
+    content: f.content,
+    updatedAt: f.updated_at,
+    lastActorHandle: f.last_actor_handle || null,
+    lastActorType: f.last_actor_type === 'agent' ? ('agent' as MemberType) : f.last_actor_type === 'human' ? ('human' as MemberType) : null,
+    lastProposalId: f.last_proposal_id || null,
   }));
+
+  const lastReviewStmt = db.prepare(
+    'SELECT action, actor_handle, actor_type, created_at FROM reviews WHERE proposal_id=? ORDER BY id DESC LIMIT 1'
+  );
+
+  const proposalRows = db
+    .prepare(
+      'SELECT id, title, author_handle, author_type, created_at, status, summary, file_path FROM proposals WHERE project_id=? ORDER BY created_at DESC'
+    )
+    .all(p.id) as Array<Pick<ProposalRow, 'id' | 'title' | 'author_handle' | 'author_type' | 'created_at' | 'status' | 'summary' | 'file_path'>>;
+
+  const proposals = proposalRows.map((pr) => {
+    const lr = lastReviewStmt.get(pr.id) as
+      | { action: string; actor_handle: string | null; actor_type: string | null; created_at: string }
+      | undefined;
+
+    return {
+      id: pr.id,
+      title: pr.title,
+      authorHandle: pr.author_handle,
+      authorType: (pr.author_type === 'agent' ? 'agent' : 'human') as MemberType,
+      createdAt: pr.created_at,
+      status: pr.status as ProposalStatus,
+      summary: pr.summary,
+      filePath: pr.file_path,
+      lastReview: lr
+        ? {
+            action: lr.action,
+            actorHandle: lr.actor_handle,
+            actorType: lr.actor_type === 'agent' ? ('agent' as MemberType) : lr.actor_type === 'human' ? ('human' as MemberType) : null,
+            createdAt: lr.created_at,
+          }
+        : null,
+    };
+  });
 
   const activity = (db
     .prepare('SELECT ts, text FROM activity WHERE project_id=? ORDER BY ts DESC LIMIT 50')
@@ -170,8 +206,10 @@ export function createProject(args: { name: string; slug?: string; summary: stri
       { path: 'TODO.md', content: '# TODO\n\n- (empty)\n' },
     ];
 
-    const ins = db.prepare('INSERT INTO project_files (project_id, path, content, updated_at) VALUES (?, ?, ?, ?)');
-    for (const f of files) ins.run(projectId, f.path, f.content, now);
+    const ins = db.prepare(
+      'INSERT INTO project_files (project_id, path, content, updated_at, last_actor_handle, last_actor_type, last_proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    );
+    for (const f of files) ins.run(projectId, f.path, f.content, now, args.actorHandle, args.actorType, null);
 
     db.prepare('INSERT INTO project_members (project_id, member_handle, member_type, role, joined_at) VALUES (?, ?, ?, ?, ?)').run(
       projectId,
@@ -326,8 +364,8 @@ export function proposalAction(args: {
       if (status.status !== 'approved') throw new Error('merge_requires_approval');
 
       db.prepare(
-        'INSERT INTO project_files (project_id, path, content, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(project_id, path) DO UPDATE SET content=excluded.content, updated_at=excluded.updated_at'
-      ).run(prRow.project_id, prRow.file_path, prRow.new_content, now);
+        'INSERT INTO project_files (project_id, path, content, updated_at, last_actor_handle, last_actor_type, last_proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(project_id, path) DO UPDATE SET content=excluded.content, updated_at=excluded.updated_at, last_actor_handle=excluded.last_actor_handle, last_actor_type=excluded.last_actor_type, last_proposal_id=excluded.last_proposal_id'
+      ).run(prRow.project_id, prRow.file_path, prRow.new_content, now, actorHandle, actorType, args.id);
 
       db.prepare('UPDATE proposals SET status=? WHERE id=?').run('merged', args.id);
       db.prepare('INSERT INTO reviews (proposal_id, action, actor_handle, actor_type, note, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(

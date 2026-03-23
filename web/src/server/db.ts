@@ -113,6 +113,16 @@ CREATE TABLE IF NOT EXISTS join_requests (
     db.exec(`ALTER TABLE reviews ADD COLUMN note TEXT`);
   }
 
+  if (hasCol('project_files', 'id') && !hasCol('project_files', 'last_actor_handle')) {
+    db.exec(`ALTER TABLE project_files ADD COLUMN last_actor_handle TEXT`);
+  }
+  if (hasCol('project_files', 'id') && !hasCol('project_files', 'last_actor_type')) {
+    db.exec(`ALTER TABLE project_files ADD COLUMN last_actor_type TEXT`);
+  }
+  if (hasCol('project_files', 'id') && !hasCol('project_files', 'last_proposal_id')) {
+    db.exec(`ALTER TABLE project_files ADD COLUMN last_proposal_id TEXT`);
+  }
+
   _db = db;
   return db;
 }
