@@ -1029,18 +1029,19 @@ export function createAgentIdentity(args: { handle: string; displayName?: string
 
 export function claimAgentIdentity(args: { handle: string; ownerHandle: string }) {
   const db = getDb();
+  const ownerHandle = normalizeUserHandle(args.ownerHandle);
   const id = getIdentity(args.handle);
   if (!id) throw new Error('identity_not_found');
   if (id.identityType !== 'agent') throw new Error('not_an_agent');
 
-  ensureIdentity(args.ownerHandle, 'human');
+  ensureIdentity(ownerHandle, 'human');
 
   // Ensure the owning human is grounded in a real user record.
-  const u = getUserByHandle(args.ownerHandle) || createUser({ handle: args.ownerHandle });
+  const u = getUserByHandle(ownerHandle) || createUser({ handle: ownerHandle });
 
   db.prepare('UPDATE identities SET claim_state=?, owner_handle=?, owner_user_id=? WHERE handle=?').run(
     'claimed',
-    args.ownerHandle,
+    ownerHandle,
     u.id,
     args.handle
   );
