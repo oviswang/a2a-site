@@ -53,9 +53,22 @@ type ProposalRow = {
   summary: string;
   file_path: string;
   new_content: string;
+  task_id?: string | null;
 };
 
 type ActivityRow = { ts: string; text: string };
+
+type TaskRow = {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  claimed_by_handle: string | null;
+  claimed_by_type: string | null;
+  created_at: string;
+  updated_at: string;
+  file_path: string | null;
+};
 
 type MemberRow = { member_handle: string; member_type: string; role: string; joined_at: string };
 
@@ -175,6 +188,22 @@ export function getProject(slug: string) {
     reviewedAt: r.reviewed_at,
   }));
 
+  const tasks = (db
+    .prepare(
+      'SELECT id, title, description, status, claimed_by_handle, claimed_by_type, created_at, updated_at, file_path FROM tasks WHERE project_id=? ORDER BY updated_at DESC'
+    )
+    .all(p.id) as TaskRow[]).map((t) => ({
+    id: t.id,
+    title: t.title,
+    description: t.description,
+    status: t.status,
+    claimedByHandle: t.claimed_by_handle,
+    claimedByType: t.claimed_by_type === 'agent' ? 'agent' : t.claimed_by_type === 'human' ? 'human' : null,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at,
+    filePath: t.file_path,
+  }));
+
   return {
     slug: p.slug,
     name: p.name,
@@ -187,6 +216,7 @@ export function getProject(slug: string) {
     activity,
     members,
     joinRequests,
+    tasks,
   };
 }
 
@@ -234,6 +264,159 @@ export function createProject(args: { name: string; slug?: string; summary: stri
   return getProject(slug);
 }
 
+export type Task = {
+  id: string;
+  projectSlug: string;
+  title: string;
+  description: string;
+  status: 'open' | 'claimed' | 'in_progress' | 'completed';
+  claimedByHandle: string | null;
+  claimedByType: MemberType | null;
+  createdAt: string;
+  updatedAt: string;
+  filePath: string | null;
+};
+
+export function listTasksForProject(projectSlug: string): Task[] {
+  const db = getDb();
+  const p = getProjectBySlug(projectSlug);
+  if (!p) return [];
+
+  const rows = db
+    .prepare(
+      'SELECT id, title, description, status, claimed_by_handle, claimed_by_type, created_at, updated_at, file_path FROM tasks WHERE project_id=? ORDER BY updated_at DESC'
+    )
+    .all(p.id) as TaskRow[];
+
+  return rows.map((t) => ({
+    id: t.id,
+    projectSlug,
+    title: t.title,
+    description: t.description,
+    status: (t.status as 'open' | 'claimed' | 'in_progress' | 'completed') || 'open',
+    claimedByHandle: t.claimed_by_handle,
+    claimedByType: t.claimed_by_type === 'agent' ? 'agent' : t.claimed_by_type === 'human' ? 'human' : null,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at,
+    filePath: t.file_path,
+  }));
+}
+
+export function createTask(args: {
+  projectSlug: string;
+  title: string;
+  description?: string;
+  filePath?: string | null;
+  actorHandle: string;
+  actorType: MemberType;
+}): Task {
+  const db = getDb();
+  const p = getProjectBySlug(args.projectSlug);
+  if (!p) throw new Error('project_not_found');
+
+  ensureIdentity(args.actorHandle, args.actorType);
+
+  const now = nowIso();
+  const id = `t-${Math.random().toString(16).slice(2, 6)}${Date.now().toString(16).slice(-4)}`;
+
+  db.prepare(
+    'INSERT INTO tasks (id, project_id, title, description, status, claimed_by_handle, claimed_by_type, created_at, updated_at, file_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, p.id, args.title.trim() || 'Untitled task', args.description?.trim() || '', 'open', null, null, now, now, args.filePath || null);
+
+  db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+    id,
+    now,
+    args.actorHandle,
+    args.actorType,
+    'created',
+    args.title.trim() || 'Untitled task',
+    null
+  );
+
+  db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
+    p.id,
+    now,
+    `Task created: ${id} by @${args.actorHandle} (${args.actorType})`
+  );
+
+  return {
+    id,
+    projectSlug: args.projectSlug,
+    title: args.title.trim() || 'Untitled task',
+    description: args.description?.trim() || '',
+    status: 'open',
+    claimedByHandle: null,
+    claimedByType: null,
+    createdAt: now,
+    updatedAt: now,
+    filePath: args.filePath || null,
+  };
+}
+
+export function taskAction(args: {
+  taskId: string;
+  action: 'claim' | 'unclaim' | 'start' | 'complete';
+  actorHandle: string;
+  actorType: MemberType;
+}) {
+  const db = getDb();
+  const t = db.prepare('SELECT id, project_id FROM tasks WHERE id=?').get(args.taskId) as { id: string; project_id: number } | undefined;
+  if (!t) throw new Error('task_not_found');
+
+  ensureIdentity(args.actorHandle, args.actorType);
+
+  const now = nowIso();
+
+  const tx = db.transaction(() => {
+    if (args.action === 'claim') {
+      db.prepare('UPDATE tasks SET status=?, claimed_by_handle=?, claimed_by_type=?, updated_at=? WHERE id=?').run(
+        'claimed',
+        args.actorHandle,
+        args.actorType,
+        now,
+        args.taskId
+      );
+    }
+
+    if (args.action === 'unclaim') {
+      db.prepare('UPDATE tasks SET status=?, claimed_by_handle=?, claimed_by_type=?, updated_at=? WHERE id=?').run('open', null, null, now, args.taskId);
+    }
+
+    if (args.action === 'start') {
+      db.prepare('UPDATE tasks SET status=?, claimed_by_handle=?, claimed_by_type=?, updated_at=? WHERE id=?').run(
+        'in_progress',
+        args.actorHandle,
+        args.actorType,
+        now,
+        args.taskId
+      );
+    }
+
+    if (args.action === 'complete') {
+      db.prepare('UPDATE tasks SET status=?, updated_at=? WHERE id=?').run('completed', now, args.taskId);
+    }
+
+    db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+      args.taskId,
+      now,
+      args.actorHandle,
+      args.actorType,
+      args.action,
+      null,
+      null
+    );
+
+    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
+      t.project_id,
+      now,
+      `Task ${args.action}: ${args.taskId} by @${args.actorHandle} (${args.actorType})`
+    );
+  });
+
+  tx();
+  return { ok: true };
+}
+
 export function createProposal(args: {
   projectSlug: string;
   title: string;
@@ -242,6 +425,7 @@ export function createProposal(args: {
   authorType: MemberType;
   filePath: string;
   newContent: string;
+  taskId?: string | null;
 }) {
   const db = getDb();
   const p = getProjectBySlug(args.projectSlug);
@@ -253,7 +437,7 @@ export function createProposal(args: {
   ensureIdentity(args.authorHandle || 'baseline', args.authorType);
 
   db.prepare(
-    'INSERT INTO proposals (id, project_id, title, author_handle, author_type, created_at, status, summary, file_path, new_content) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO proposals (id, project_id, title, author_handle, author_type, created_at, status, summary, file_path, new_content, task_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(
     id,
     p.id,
@@ -264,7 +448,8 @@ export function createProposal(args: {
     'needs_review',
     args.summary.trim() || 'No summary',
     args.filePath,
-    args.newContent
+    args.newContent,
+    args.taskId || null
   );
 
   db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, nowIso(), `Proposal opened: ${id} (${args.filePath})`);
@@ -275,7 +460,7 @@ export function createProposal(args: {
 export function getProposal(id: string) {
   const db = getDb();
   const pr = db
-    .prepare('SELECT id, project_id, title, author_handle, author_type, created_at, status, summary, file_path, new_content FROM proposals WHERE id=?')
+    .prepare('SELECT id, project_id, title, author_handle, author_type, created_at, status, summary, file_path, new_content, task_id FROM proposals WHERE id=?')
     .get(id) as ProposalRow | undefined;
   if (!pr) return null;
 
@@ -292,6 +477,7 @@ export function getProposal(id: string) {
     summary: pr.summary,
     filePath: pr.file_path,
     newContent: pr.new_content,
+    taskId: pr.task_id || null,
   };
 }
 
@@ -304,8 +490,8 @@ export function proposalAction(args: {
 }) {
   const db = getDb();
   const prRow = db
-    .prepare('SELECT id, project_id, file_path, new_content, status FROM proposals WHERE id=?')
-    .get(args.id) as { id: string; project_id: number; file_path: string; new_content: string; status: string } | undefined;
+    .prepare('SELECT id, project_id, file_path, new_content, status, task_id FROM proposals WHERE id=?')
+    .get(args.id) as { id: string; project_id: number; file_path: string; new_content: string; status: string; task_id: string | null } | undefined;
   if (!prRow) throw new Error('proposal_not_found');
 
   const now = nowIso();
@@ -388,6 +574,13 @@ export function proposalAction(args: {
         now,
         `Merged ${args.id} into ${prRow.file_path} by @${actorHandle} (${actorType})`
       );
+
+      if (prRow.task_id) {
+        db.prepare('UPDATE tasks SET status=?, updated_at=? WHERE id=?').run('completed', now, prRow.task_id);
+        db.prepare(
+          'INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).run(prRow.task_id, now, actorHandle, actorType, 'merged', `Merged via proposal ${args.id}`, args.id);
+      }
     }
   });
 

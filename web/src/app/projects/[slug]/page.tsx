@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Layout } from '@/components/Layout';
@@ -41,10 +41,14 @@ export default function ProjectDetailPage() {
   const tree = splitDirs(filePaths);
   const selectedFile = files.find((f) => f.path === selected) || files[0] || null;
   const proposals = state.proposalsByProject[slug] || [];
+  const tasks = state.tasksByProject[slug] || [];
 
   const actor = state.actor;
   const myMember = project?.members?.find((m) => m.handle === actor.handle) || null;
   const isOwnerOrMaintainer = myMember ? myMember.role === 'owner' || myMember.role === 'maintainer' : false;
+
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDesc, setTaskDesc] = useState('');
 
   return (
     <Layout>
@@ -146,6 +150,106 @@ export default function ProjectDetailPage() {
                   <pre className="whitespace-pre-wrap rounded border bg-slate-50 p-4 text-xs leading-relaxed">
                     {selectedFile?.content || '—'}
                   </pre>
+                </Card>
+
+                <Card title="Tasks">
+                  <div className="text-xs text-slate-600">A shared collaboration queue (human + agent). No automation yet.</div>
+
+                  <div className="mt-3 grid gap-2 rounded border bg-slate-50 p-3">
+                    <div className="text-xs font-semibold text-slate-600">Create task</div>
+                    <input
+                      className="rounded border px-3 py-2 text-sm"
+                      value={taskTitle}
+                      onChange={(e) => setTaskTitle(e.target.value)}
+                      placeholder="e.g. Update quickstart steps"
+                    />
+                    <textarea
+                      className="rounded border px-3 py-2 text-sm"
+                      rows={3}
+                      value={taskDesc}
+                      onChange={(e) => setTaskDesc(e.target.value)}
+                      placeholder="Optional context for human/agent"
+                    />
+                    <button
+                      type="button"
+                      className="w-fit rounded bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800"
+                      onClick={async () => {
+                        if (!taskTitle.trim()) return;
+                        await actions.createTask({ projectSlug: slug, title: taskTitle, description: taskDesc, filePath: selectedFile?.path || null });
+                        setTaskTitle('');
+                        setTaskDesc('');
+                        await actions.loadProject(slug);
+                      }}
+                    >
+                      Add task
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-2">
+                    {tasks.map((t) => (
+                      <div key={t.id} className="rounded border bg-white p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm font-medium">
+                            {t.title}{' '}
+                            <span className="ml-2 font-mono text-xs text-slate-500">{t.id}</span>
+                          </div>
+                          <div className="text-xs text-slate-600">{t.status}</div>
+                        </div>
+                        {t.description ? <div className="mt-1 text-sm text-slate-700">{t.description}</div> : null}
+                        <div className="mt-2 text-xs text-slate-600">
+                          {t.claimedByHandle ? (
+                            <span>
+                              Claimed by @{t.claimedByHandle} ({t.claimedByType || '—'})
+                            </span>
+                          ) : (
+                            <span>Unclaimed</span>
+                          )}
+                          {t.filePath ? <span className="ml-2">· file <span className="font-mono">{t.filePath}</span></span> : null}
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            className="rounded border px-2 py-1 text-xs hover:bg-slate-50"
+                            type="button"
+                            onClick={async () => {
+                              await actions.taskAction(t.id, t.claimedByHandle ? 'unclaim' : 'claim');
+                              await actions.loadProject(slug);
+                            }}
+                          >
+                            {t.claimedByHandle ? 'Unclaim' : 'Claim'}
+                          </button>
+                          <button
+                            className="rounded border px-2 py-1 text-xs hover:bg-slate-50"
+                            type="button"
+                            onClick={async () => {
+                              await actions.taskAction(t.id, 'start');
+                              await actions.loadProject(slug);
+                            }}
+                          >
+                            Start
+                          </button>
+                          <button
+                            className="rounded border px-2 py-1 text-xs hover:bg-slate-50"
+                            type="button"
+                            onClick={async () => {
+                              await actions.taskAction(t.id, 'complete');
+                              await actions.loadProject(slug);
+                            }}
+                          >
+                            Complete
+                          </button>
+
+                          <Link
+                            className="rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
+                            href={`/projects/${slug}/proposals/new?file=${encodeURIComponent(t.filePath || selectedFile?.path || 'README.md')}&taskId=${encodeURIComponent(t.id)}`}
+                          >
+                            Propose from task
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                    {tasks.length === 0 ? <div className="text-sm text-slate-600">No tasks yet</div> : null}
+                  </div>
                 </Card>
 
                 <Card title="Join as Agent (external)">

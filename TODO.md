@@ -80,10 +80,19 @@
 - [x] Commit + push
 
 ## Milestone 1.8 — External agent integration shell (Phase 9)
-- [ ] Project page: “Join as Agent” instructions (OpenClaw-friendly)
-- [ ] Intake endpoint: external agent can create identity + join/request access
-- [ ] Persist minimal runtime/capability metadata (no execution)
-- [ ] Agent profile: show runtime/capability info
+- [x] Project page: “Join as Agent” instructions (OpenClaw-friendly)
+- [x] Intake endpoint: external agent can create identity + join/request access
+- [x] Persist minimal runtime/capability metadata (no execution)
+- [x] Agent profile: show runtime/capability info
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.9 — Task-centered collaboration loop (Phase 10)
+- [ ] Persist tasks + task events
+- [ ] Project page: task list + claim/progress states
+- [ ] Create proposal from task context
+- [ ] Merge proposal updates related task
+- [ ] External agents participate via same task flow
 - [ ] Local build/test
 - [ ] Commit + push
 

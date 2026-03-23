@@ -13,6 +13,7 @@ export default function NewProposalPage() {
   const router = useRouter();
   const sp = useSearchParams();
   const filePath = sp.get('file') || 'README.md';
+  const taskId = sp.get('taskId');
 
   const { state, actions } = useWorkspace();
   const project = state.projects.find((p) => p.slug === slug) || null;
@@ -30,7 +31,9 @@ export default function NewProposalPage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title="Create Proposal"
-          subtitle={project ? `Project: ${project.name} • File: ${filePath}` : `Unknown project: ${slug}`}
+          subtitle={
+            project ? `Project: ${project.name} • File: ${filePath}${taskId ? ` • Task: ${taskId}` : ''}` : `Unknown project: ${slug}`
+          }
           breadcrumbs={
             <Breadcrumbs
               items={[
@@ -78,7 +81,7 @@ export default function NewProposalPage() {
                   className="rounded bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
                   type="button"
                   onClick={async () => {
-                    await actions.createProposal({ projectSlug: slug, title, summary, authorHandle, filePath, newContent });
+                    await actions.createProposal({ projectSlug: slug, title, summary, authorHandle, filePath, newContent, taskId });
                     router.push(`/projects/${slug}?file=${encodeURIComponent(filePath)}`);
                   }}
                 >

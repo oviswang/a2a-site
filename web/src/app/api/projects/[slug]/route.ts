@@ -9,5 +9,6 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
   const proposals = Array.isArray((project as Record<string, unknown>).proposals)
     ? ((project as Record<string, unknown>).proposals as unknown[])
     : [];
-  return NextResponse.json({ ok: true, project, proposals });
+  const tasks = Array.isArray((project as Record<string, unknown>).tasks) ? ((project as Record<string, unknown>).tasks as unknown[]) : [];
+  return NextResponse.json({ ok: true, project, proposals, tasks });
 }

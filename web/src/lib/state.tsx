@@ -41,6 +41,19 @@ export type WorkspaceProject = {
   joinRequests: WorkspaceJoinRequest[];
 };
 
+export type WorkspaceTask = {
+  id: string;
+  projectSlug: string;
+  title: string;
+  description: string;
+  status: 'open' | 'claimed' | 'in_progress' | 'completed' | string;
+  claimedByHandle: string | null;
+  claimedByType: 'human' | 'agent' | null;
+  createdAt: string;
+  updatedAt: string;
+  filePath: string | null;
+};
+
 export type WorkspaceProposal = {
   id: string;
   projectSlug: string;
@@ -52,6 +65,7 @@ export type WorkspaceProposal = {
   summary: string;
   filePath: string;
   newContent: string;
+  taskId?: string | null;
   lastReview?: {
     action: string;
     actorHandle: string | null;
@@ -75,6 +89,7 @@ type WorkspaceState = {
   actor: ActingUser;
   identities: WorkspaceIdentity[];
   projects: WorkspaceProject[];
+  tasksByProject: Record<string, WorkspaceTask[]>;
   proposalsByProject: Record<string, WorkspaceProposal[]>;
   proposalsById: Record<string, WorkspaceProposal>;
   loading: boolean;
@@ -91,6 +106,8 @@ const Ctx = createContext<{
     createAgentIdentity: (args: { handle: string; displayName?: string }) => Promise<WorkspaceIdentity | null>;
     claimAgentIdentity: (handle: string) => Promise<WorkspaceIdentity | null>;
     createProject: (args: { name: string; slug?: string; summary: string; visibility: 'open' | 'restricted' }) => Promise<WorkspaceProject | null>;
+    createTask: (args: { projectSlug: string; title: string; description?: string; filePath?: string | null }) => Promise<WorkspaceTask | null>;
+    taskAction: (taskId: string, action: 'claim' | 'unclaim' | 'start' | 'complete') => Promise<boolean>;
     joinProject: (projectSlug: string) => Promise<{ mode: string } | null>;
     reviewJoinRequest: (requestId: string, action: 'approve' | 'reject') => Promise<boolean>;
     createProposal: (args: {
@@ -100,6 +117,7 @@ const Ctx = createContext<{
       authorHandle: string;
       filePath: string;
       newContent: string;
+      taskId?: string | null;
     }) => Promise<WorkspaceProposal | null>;
     proposalAction: (id: string, action: 'approve' | 'request_changes' | 'reject' | 'merge') => Promise<WorkspaceProposal | null>;
     loadProposal: (id: string) => Promise<WorkspaceProposal | null>;
@@ -117,6 +135,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     actor: { handle: 'local-human', actorType: 'human' },
     identities: [],
     projects: [],
+    tasksByProject: {},
     proposalsByProject: {},
     proposalsById: {},
     loading: true,
@@ -187,7 +206,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   async function loadProject(slug: string) {
     try {
       const res = await fetch(`/api/projects/${encodeURIComponent(slug)}`, { cache: 'no-store' });
-      const data = await json<{ ok: boolean; project: WorkspaceProject; proposals: WorkspaceProposal[] }>(res);
+      const data = await json<{ ok: boolean; project: WorkspaceProject; proposals: WorkspaceProposal[]; tasks: WorkspaceTask[] }>(res);
 
       setState((s) => {
         const projects = s.projects.some((p) => p.slug === slug)
@@ -200,6 +219,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         return {
           ...s,
           projects,
+          tasksByProject: { ...s.tasksByProject, [slug]: data.tasks || [] },
           proposalsByProject: { ...s.proposalsByProject, [slug]: data.proposals || [] },
           proposalsById,
         };
@@ -221,6 +241,40 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       return data.project;
     } catch {
       return null;
+    }
+  }
+
+  async function createTask(args: { projectSlug: string; title: string; description?: string; filePath?: string | null }) {
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(args.projectSlug)}/tasks`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...args,
+          actorHandle: state.actor.handle,
+          actorType: state.actor.actorType,
+        }),
+      });
+      const data = await json<{ ok: boolean; task: WorkspaceTask }>(res);
+      await loadProject(args.projectSlug);
+      return data.task;
+    } catch {
+      return null;
+    }
+  }
+
+  async function taskAction(taskId: string, action: 'claim' | 'unclaim' | 'start' | 'complete') {
+    try {
+      const res = await fetch(`/api/tasks/${encodeURIComponent(taskId)}/action`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action, actorHandle: state.actor.handle, actorType: state.actor.actorType }),
+      });
+      const data = await json<{ ok: boolean }>(res);
+      // We don't know which project without lookup; cheapest is refreshProjects + rely on per-page loadProject.
+      return !!data.ok;
+    } catch {
+      return false;
     }
   }
 
@@ -262,6 +316,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     authorHandle: string;
     filePath: string;
     newContent: string;
+    taskId?: string | null;
   }) {
     try {
       const res = await fetch(`/api/projects/${encodeURIComponent(args.projectSlug)}/proposals`, {
@@ -357,6 +412,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       refreshProjects,
       loadProject,
       createProject,
+      createTask,
+      taskAction,
       joinProject,
       reviewJoinRequest,
       createProposal,

@@ -109,6 +109,32 @@ CREATE TABLE IF NOT EXISTS agent_runtime (
   last_seen TEXT NOT NULL,
   FOREIGN KEY(agent_handle) REFERENCES identities(handle) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id TEXT PRIMARY KEY,
+  project_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  status TEXT NOT NULL,
+  claimed_by_handle TEXT,
+  claimed_by_type TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  file_path TEXT,
+  FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS task_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id TEXT NOT NULL,
+  ts TEXT NOT NULL,
+  actor_handle TEXT,
+  actor_type TEXT,
+  kind TEXT NOT NULL,
+  note TEXT,
+  proposal_id TEXT,
+  FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
 `);
 
   // Lightweight migrations for additive columns.
@@ -117,6 +143,9 @@ CREATE TABLE IF NOT EXISTS agent_runtime (
 
   if (hasCol('proposals', 'id') && !hasCol('proposals', 'author_type')) {
     db.exec(`ALTER TABLE proposals ADD COLUMN author_type TEXT NOT NULL DEFAULT 'human'`);
+  }
+  if (hasCol('proposals', 'id') && !hasCol('proposals', 'task_id')) {
+    db.exec(`ALTER TABLE proposals ADD COLUMN task_id TEXT`);
   }
 
   if (hasCol('reviews', 'id') && !hasCol('reviews', 'actor_handle')) {
