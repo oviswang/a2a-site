@@ -93,6 +93,15 @@ CREATE TABLE IF NOT EXISTS join_requests (
   UNIQUE(project_id, member_handle),
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS identities (
+  handle TEXT PRIMARY KEY,
+  identity_type TEXT NOT NULL,
+  display_name TEXT,
+  owner_handle TEXT,
+  claim_state TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
 `);
 
   // Lightweight migrations for additive columns.

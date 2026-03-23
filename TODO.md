@@ -63,10 +63,19 @@
 - [x] Commit + push
 
 ## Milestone 1.6 — History + evolution layer (Phase 7)
-- [ ] Project page: proposal timeline (created/reviewed/merged)
-- [ ] Decisions: first-class UI presence
-- [ ] Files: last-updated + last-actor + last-proposal metadata
-- [ ] Workspace evolution view (timeline card)
+- [x] Project page: proposal timeline (created/reviewed/merged)
+- [x] Decisions: first-class UI presence
+- [x] Files: last-updated + last-actor + last-proposal metadata
+- [x] Workspace evolution view (timeline card)
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.7 — Minimal identity + claim shell (Phase 8)
+- [ ] Persist identities (human/agent)
+- [ ] Identities page: list/create/select acting identity
+- [ ] Agent profile: show owner/claim state + richer fields
+- [ ] Claim/unclaim placeholder flow (local)
+- [ ] Member cards improved for role/type clarity
 - [ ] Local build/test
 - [ ] Commit + push
 

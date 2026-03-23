@@ -7,6 +7,9 @@ export type MemberType = 'human' | 'agent';
 export type MemberRole = 'owner' | 'maintainer' | 'contributor';
 export type JoinRequestStatus = 'pending' | 'approved' | 'rejected';
 
+export type IdentityType = MemberType;
+export type ClaimState = 'unclaimed' | 'claimed';
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -193,6 +196,7 @@ export function createProject(args: { name: string; slug?: string; summary: stri
   if (!slug) throw new Error('invalid_slug');
 
   const now = nowIso();
+  ensureIdentity(args.actorHandle, args.actorType);
   const tx = db.transaction(() => {
     const info = db
       .prepare('INSERT INTO projects (slug, name, summary, visibility, tags_json, created_at) VALUES (?, ?, ?, ?, ?, ?)')
@@ -245,6 +249,8 @@ export function createProposal(args: {
 
   const id = `p-${Math.random().toString(16).slice(2, 6)}${Date.now().toString(16).slice(-4)}`;
   const created = nowIso().slice(0, 10);
+
+  ensureIdentity(args.authorHandle || 'baseline', args.authorType);
 
   db.prepare(
     'INSERT INTO proposals (id, project_id, title, author_handle, author_type, created_at, status, summary, file_path, new_content) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -305,6 +311,7 @@ export function proposalAction(args: {
   const now = nowIso();
   const actorHandle = args.actorHandle || 'reviewer';
   const actorType = args.actorType === 'agent' ? 'agent' : 'human';
+  ensureIdentity(actorHandle, actorType);
 
   const tx = db.transaction(() => {
     if (args.action === 'approve') {
@@ -402,6 +409,7 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
   if (!p) throw new Error('project_not_found');
 
   const now = nowIso();
+  ensureIdentity(args.actorHandle, args.actorType);
 
   // Already a member?
   const existing = db
@@ -466,4 +474,105 @@ export function reviewJoinRequest(args: {
 
   tx();
   return { ok: true };
+}
+
+export type Identity = {
+  handle: string;
+  identityType: IdentityType;
+  displayName: string | null;
+  ownerHandle: string | null;
+  claimState: ClaimState;
+  createdAt: string;
+};
+
+function ensureIdentity(handle: string, identityType: IdentityType) {
+  const db = getDb();
+  const now = nowIso();
+  db.prepare(
+    'INSERT INTO identities (handle, identity_type, display_name, owner_handle, claim_state, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(handle) DO NOTHING'
+  ).run(handle, identityType, null, null, identityType === 'agent' ? 'unclaimed' : 'claimed', now);
+}
+
+export function listIdentities(): Identity[] {
+  const db = getDb();
+
+  // Ensure defaults exist.
+  ensureIdentity('local-human', 'human');
+  ensureIdentity('local-agent', 'agent');
+
+  const rows = db
+    .prepare('SELECT handle, identity_type, display_name, owner_handle, claim_state, created_at FROM identities ORDER BY created_at DESC')
+    .all() as Array<{
+    handle: string;
+    identity_type: string;
+    display_name: string | null;
+    owner_handle: string | null;
+    claim_state: string;
+    created_at: string;
+  }>;
+
+  return rows.map((r) => ({
+    handle: r.handle,
+    identityType: r.identity_type === 'agent' ? 'agent' : 'human',
+    displayName: r.display_name ?? null,
+    ownerHandle: r.owner_handle ?? null,
+    claimState: r.claim_state === 'claimed' ? 'claimed' : 'unclaimed',
+    createdAt: r.created_at,
+  }));
+}
+
+export function getIdentity(handle: string): Identity | null {
+  const db = getDb();
+  const r = db
+    .prepare('SELECT handle, identity_type, display_name, owner_handle, claim_state, created_at FROM identities WHERE handle=?')
+    .get(handle) as
+    | {
+        handle: string;
+        identity_type: string;
+        display_name: string | null;
+        owner_handle: string | null;
+        claim_state: string;
+        created_at: string;
+      }
+    | undefined;
+  if (!r) return null;
+  return {
+    handle: r.handle,
+    identityType: r.identity_type === 'agent' ? 'agent' : 'human',
+    displayName: r.display_name ?? null,
+    ownerHandle: r.owner_handle ?? null,
+    claimState: r.claim_state === 'claimed' ? 'claimed' : 'unclaimed',
+    createdAt: r.created_at,
+  };
+}
+
+export function createAgentIdentity(args: { handle: string; displayName?: string | null }) {
+  const db = getDb();
+  const now = nowIso();
+  const handle = slugify(args.handle).replace(/-/g, '_');
+  if (!handle) throw new Error('invalid_handle');
+
+  db.prepare('INSERT INTO identities (handle, identity_type, display_name, owner_handle, claim_state, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+    handle,
+    'agent',
+    args.displayName || null,
+    null,
+    'unclaimed',
+    now
+  );
+
+  return getIdentity(handle);
+}
+
+export function claimAgentIdentity(args: { handle: string; ownerHandle: string }) {
+  const db = getDb();
+  const id = getIdentity(args.handle);
+  if (!id) throw new Error('identity_not_found');
+  if (id.identityType !== 'agent') throw new Error('not_an_agent');
+
+  ensureIdentity(args.ownerHandle, 'human');
+
+  db.prepare('UPDATE identities SET claim_state=?, owner_handle=? WHERE handle=?').run('claimed', args.ownerHandle, args.handle);
+
+  return getIdentity(args.handle);
 }

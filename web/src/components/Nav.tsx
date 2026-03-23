@@ -7,6 +7,7 @@ import { useWorkspace } from '@/lib/state';
 const nav = [
   { href: '/', label: 'Home' },
   { href: '/projects', label: 'Projects' },
+  { href: '/identities', label: 'Identities' },
 ];
 
 export function Nav() {

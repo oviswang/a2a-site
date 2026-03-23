@@ -62,8 +62,18 @@ export type WorkspaceProposal = {
 
 export type ActingUser = { handle: string; actorType: 'human' | 'agent' };
 
+export type WorkspaceIdentity = {
+  handle: string;
+  identityType: 'human' | 'agent';
+  displayName: string | null;
+  ownerHandle: string | null;
+  claimState: 'unclaimed' | 'claimed';
+  createdAt: string;
+};
+
 type WorkspaceState = {
   actor: ActingUser;
+  identities: WorkspaceIdentity[];
   projects: WorkspaceProject[];
   proposalsByProject: Record<string, WorkspaceProposal[]>;
   proposalsById: Record<string, WorkspaceProposal>;
@@ -77,6 +87,9 @@ const Ctx = createContext<{
     refreshProjects: () => Promise<void>;
     loadProject: (slug: string) => Promise<void>;
     setActor: (actor: ActingUser) => void;
+    refreshIdentities: () => Promise<void>;
+    createAgentIdentity: (args: { handle: string; displayName?: string }) => Promise<WorkspaceIdentity | null>;
+    claimAgentIdentity: (handle: string) => Promise<WorkspaceIdentity | null>;
     createProject: (args: { name: string; slug?: string; summary: string; visibility: 'open' | 'restricted' }) => Promise<WorkspaceProject | null>;
     joinProject: (projectSlug: string) => Promise<{ mode: string } | null>;
     reviewJoinRequest: (requestId: string, action: 'approve' | 'reject') => Promise<boolean>;
@@ -102,6 +115,7 @@ async function json<T>(res: Response): Promise<T> {
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<WorkspaceState>({
     actor: { handle: 'local-human', actorType: 'human' },
+    identities: [],
     projects: [],
     proposalsByProject: {},
     proposalsById: {},
@@ -110,7 +124,52 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   });
 
   function setActor(actor: ActingUser) {
+    try {
+      localStorage.setItem('a2a_site_actor', JSON.stringify(actor));
+    } catch {
+      // ignore
+    }
     setState((s) => ({ ...s, actor }));
+  }
+
+  async function refreshIdentities() {
+    try {
+      const res = await fetch('/api/identities', { cache: 'no-store' });
+      const data = await json<{ ok: boolean; identities: WorkspaceIdentity[] }>(res);
+      setState((s) => ({ ...s, identities: data.identities || [] }));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function createAgentIdentity(args: { handle: string; displayName?: string }) {
+    try {
+      const res = await fetch('/api/identities', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(args),
+      });
+      const data = await json<{ ok: boolean; identity: WorkspaceIdentity }>(res);
+      await refreshIdentities();
+      return data.identity;
+    } catch {
+      return null;
+    }
+  }
+
+  async function claimAgentIdentity(handle: string) {
+    try {
+      const res = await fetch(`/api/identities/${encodeURIComponent(handle)}/claim`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ownerHandle: state.actor.handle }),
+      });
+      const data = await json<{ ok: boolean; identity: WorkspaceIdentity }>(res);
+      await refreshIdentities();
+      return data.identity;
+    } catch {
+      return null;
+    }
   }
 
   async function refreshProjects() {
@@ -271,13 +330,39 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    try {
+      const raw = localStorage.getItem('a2a_site_actor');
+      if (raw) {
+        const parsed = JSON.parse(raw) as ActingUser;
+        if (parsed?.handle && (parsed.actorType === 'human' || parsed.actorType === 'agent')) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setState((s) => ({ ...s, actor: parsed }));
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     refreshProjects();
+    refreshIdentities();
   }, []);
 
   const api = {
     state,
-    actions: { setActor, refreshProjects, loadProject, createProject, joinProject, reviewJoinRequest, createProposal, proposalAction, loadProposal },
+    actions: {
+      setActor,
+      refreshIdentities,
+      createAgentIdentity,
+      claimAgentIdentity,
+      refreshProjects,
+      loadProject,
+      createProject,
+      joinProject,
+      reviewJoinRequest,
+      createProposal,
+      proposalAction,
+      loadProposal,
+    },
   };
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
