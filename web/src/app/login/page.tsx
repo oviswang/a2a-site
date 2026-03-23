@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
@@ -9,6 +10,7 @@ import { useWorkspace } from '@/lib/state';
 type User = { id: number; handle: string; displayName: string | null; createdAt: string };
 
 export default function LoginPage() {
+  const router = useRouter();
   const { state, actions } = useWorkspace();
   const [users, setUsers] = useState<User[]>([]);
 
@@ -63,6 +65,7 @@ export default function LoginPage() {
                   if (prefType && prefHandle) {
                     actions.setActor({ handle: String(prefHandle), actorType: prefType === 'agent' ? 'agent' : 'human' });
                   }
+                  router.push('/start');
                 }}
               >
                 <div>

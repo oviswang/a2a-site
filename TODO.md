@@ -264,6 +264,14 @@
 - [x] Local build/test
 - [x] Commit + push
 
+## Milestone 1.31 — Onboarding + project creation completion
+- [x] /start onboarding page (first-run)
+- [x] Login handoff into onboarding
+- [x] /projects/new guided wizard + correct persistence wording
+- [x] Empty state next-step guidance polish
+- [x] Local build/test
+- [ ] Commit + push
+
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
 - [ ] Set cache headers for `/skill.md` and `/release.json`
