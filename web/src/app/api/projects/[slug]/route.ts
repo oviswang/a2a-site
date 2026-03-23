@@ -5,5 +5,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
   const { slug } = await params;
   const project = getProject(slug);
   if (!project) return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
-  return NextResponse.json({ ok: true, project });
+  // Keep `proposals` as a top-level field for the client store.
+  const proposals = Array.isArray((project as Record<string, unknown>).proposals)
+    ? ((project as Record<string, unknown>).proposals as unknown[])
+    : [];
+  return NextResponse.json({ ok: true, project, proposals });
 }

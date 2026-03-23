@@ -109,7 +109,15 @@ export default function ProposalReviewPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Author</span>
-                    <span>@{pr.authorHandle}</span>
+                    <span>
+                      @{pr.authorHandle} <span className="text-xs text-slate-600">({pr.authorType})</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600">Reviewer (acting)</span>
+                    <span className="font-mono text-xs">
+                      @{state.actor.handle} <span className="text-slate-600">({state.actor.actorType})</span>
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Created</span>

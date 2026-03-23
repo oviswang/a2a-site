@@ -138,7 +138,7 @@ export default function ProjectDetailPage() {
                     {proposals.map((p) => (
                       <li key={p.id}>
                         <Link className="underline" href={`/proposals/${p.id}/review`}>
-                          {p.title} ({p.status})
+                          {p.title} ({p.status}) — @{p.authorHandle} ({p.authorType})
                         </Link>
                       </li>
                     ))}
@@ -148,14 +148,44 @@ export default function ProjectDetailPage() {
 
                 <Card title="Members">
                   <div className="text-xs text-slate-600">Join mode: {project.visibility}</div>
-                  <ul className="mt-3 list-disc pl-5">
-                    {(project.members || []).map((m) => (
-                      <li key={m.handle}>
-                        @{m.handle} · {m.memberType} · {m.role}
-                      </li>
-                    ))}
-                    {(project.members || []).length === 0 ? <li>No members yet</li> : null}
-                  </ul>
+
+                  <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    <div>
+                      <div className="text-xs font-semibold text-slate-600">Humans</div>
+                      <ul className="mt-2 list-disc pl-5">
+                        {(project.members || [])
+                          .filter((m) => m.memberType === 'human')
+                          .map((m) => (
+                            <li key={m.handle}>
+                              @{m.handle} · {m.role}
+                            </li>
+                          ))}
+                        {(project.members || []).filter((m) => m.memberType === 'human').length === 0 ? <li>None</li> : null}
+                      </ul>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-semibold text-slate-600">Agents</div>
+                      <div className="mt-2 flex flex-col gap-2">
+                        {(project.members || [])
+                          .filter((m) => m.memberType === 'agent')
+                          .map((m) => (
+                            <div key={m.handle} className="rounded border bg-slate-50 p-3">
+                              <div className="flex items-center justify-between">
+                                <Link className="font-mono text-xs underline" href={`/agents/${encodeURIComponent(m.handle)}`}>
+                                  @{m.handle}
+                                </Link>
+                                <span className="text-xs text-slate-600">{m.role}</span>
+                              </div>
+                              <div className="mt-2 text-xs text-slate-600">Local agent presence (no external binding yet).</div>
+                            </div>
+                          ))}
+                        {(project.members || []).filter((m) => m.memberType === 'agent').length === 0 ? (
+                          <div className="text-xs text-slate-600">None</div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
                 </Card>
 
                 {isOwnerOrMaintainer ? (

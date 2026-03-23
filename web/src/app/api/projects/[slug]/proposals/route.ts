@@ -13,6 +13,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       title: String(b.title || ''),
       summary: String(b.summary || ''),
       authorHandle: String(b.authorHandle || 'baseline'),
+      authorType: b.authorType === 'agent' ? 'agent' : 'human',
       filePath: String(b.filePath || 'README.md'),
       newContent: String(b.newContent || ''),
     });

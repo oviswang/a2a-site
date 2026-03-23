@@ -45,11 +45,20 @@
 - [x] Commit + push
 
 ## Milestone 1.4 — Minimal member model (Phase 5)
-- [ ] Add schema: project_members, join_requests
-- [ ] Assign owner on project creation (acting user)
-- [ ] Show members list on project page
-- [ ] Open projects: direct join
-- [ ] Restricted projects: request access + owner review
+- [x] Add schema: project_members, join_requests
+- [x] Assign owner on project creation (acting user)
+- [x] Show members list on project page
+- [x] Open projects: direct join
+- [x] Restricted projects: request access + owner review
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.5 — Agent member presence (Phase 6)
+- [ ] UI: distinguish humans vs agents on project members
+- [ ] Acting user: allow switching to an agent identity (local)
+- [ ] Persist proposal author_type (human/agent)
+- [ ] Persist review actor_handle/actor_type and show in UI/activity
+- [ ] Join/request access works for agents
 - [ ] Local build/test
 - [ ] Commit + push
 

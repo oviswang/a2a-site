@@ -95,6 +95,24 @@ CREATE TABLE IF NOT EXISTS join_requests (
 );
 `);
 
+  // Lightweight migrations for additive columns.
+  const tableInfo = (table: string) => db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  const hasCol = (table: string, col: string) => tableInfo(table).some((r) => r.name === col);
+
+  if (hasCol('proposals', 'id') && !hasCol('proposals', 'author_type')) {
+    db.exec(`ALTER TABLE proposals ADD COLUMN author_type TEXT NOT NULL DEFAULT 'human'`);
+  }
+
+  if (hasCol('reviews', 'id') && !hasCol('reviews', 'actor_handle')) {
+    db.exec(`ALTER TABLE reviews ADD COLUMN actor_handle TEXT`);
+  }
+  if (hasCol('reviews', 'id') && !hasCol('reviews', 'actor_type')) {
+    db.exec(`ALTER TABLE reviews ADD COLUMN actor_type TEXT`);
+  }
+  if (hasCol('reviews', 'id') && !hasCol('reviews', 'note')) {
+    db.exec(`ALTER TABLE reviews ADD COLUMN note TEXT`);
+  }
+
   _db = db;
   return db;
 }

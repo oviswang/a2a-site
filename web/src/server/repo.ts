@@ -37,6 +37,7 @@ type ProposalRow = {
   project_id: number;
   title: string;
   author_handle: string;
+  author_type?: string;
   created_at: string;
   status: string;
   summary: string;
@@ -96,11 +97,12 @@ export function getProject(slug: string) {
     .all(p.id) as FileRow[]).map((f) => ({ path: f.path, content: f.content, updatedAt: f.updated_at }));
 
   const proposals = (db
-    .prepare('SELECT id, title, author_handle, created_at, status, summary, file_path FROM proposals WHERE project_id=? ORDER BY created_at DESC')
-    .all(p.id) as Array<Pick<ProposalRow, 'id' | 'title' | 'author_handle' | 'created_at' | 'status' | 'summary' | 'file_path'>>).map((pr) => ({
+    .prepare('SELECT id, title, author_handle, author_type, created_at, status, summary, file_path FROM proposals WHERE project_id=? ORDER BY created_at DESC')
+    .all(p.id) as Array<Pick<ProposalRow, 'id' | 'title' | 'author_handle' | 'author_type' | 'created_at' | 'status' | 'summary' | 'file_path'>>).map((pr) => ({
     id: pr.id,
     title: pr.title,
     authorHandle: pr.author_handle,
+    authorType: (pr.author_type === 'agent' ? 'agent' : 'human') as MemberType,
     createdAt: pr.created_at,
     status: pr.status as ProposalStatus,
     summary: pr.summary,
@@ -195,6 +197,7 @@ export function createProposal(args: {
   title: string;
   summary: string;
   authorHandle: string;
+  authorType: MemberType;
   filePath: string;
   newContent: string;
 }) {
@@ -206,12 +209,13 @@ export function createProposal(args: {
   const created = nowIso().slice(0, 10);
 
   db.prepare(
-    'INSERT INTO proposals (id, project_id, title, author_handle, created_at, status, summary, file_path, new_content) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO proposals (id, project_id, title, author_handle, author_type, created_at, status, summary, file_path, new_content) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(
     id,
     p.id,
     args.title.trim() || 'Untitled proposal',
     args.authorHandle || 'baseline',
+    args.authorType === 'agent' ? 'agent' : 'human',
     created,
     'needs_review',
     args.summary.trim() || 'No summary',
@@ -227,7 +231,7 @@ export function createProposal(args: {
 export function getProposal(id: string) {
   const db = getDb();
   const pr = db
-    .prepare('SELECT id, project_id, title, author_handle, created_at, status, summary, file_path, new_content FROM proposals WHERE id=?')
+    .prepare('SELECT id, project_id, title, author_handle, author_type, created_at, status, summary, file_path, new_content FROM proposals WHERE id=?')
     .get(id) as ProposalRow | undefined;
   if (!pr) return null;
 
@@ -238,6 +242,7 @@ export function getProposal(id: string) {
     projectSlug: project?.slug || 'unknown',
     title: pr.title,
     authorHandle: pr.author_handle,
+    authorType: (pr.author_type === 'agent' ? 'agent' : 'human') as MemberType,
     createdAt: pr.created_at,
     status: pr.status as ProposalStatus,
     summary: pr.summary,
@@ -246,7 +251,13 @@ export function getProposal(id: string) {
   };
 }
 
-export function proposalAction(args: { id: string; action: 'approve' | 'request_changes' | 'reject' | 'merge'; actorHandle?: string; note?: string }) {
+export function proposalAction(args: {
+  id: string;
+  action: 'approve' | 'request_changes' | 'reject' | 'merge';
+  actorHandle?: string;
+  actorType?: MemberType;
+  note?: string;
+}) {
   const db = getDb();
   const prRow = db
     .prepare('SELECT id, project_id, file_path, new_content, status FROM proposals WHERE id=?')
@@ -254,24 +265,59 @@ export function proposalAction(args: { id: string; action: 'approve' | 'request_
   if (!prRow) throw new Error('proposal_not_found');
 
   const now = nowIso();
+  const actorHandle = args.actorHandle || 'reviewer';
+  const actorType = args.actorType === 'agent' ? 'agent' : 'human';
 
   const tx = db.transaction(() => {
     if (args.action === 'approve') {
       db.prepare('UPDATE proposals SET status=? WHERE id=?').run('approved', args.id);
-      db.prepare('INSERT INTO reviews (proposal_id, action, created_at) VALUES (?, ?, ?)').run(args.id, 'approve', now);
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(prRow.project_id, now, `Proposal approved: ${args.id}`);
+      db.prepare('INSERT INTO reviews (proposal_id, action, actor_handle, actor_type, note, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+        args.id,
+        'approve',
+        actorHandle,
+        actorType,
+        args.note || null,
+        now
+      );
+      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
+        prRow.project_id,
+        now,
+        `Proposal approved: ${args.id} by @${actorHandle} (${actorType})`
+      );
     }
 
     if (args.action === 'request_changes') {
       db.prepare('UPDATE proposals SET status=? WHERE id=?').run('changes_requested', args.id);
-      db.prepare('INSERT INTO reviews (proposal_id, action, created_at) VALUES (?, ?, ?)').run(args.id, 'request_changes', now);
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(prRow.project_id, now, `Changes requested: ${args.id}`);
+      db.prepare('INSERT INTO reviews (proposal_id, action, actor_handle, actor_type, note, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+        args.id,
+        'request_changes',
+        actorHandle,
+        actorType,
+        args.note || null,
+        now
+      );
+      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
+        prRow.project_id,
+        now,
+        `Changes requested: ${args.id} by @${actorHandle} (${actorType})`
+      );
     }
 
     if (args.action === 'reject') {
       db.prepare('UPDATE proposals SET status=? WHERE id=?').run('rejected', args.id);
-      db.prepare('INSERT INTO reviews (proposal_id, action, created_at) VALUES (?, ?, ?)').run(args.id, 'reject', now);
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(prRow.project_id, now, `Proposal rejected: ${args.id}`);
+      db.prepare('INSERT INTO reviews (proposal_id, action, actor_handle, actor_type, note, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+        args.id,
+        'reject',
+        actorHandle,
+        actorType,
+        args.note || null,
+        now
+      );
+      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
+        prRow.project_id,
+        now,
+        `Proposal rejected: ${args.id} by @${actorHandle} (${actorType})`
+      );
     }
 
     if (args.action === 'merge') {
@@ -284,8 +330,19 @@ export function proposalAction(args: { id: string; action: 'approve' | 'request_
       ).run(prRow.project_id, prRow.file_path, prRow.new_content, now);
 
       db.prepare('UPDATE proposals SET status=? WHERE id=?').run('merged', args.id);
-      db.prepare('INSERT INTO reviews (proposal_id, action, created_at) VALUES (?, ?, ?)').run(args.id, 'merge', now);
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(prRow.project_id, now, `Merged ${args.id} into ${prRow.file_path}`);
+      db.prepare('INSERT INTO reviews (proposal_id, action, actor_handle, actor_type, note, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+        args.id,
+        'merge',
+        actorHandle,
+        actorType,
+        args.note || null,
+        now
+      );
+      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
+        prRow.project_id,
+        now,
+        `Merged ${args.id} into ${prRow.file_path} by @${actorHandle} (${actorType})`
+      );
     }
   });
 

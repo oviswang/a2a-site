@@ -16,6 +16,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const proposal = proposalAction({
       id,
       action: action as 'approve' | 'request_changes' | 'reject' | 'merge',
+      actorHandle: b.actorHandle ? String(b.actorHandle) : undefined,
+      actorType: b.actorType === 'agent' ? 'agent' : 'human',
+      note: b.note ? String(b.note) : undefined,
     });
 
     return NextResponse.json({ ok: true, proposal });

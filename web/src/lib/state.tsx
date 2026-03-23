@@ -43,6 +43,7 @@ export type WorkspaceProposal = {
   projectSlug: string;
   title: string;
   authorHandle: string;
+  authorType: 'human' | 'agent';
   createdAt: string;
   status: 'needs_review' | 'approved' | 'changes_requested' | 'rejected' | 'merged';
   summary: string;
@@ -66,6 +67,7 @@ const Ctx = createContext<{
   actions: {
     refreshProjects: () => Promise<void>;
     loadProject: (slug: string) => Promise<void>;
+    setActor: (actor: ActingUser) => void;
     createProject: (args: { name: string; slug?: string; summary: string; visibility: 'open' | 'restricted' }) => Promise<WorkspaceProject | null>;
     joinProject: (projectSlug: string) => Promise<{ mode: string } | null>;
     reviewJoinRequest: (requestId: string, action: 'approve' | 'reject') => Promise<boolean>;
@@ -97,6 +99,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     loading: true,
     error: null,
   });
+
+  function setActor(actor: ActingUser) {
+    setState((s) => ({ ...s, actor }));
+  }
 
   async function refreshProjects() {
     setState((s) => ({ ...s, loading: true, error: null }));
@@ -193,7 +199,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(`/api/projects/${encodeURIComponent(args.projectSlug)}/proposals`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(args),
+        body: JSON.stringify({
+          ...args,
+          authorType: agents.some((a) => a.handle === args.authorHandle) ? 'agent' : 'human',
+        }),
       });
       const data = await json<{ ok: boolean; proposal: WorkspaceProposal }>(res);
 
@@ -229,7 +238,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(`/api/proposals/${encodeURIComponent(id)}/action`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, actorHandle: state.actor.handle, actorType: state.actor.actorType }),
       });
       const data = await json<{ ok: boolean; proposal: WorkspaceProposal }>(res);
 
@@ -259,7 +268,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const api = {
     state,
-    actions: { refreshProjects, loadProject, createProject, joinProject, reviewJoinRequest, createProposal, proposalAction, loadProposal },
+    actions: { setActor, refreshProjects, loadProject, createProject, joinProject, reviewJoinRequest, createProposal, proposalAction, loadProposal },
   };
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
