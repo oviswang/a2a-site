@@ -246,7 +246,7 @@
 - [x] Nav/account state consistent
 - [x] Actions clearly operate as signed-in user
 - [x] Local build/test
-- [ ] Commit + push
+- [x] Commit + push
 
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
