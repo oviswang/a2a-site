@@ -279,6 +279,14 @@
 - [x] Local build/test
 - [x] Commit + push
 
+## Milestone 1.33 — Project templates + repeatable creation
+- [x] Built-in templates (general/research/product)
+- [x] Template selection during project creation
+- [x] Template-generated starter structure (files + tasks)
+- [x] Improved “what you get” preview
+- [x] Local build/test
+- [ ] Commit + push
+
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
 - [ ] Set cache headers for `/skill.md` and `/release.json`

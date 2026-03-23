@@ -531,30 +531,90 @@ export function getProject(slug: string) {
   };
 }
 
-export function createProject(args: { name: string; slug?: string; summary: string; visibility: Visibility; actorHandle: string; actorType: MemberType }) {
+export function createProject(args: {
+  name: string;
+  slug?: string;
+  summary: string;
+  visibility: Visibility;
+  actorHandle: string;
+  actorType: MemberType;
+  template?: 'general' | 'research' | 'product';
+}) {
   const db = getDb();
   const slug = args.slug && args.slug.trim() ? slugify(args.slug) : slugify(args.name);
   if (!slug) throw new Error('invalid_slug');
 
   const now = nowIso();
+  const template = args.template || 'general';
   ensureIdentity(args.actorHandle, args.actorType);
   const tx = db.transaction(() => {
     const info = db
       .prepare('INSERT INTO projects (slug, name, summary, visibility, tags_json, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(slug, args.name.trim(), args.summary.trim() || 'No summary', args.visibility, JSON.stringify(['new']), now);
+      .run(
+        slug,
+        args.name.trim(),
+        args.summary.trim() || 'No summary',
+        args.visibility,
+        JSON.stringify(['new', template]),
+        now
+      );
 
     const projectId = Number(info.lastInsertRowid);
 
-    const files = [
+
+    const baseFiles = [
       { path: 'README.md', content: `# ${args.name.trim()}\n\n${(args.summary || '').trim()}\n` },
       { path: 'DECISIONS.md', content: '# Decisions\n\n- (empty)\n' },
       { path: 'TODO.md', content: '# TODO\n\n- (empty)\n' },
     ];
 
+    const templateFiles =
+      template === 'research'
+        ? [
+            { path: 'SPEC.md', content: '# Spec\n\n- Problem\n- Goals\n- Non-goals\n- Approach\n' },
+            { path: 'NOTES.md', content: '# Notes\n\n- (empty)\n' },
+          ]
+        : template === 'product'
+          ? [
+              { path: 'SPEC.md', content: '# Spec\n\n- Problem\n- Goals\n- MVP\n- Risks\n' },
+              { path: 'ROADMAP.md', content: '# Roadmap\n\n- Phase 1\n- Phase 2\n- Phase 3\n' },
+              { path: 'ARCHITECTURE.md', content: '# Architecture\n\n- (empty)\n' },
+            ]
+          : [{ path: 'SCOPE.md', content: '# Scope\n\n- (empty)\n' }];
+
+    const files = [...baseFiles, ...templateFiles];
+
     const ins = db.prepare(
       'INSERT INTO project_files (project_id, path, content, updated_at, last_actor_handle, last_actor_type, last_proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
     for (const f of files) ins.run(projectId, f.path, f.content, now, args.actorHandle, args.actorType, null);
+
+    const starterTasks =
+      template === 'research'
+        ? [
+            { title: 'Define research question', description: 'Clarify what we are trying to learn.' },
+            { title: 'Collect sources', description: 'Links + notes + primary references.' },
+            { title: 'Draft SPEC.md', description: 'Turn findings into a concrete spec.' },
+          ]
+        : template === 'product'
+          ? [
+              { title: 'Define MVP scope', description: 'What is the smallest shippable slice?' },
+              { title: 'Implement Phase 1', description: 'Start building the core loop.' },
+              { title: 'Review & iterate', description: 'Request changes → resubmit → merge.' },
+            ]
+          : [
+              { title: 'Set up initial tasks', description: 'Seed the first meaningful work items.' },
+              { title: 'Create first proposal', description: 'Propose a change to a file in the workspace.' },
+              { title: 'Run a review loop', description: 'Request changes → resubmit → merge.' },
+            ];
+
+    const insTask = db.prepare(
+      'INSERT INTO tasks (id, project_id, title, description, status, claimed_by_handle, claimed_by_type, created_at, updated_at, file_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    );
+    for (const t of starterTasks) {
+      const id = `t-${Math.random().toString(16).slice(2, 6)}${Date.now().toString(16).slice(-4)}`;
+      insTask.run(id, projectId, t.title, t.description, 'open', null, null, now, now, null);
+    }
 
     db.prepare('INSERT INTO project_members (project_id, member_handle, member_type, role, joined_at) VALUES (?, ?, ?, ?, ?)').run(
       projectId,

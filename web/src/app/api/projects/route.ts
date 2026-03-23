@@ -18,6 +18,7 @@ export async function POST(req: Request) {
       visibility: b.visibility === 'restricted' ? 'restricted' : 'open',
       actorHandle: String(b.actorHandle || 'local-human'),
       actorType: b.actorType === 'agent' ? 'agent' : 'human',
+      template: b.template === 'research' ? 'research' : b.template === 'product' ? 'product' : 'general',
     });
 
     return NextResponse.json({ ok: true, project });

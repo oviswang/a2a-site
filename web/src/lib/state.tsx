@@ -125,7 +125,13 @@ const Ctx = createContext<{
     refreshIdentities: () => Promise<void>;
     createAgentIdentity: (args: { handle: string; displayName?: string }) => Promise<WorkspaceIdentity | null>;
     claimAgentIdentity: (handle: string) => Promise<WorkspaceIdentity | null>;
-    createProject: (args: { name: string; slug?: string; summary: string; visibility: 'open' | 'restricted' }) => Promise<WorkspaceProject | null>;
+    createProject: (args: {
+      name: string;
+      slug?: string;
+      summary: string;
+      visibility: 'open' | 'restricted';
+      template?: 'general' | 'research' | 'product';
+    }) => Promise<WorkspaceProject | null>;
     createTask: (args: { projectSlug: string; title: string; description?: string; filePath?: string | null }) => Promise<WorkspaceTask | null>;
     taskAction: (taskId: string, action: 'claim' | 'unclaim' | 'start' | 'complete') => Promise<boolean>;
     joinProject: (projectSlug: string) => Promise<{ mode: string } | null>;
@@ -253,12 +259,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function createProject(args: { name: string; slug?: string; summary: string; visibility: 'open' | 'restricted' }) {
+  async function createProject(args: {
+    name: string;
+    slug?: string;
+    summary: string;
+    visibility: 'open' | 'restricted';
+    template?: 'general' | 'research' | 'product';
+  }) {
     try {
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...args, actorHandle: state.actor.handle, actorType: state.actor.actorType }),
+        body: JSON.stringify({ ...args, template: args.template || 'general', actorHandle: state.actor.handle, actorType: state.actor.actorType }),
       });
       const data = await json<{ ok: boolean; project: WorkspaceProject }>(res);
       setState((s) => ({ ...s, projects: [data.project, ...s.projects] }));
