@@ -11,12 +11,69 @@ export type JoinRequestStatus = 'pending' | 'approved' | 'rejected';
 export type IdentityType = MemberType;
 export type ClaimState = 'unclaimed' | 'claimed';
 
+export type User = {
+  id: number;
+  handle: string;
+  displayName: string | null;
+  createdAt: string;
+};
+
 function nowIso() {
   return new Date().toISOString();
 }
 
 function newToken(bytes = 16) {
   return crypto.randomBytes(bytes).toString('hex');
+}
+
+function normalizeUserHandle(input: string) {
+  return slugify(input).replace(/-/g, '_');
+}
+
+export function listUsers(): User[] {
+  const db = getDb();
+
+  // Ensure at least one default user exists for the minimal identity layer.
+  if (!getUserByHandle('local-human')) {
+    const now = nowIso();
+    db.prepare('INSERT INTO users (handle, display_name, created_at) VALUES (?, ?, ?)').run('local-human', 'Local Human', now);
+    ensureIdentity('local-human', 'human');
+    const u = getUserByHandle('local-human');
+    if (u) db.prepare('UPDATE identities SET user_id=? WHERE handle=?').run(u.id, 'local-human');
+  }
+
+  const rows = db.prepare('SELECT id, handle, display_name, created_at FROM users ORDER BY created_at DESC').all() as Array<{
+    id: number;
+    handle: string;
+    display_name: string | null;
+    created_at: string;
+  }>;
+  return rows.map((r) => ({ id: r.id, handle: r.handle, displayName: r.display_name ?? null, createdAt: r.created_at }));
+}
+
+export function getUserByHandle(handle: string): User | null {
+  const db = getDb();
+  const r = db.prepare('SELECT id, handle, display_name, created_at FROM users WHERE handle=?').get(handle) as
+    | { id: number; handle: string; display_name: string | null; created_at: string }
+    | undefined;
+  if (!r) return null;
+  return { id: r.id, handle: r.handle, displayName: r.display_name ?? null, createdAt: r.created_at };
+}
+
+export function createUser(args: { handle: string; displayName?: string | null }): User {
+  const db = getDb();
+  const now = nowIso();
+  const handle = normalizeUserHandle(args.handle);
+  if (!handle) throw new Error('invalid_handle');
+
+  db.prepare('INSERT INTO users (handle, display_name, created_at) VALUES (?, ?, ?)').run(handle, args.displayName || null, now);
+
+  // Ensure the corresponding human identity exists and is linked.
+  ensureIdentity(handle, 'human');
+  const u = getUserByHandle(handle);
+  if (u) db.prepare('UPDATE identities SET user_id=? WHERE handle=?').run(u.id, handle);
+
+  return u || { id: -1, handle, displayName: args.displayName || null, createdAt: now };
 }
 
 function slugify(input: string) {
@@ -841,6 +898,8 @@ export type Identity = {
   identityType: IdentityType;
   displayName: string | null;
   ownerHandle: string | null;
+  ownerUserId?: number | null;
+  userId?: number | null;
   claimState: ClaimState;
   origin?: 'local' | 'openclaw';
   claimToken?: string | null;
@@ -872,6 +931,10 @@ function ensureIdentity(handle: string, identityType: IdentityType) {
   if (identityType === 'agent') {
     db.prepare('UPDATE identities SET claim_token=COALESCE(claim_token, ?) WHERE handle=?').run(newToken(8), handle);
   }
+  if (identityType === 'human') {
+    const u = getUserByHandle(handle);
+    if (u) db.prepare('UPDATE identities SET user_id=COALESCE(user_id, ?) WHERE handle=?').run(u.id, handle);
+  }
 }
 
 export function listIdentities(): Identity[] {
@@ -882,12 +945,14 @@ export function listIdentities(): Identity[] {
   ensureIdentity('local-agent', 'agent');
 
   const rows = db
-    .prepare('SELECT handle, identity_type, display_name, owner_handle, claim_state, origin, claim_token, binding_token, bound_at, created_at FROM identities ORDER BY created_at DESC')
+    .prepare('SELECT handle, identity_type, display_name, owner_handle, owner_user_id, user_id, claim_state, origin, claim_token, binding_token, bound_at, created_at FROM identities ORDER BY created_at DESC')
     .all() as Array<{
     handle: string;
     identity_type: string;
     display_name: string | null;
     owner_handle: string | null;
+    owner_user_id?: number | null;
+    user_id?: number | null;
     claim_state: string;
     origin?: string | null;
     claim_token?: string | null;
@@ -901,6 +966,8 @@ export function listIdentities(): Identity[] {
     identityType: r.identity_type === 'agent' ? 'agent' : 'human',
     displayName: r.display_name ?? null,
     ownerHandle: r.owner_handle ?? null,
+    ownerUserId: r.owner_user_id ?? null,
+    userId: r.user_id ?? null,
     claimState: r.claim_state === 'claimed' ? 'claimed' : 'unclaimed',
     origin: r.origin === 'openclaw' ? 'openclaw' : 'local',
     claimToken: r.claim_token ?? null,
@@ -913,13 +980,15 @@ export function listIdentities(): Identity[] {
 export function getIdentity(handle: string): Identity | null {
   const db = getDb();
   const r = db
-    .prepare('SELECT handle, identity_type, display_name, owner_handle, claim_state, origin, claim_token, binding_token, bound_at, created_at FROM identities WHERE handle=?')
+    .prepare('SELECT handle, identity_type, display_name, owner_handle, owner_user_id, user_id, claim_state, origin, claim_token, binding_token, bound_at, created_at FROM identities WHERE handle=?')
     .get(handle) as
     | {
         handle: string;
         identity_type: string;
         display_name: string | null;
         owner_handle: string | null;
+        owner_user_id?: number | null;
+        user_id?: number | null;
         claim_state: string;
         origin?: string | null;
         claim_token?: string | null;
@@ -934,6 +1003,8 @@ export function getIdentity(handle: string): Identity | null {
     identityType: r.identity_type === 'agent' ? 'agent' : 'human',
     displayName: r.display_name ?? null,
     ownerHandle: r.owner_handle ?? null,
+    ownerUserId: r.owner_user_id ?? null,
+    userId: r.user_id ?? null,
     claimState: r.claim_state === 'claimed' ? 'claimed' : 'unclaimed',
     origin: r.origin === 'openclaw' ? 'openclaw' : 'local',
     claimToken: r.claim_token ?? null,
@@ -964,7 +1035,15 @@ export function claimAgentIdentity(args: { handle: string; ownerHandle: string }
 
   ensureIdentity(args.ownerHandle, 'human');
 
-  db.prepare('UPDATE identities SET claim_state=?, owner_handle=? WHERE handle=?').run('claimed', args.ownerHandle, args.handle);
+  // Ensure the owning human is grounded in a real user record.
+  const u = getUserByHandle(args.ownerHandle) || createUser({ handle: args.ownerHandle });
+
+  db.prepare('UPDATE identities SET claim_state=?, owner_handle=?, owner_user_id=? WHERE handle=?').run(
+    'claimed',
+    args.ownerHandle,
+    u.id,
+    args.handle
+  );
 
   return getIdentity(args.handle);
 }

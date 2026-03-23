@@ -82,6 +82,8 @@ export type WorkspaceIdentity = {
   identityType: 'human' | 'agent';
   displayName: string | null;
   ownerHandle: string | null;
+  ownerUserId?: number | null;
+  userId?: number | null;
   claimState: 'unclaimed' | 'claimed';
   origin?: 'local' | 'openclaw';
   claimToken?: string | null;

@@ -197,6 +197,15 @@
 - [x] Local build/test
 - [x] Commit + push
 
+## Milestone 1.23 — Minimal real user identity layer
+- [x] Users entity + persistence
+- [x] Human identity ↔ user mapping
+- [x] Acting-user model upgraded (persistent user context)
+- [x] Owner/member actions grounded in user context
+- [x] Agent claim ownership grounded in user ownership
+- [x] Local build/test
+- [ ] Commit + push
+
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
 - [ ] Set cache headers for `/skill.md` and `/release.json`

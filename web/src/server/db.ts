@@ -94,11 +94,20 @@ CREATE TABLE IF NOT EXISTS join_requests (
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  handle TEXT UNIQUE NOT NULL,
+  display_name TEXT,
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS identities (
   handle TEXT PRIMARY KEY,
   identity_type TEXT NOT NULL,
   display_name TEXT,
   owner_handle TEXT,
+  owner_user_id INTEGER,
+  user_id INTEGER,
   claim_state TEXT NOT NULL,
   origin TEXT NOT NULL DEFAULT 'local',
   claim_token TEXT,
@@ -145,6 +154,12 @@ CREATE TABLE IF NOT EXISTS task_events (
   const tableInfo = (table: string) => db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
   const hasCol = (table: string, col: string) => tableInfo(table).some((r) => r.name === col);
 
+  if (hasCol('identities', 'handle') && !hasCol('identities', 'owner_user_id')) {
+    db.exec(`ALTER TABLE identities ADD COLUMN owner_user_id INTEGER`);
+  }
+  if (hasCol('identities', 'handle') && !hasCol('identities', 'user_id')) {
+    db.exec(`ALTER TABLE identities ADD COLUMN user_id INTEGER`);
+  }
   if (hasCol('identities', 'handle') && !hasCol('identities', 'origin')) {
     db.exec(`ALTER TABLE identities ADD COLUMN origin TEXT NOT NULL DEFAULT 'local'`);
   }
