@@ -253,6 +253,32 @@ export function getProject(slug: string) {
     reviewedAt: r.reviewed_at,
   }));
 
+  const invitations = (db
+    .prepare(
+      'SELECT id, invitee_handle, invitee_type, role, status, created_by_handle, created_by_type, created_at, accepted_at FROM invitations WHERE project_id=? ORDER BY created_at DESC'
+    )
+    .all(p.id) as Array<{
+    id: string;
+    invitee_handle: string;
+    invitee_type: string;
+    role: string;
+    status: string;
+    created_by_handle: string;
+    created_by_type: string;
+    created_at: string;
+    accepted_at: string | null;
+  }>).map((r) => ({
+    id: r.id,
+    handle: r.invitee_handle,
+    memberType: (r.invitee_type === 'agent' ? 'agent' : 'human') as MemberType,
+    role: (r.role === 'owner' ? 'owner' : r.role === 'maintainer' ? 'maintainer' : 'contributor') as MemberRole,
+    status: (r.status === 'accepted' ? 'accepted' : r.status === 'revoked' ? 'revoked' : 'pending') as 'pending' | 'accepted' | 'revoked',
+    createdByHandle: r.created_by_handle,
+    createdByType: (r.created_by_type === 'agent' ? 'agent' : 'human') as MemberType,
+    createdAt: r.created_at,
+    acceptedAt: r.accepted_at,
+  }));
+
   const tasks = (db
     .prepare(
       'SELECT id, title, description, status, claimed_by_handle, claimed_by_type, created_at, updated_at, file_path FROM tasks WHERE project_id=? ORDER BY updated_at DESC'
@@ -281,6 +307,7 @@ export function getProject(slug: string) {
     activity,
     members,
     joinRequests,
+    invitations,
     tasks,
   };
 }
@@ -833,6 +860,27 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
     .get(p.id, args.actorHandle) as { role: string } | undefined;
   if (existing) return { mode: 'already_member' as const, role: existing.role as MemberRole };
 
+  // If there is a pending invite, accept it (works for both open/restricted).
+  const inv = db
+    .prepare('SELECT id, role FROM invitations WHERE project_id=? AND invitee_handle=? AND invitee_type=? AND status=?')
+    .get(p.id, args.actorHandle, args.actorType, 'pending') as { id: string; role: string } | undefined;
+  if (inv) {
+    const role = (inv.role === 'owner' ? 'owner' : inv.role === 'maintainer' ? 'maintainer' : 'contributor') as MemberRole;
+    const tx = db.transaction(() => {
+      db.prepare('UPDATE invitations SET status=?, accepted_at=? WHERE id=?').run('accepted', now, inv.id);
+      db.prepare('INSERT INTO project_members (project_id, member_handle, member_type, role, joined_at) VALUES (?, ?, ?, ?, ?)').run(
+        p.id,
+        args.actorHandle,
+        args.actorType,
+        role,
+        now
+      );
+      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `@${args.actorHandle} joined (invite)`);
+    });
+    tx();
+    return { mode: 'joined' as const, role };
+  }
+
   if ((p.visibility === 'restricted' ? 'restricted' : 'open') === 'open') {
     db.prepare('INSERT INTO project_members (project_id, member_handle, member_type, role, joined_at) VALUES (?, ?, ?, ?, ?)').run(
       p.id,
@@ -890,6 +938,120 @@ export function reviewJoinRequest(args: {
   });
 
   tx();
+  return { ok: true };
+}
+
+export type InvitationStatus = 'pending' | 'accepted' | 'revoked';
+
+export function listInvitations(projectSlug: string) {
+  const db = getDb();
+  const p = getProjectBySlug(projectSlug);
+  if (!p) throw new Error('project_not_found');
+
+  return (db
+    .prepare(
+      'SELECT id, invitee_handle, invitee_type, role, status, created_by_handle, created_by_type, created_at, accepted_at FROM invitations WHERE project_id=? ORDER BY created_at DESC'
+    )
+    .all(p.id) as Array<{
+    id: string;
+    invitee_handle: string;
+    invitee_type: string;
+    role: string;
+    status: string;
+    created_by_handle: string;
+    created_by_type: string;
+    created_at: string;
+    accepted_at: string | null;
+  }>).map((r) => ({
+    id: r.id,
+    handle: r.invitee_handle,
+    memberType: (r.invitee_type === 'agent' ? 'agent' : 'human') as MemberType,
+    role: (r.role === 'owner' ? 'owner' : r.role === 'maintainer' ? 'maintainer' : 'contributor') as MemberRole,
+    status: (r.status === 'accepted' ? 'accepted' : r.status === 'revoked' ? 'revoked' : 'pending') as InvitationStatus,
+    createdByHandle: r.created_by_handle,
+    createdByType: (r.created_by_type === 'agent' ? 'agent' : 'human') as MemberType,
+    createdAt: r.created_at,
+    acceptedAt: r.accepted_at,
+  }));
+}
+
+export function createInvitation(args: {
+  projectSlug: string;
+  inviteeHandle: string;
+  inviteeType: MemberType;
+  role: MemberRole;
+  actorHandle: string;
+  actorType: MemberType;
+}) {
+  const db = getDb();
+  const p = getProjectBySlug(args.projectSlug);
+  if (!p) throw new Error('project_not_found');
+  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) throw new Error('not_allowed');
+
+  const now = nowIso();
+  const id = `inv-${Math.random().toString(16).slice(2, 6)}${Date.now().toString(16).slice(-4)}`;
+  ensureIdentity(args.inviteeHandle, args.inviteeType);
+
+  db.prepare(
+    `INSERT INTO invitations (id, project_id, invitee_handle, invitee_type, role, status, created_by_handle, created_by_type, created_at, accepted_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(project_id, invitee_handle, invitee_type) DO UPDATE SET role=excluded.role, status='pending', created_by_handle=excluded.created_by_handle, created_by_type=excluded.created_by_type, created_at=excluded.created_at, accepted_at=NULL`
+  ).run(id, p.id, args.inviteeHandle, args.inviteeType, args.role, 'pending', args.actorHandle, args.actorType, now, null);
+
+  db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
+    p.id,
+    now,
+    `Invited @${args.inviteeHandle} (${args.inviteeType}) as ${args.role}`
+  );
+
+  return { ok: true };
+}
+
+export function invitationAction(args: { id: string; action: 'revoke'; actorHandle: string }) {
+  const db = getDb();
+  const inv = db.prepare('SELECT id, project_id, invitee_handle, status FROM invitations WHERE id=?').get(args.id) as
+    | { id: string; project_id: number; invitee_handle: string; status: string }
+    | undefined;
+  if (!inv) throw new Error('invite_not_found');
+  if (!isProjectOwnerOrMaintainer(inv.project_id, args.actorHandle)) throw new Error('not_allowed');
+
+  const now = nowIso();
+  db.prepare('UPDATE invitations SET status=? WHERE id=?').run('revoked', inv.id);
+  db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(inv.project_id, now, `Invite revoked for @${inv.invitee_handle}`);
+  return { ok: true };
+}
+
+export function memberAction(args: {
+  projectSlug: string;
+  action: 'set_role' | 'remove';
+  memberHandle: string;
+  memberType: MemberType;
+  role?: MemberRole;
+  actorHandle: string;
+}) {
+  const db = getDb();
+  const p = getProjectBySlug(args.projectSlug);
+  if (!p) throw new Error('project_not_found');
+  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) throw new Error('not_allowed');
+
+  const now = nowIso();
+
+  if (args.action === 'set_role') {
+    const role = args.role || 'contributor';
+    db.prepare('UPDATE project_members SET role=? WHERE project_id=? AND member_handle=? AND member_type=?').run(
+      role,
+      p.id,
+      args.memberHandle,
+      args.memberType
+    );
+    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `Role updated: @${args.memberHandle} → ${role}`);
+  }
+
+  if (args.action === 'remove') {
+    db.prepare('DELETE FROM project_members WHERE project_id=? AND member_handle=? AND member_type=?').run(p.id, args.memberHandle, args.memberType);
+    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `Member removed: @${args.memberHandle}`);
+  }
+
   return { ok: true };
 }
 

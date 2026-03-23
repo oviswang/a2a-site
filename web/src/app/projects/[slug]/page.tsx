@@ -60,6 +60,10 @@ export default function ProjectDetailPage() {
   const [taskDesc, setTaskDesc] = useState('');
   const [joinMsg, setJoinMsg] = useState<string | null>(null);
   const [reqRoles, setReqRoles] = useState<Record<string, 'contributor' | 'maintainer'>>({});
+  const [inviteHandle, setInviteHandle] = useState('');
+  const [inviteType, setInviteType] = useState<'human' | 'agent'>('agent');
+  const [inviteRole, setInviteRole] = useState<'contributor' | 'maintainer'>('contributor');
+  const [peopleMsg, setPeopleMsg] = useState<string | null>(null);
 
   return (
     <Layout>
@@ -446,7 +450,8 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {isOwnerOrMaintainer ? (
-                  <div className="mt-6">
+                  <> 
+                    <div className="mt-6">
                     <div className="text-xs font-semibold text-slate-200/70">Join requests</div>
                     <ul className="mt-2 list-disc pl-5 text-sm text-slate-200/80">
                       {(project.joinRequests || []).map((r) => (
@@ -490,6 +495,171 @@ export default function ProjectDetailPage() {
                       {(project.joinRequests || []).length === 0 ? <li>No join requests</li> : null}
                     </ul>
                   </div>
+
+                  <div className="mt-6">
+                    <div className="text-xs font-semibold text-slate-200/70">Invitations</div>
+                    <div className="mt-2 grid gap-2">
+                      <div className="flex flex-wrap items-end gap-2">
+                        <label className="grid gap-1">
+                          <span className="text-xs text-slate-200/60">Handle</span>
+                          <input
+                            className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                            value={inviteHandle}
+                            onChange={(e) => setInviteHandle(e.target.value)}
+                            placeholder="e.g. oc_demo_agent"
+                          />
+                        </label>
+                        <label className="grid gap-1">
+                          <span className="text-xs text-slate-200/60">Type</span>
+                          <select
+                            className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                            value={inviteType}
+                            onChange={(e) => setInviteType(e.target.value === 'human' ? 'human' : 'agent')}
+                          >
+                            <option value="agent">agent</option>
+                            <option value="human">human</option>
+                          </select>
+                        </label>
+                        <label className="grid gap-1">
+                          <span className="text-xs text-slate-200/60">Role</span>
+                          <select
+                            className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                            value={inviteRole}
+                            onChange={(e) => setInviteRole(e.target.value === 'maintainer' ? 'maintainer' : 'contributor')}
+                          >
+                            <option value="contributor">contributor</option>
+                            <option value="maintainer">maintainer</option>
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          className="rounded-xl bg-sky-400/20 px-2 py-1 text-xs text-sky-100 hover:bg-sky-400/25"
+                          onClick={async () => {
+                            setPeopleMsg(null);
+                            const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/invites`, {
+                              method: 'POST',
+                              headers: { 'content-type': 'application/json' },
+                              body: JSON.stringify({
+                                inviteeHandle: inviteHandle,
+                                inviteeType: inviteType,
+                                role: inviteRole,
+                                actorHandle: actor.handle,
+                                actorType: actor.actorType,
+                              }),
+                            });
+                            const j = await res.json().catch(() => null);
+                            if (!res.ok || !j?.ok) {
+                              setPeopleMsg(j?.error || 'invite_failed');
+                              return;
+                            }
+                            setInviteHandle('');
+                            setPeopleMsg('Invite created. The invitee can now join and it will auto-accept.');
+                            await actions.loadProject(slug);
+                          }}
+                        >
+                          Invite
+                        </button>
+                      </div>
+
+                      {peopleMsg ? <div className="text-xs text-slate-200/70">{peopleMsg}</div> : null}
+
+                      <div className="grid gap-2">
+                        {(project.invitations || []).map((inv) => (
+                          <div key={inv.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs">
+                            <div>
+                              <span className="font-mono">@{inv.handle}</span> ({inv.memberType}) · {inv.role} · {inv.status}
+                              <div className="text-slate-200/50">invited by @{inv.createdByHandle}</div>
+                            </div>
+                            {inv.status === 'pending' ? (
+                              <button
+                                type="button"
+                                className="rounded-xl bg-rose-700 px-2 py-1 text-xs text-white hover:bg-rose-600"
+                                onClick={async () => {
+                                  const res = await fetch(`/api/invites/${encodeURIComponent(inv.id)}/action`, {
+                                    method: 'POST',
+                                    headers: { 'content-type': 'application/json' },
+                                    body: JSON.stringify({ actorHandle: actor.handle }),
+                                  });
+                                  const j = await res.json().catch(() => null);
+                                  if (!res.ok || !j?.ok) {
+                                    setPeopleMsg(j?.error || 'revoke_failed');
+                                    return;
+                                  }
+                                  setPeopleMsg('Invite revoked.');
+                                  await actions.loadProject(slug);
+                                }}
+                              >
+                                Revoke
+                              </button>
+                            ) : null}
+                          </div>
+                        ))}
+                        {(project.invitations || []).length === 0 ? <div className="text-xs text-slate-200/60">No invites yet.</div> : null}
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="text-xs font-semibold text-slate-200/70">Member operations</div>
+                        <div className="mt-2 grid gap-2">
+                          {(project.members || []).map((m) => (
+                            <div key={`${m.memberType}:${m.handle}`} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs">
+                              <div>
+                                <span className="font-mono">@{m.handle}</span> ({m.memberType})
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <select
+                                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                                  value={m.role}
+                                  onChange={async (e) => {
+                                    const role = e.target.value === 'maintainer' ? 'maintainer' : e.target.value === 'owner' ? 'owner' : 'contributor';
+                                    const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/members/action`, {
+                                      method: 'POST',
+                                      headers: { 'content-type': 'application/json' },
+                                      body: JSON.stringify({
+                                        action: 'set_role',
+                                        memberHandle: m.handle,
+                                        memberType: m.memberType,
+                                        role,
+                                        actorHandle: actor.handle,
+                                      }),
+                                    });
+                                    const j = await res.json().catch(() => null);
+                                    if (!res.ok || !j?.ok) setPeopleMsg(j?.error || 'role_update_failed');
+                                    await actions.loadProject(slug);
+                                  }}
+                                >
+                                  <option value="contributor">contributor</option>
+                                  <option value="maintainer">maintainer</option>
+                                  <option value="owner">owner</option>
+                                </select>
+                                <button
+                                  type="button"
+                                  className="rounded-xl bg-rose-700 px-2 py-1 text-xs text-white hover:bg-rose-600"
+                                  onClick={async () => {
+                                    const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/members/action`, {
+                                      method: 'POST',
+                                      headers: { 'content-type': 'application/json' },
+                                      body: JSON.stringify({
+                                        action: 'remove',
+                                        memberHandle: m.handle,
+                                        memberType: m.memberType,
+                                        actorHandle: actor.handle,
+                                      }),
+                                    });
+                                    const j = await res.json().catch(() => null);
+                                    if (!res.ok || !j?.ok) setPeopleMsg(j?.error || 'remove_failed');
+                                    await actions.loadProject(slug);
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  </>
                 ) : null}
               </Card>
 

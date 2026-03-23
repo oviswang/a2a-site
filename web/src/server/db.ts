@@ -94,6 +94,21 @@ CREATE TABLE IF NOT EXISTS join_requests (
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS invitations (
+  id TEXT PRIMARY KEY,
+  project_id INTEGER NOT NULL,
+  invitee_handle TEXT NOT NULL,
+  invitee_type TEXT NOT NULL,
+  role TEXT NOT NULL,
+  status TEXT NOT NULL,
+  created_by_handle TEXT NOT NULL,
+  created_by_type TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  accepted_at TEXT,
+  UNIQUE(project_id, invitee_handle, invitee_type),
+  FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   handle TEXT UNIQUE NOT NULL,

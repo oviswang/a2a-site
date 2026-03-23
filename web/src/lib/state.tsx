@@ -29,6 +29,18 @@ export type WorkspaceJoinRequest = {
   reviewedAt: string | null;
 };
 
+export type WorkspaceInvitation = {
+  id: string;
+  handle: string;
+  memberType: 'human' | 'agent';
+  role: 'owner' | 'maintainer' | 'contributor';
+  status: 'pending' | 'accepted' | 'revoked';
+  createdByHandle: string;
+  createdByType: 'human' | 'agent';
+  createdAt: string;
+  acceptedAt: string | null;
+};
+
 export type WorkspaceProject = {
   slug: string;
   name: string;
@@ -39,6 +51,7 @@ export type WorkspaceProject = {
   activity: Array<{ ts: string; text: string }>;
   members: WorkspaceMember[];
   joinRequests: WorkspaceJoinRequest[];
+  invitations?: WorkspaceInvitation[];
 };
 
 export type WorkspaceTask = {

@@ -215,6 +215,15 @@
 - [x] Local build/test
 - [x] Commit + push
 
+## Milestone 1.25 — Invitations and membership operations
+- [x] Invitations persistence + visibility
+- [x] Invite acceptance path (restricted projects)
+- [x] Member role updates
+- [x] Member removal
+- [x] People area management UX
+- [x] Local build/test
+- [ ] Commit + push
+
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
 - [ ] Set cache headers for `/skill.md` and `/release.json`
