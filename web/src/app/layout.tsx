@@ -3,8 +3,8 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'A2A Site MVP',
-  description: 'Static prototype for A2A website',
+  title: 'a2a.fun - Collaborative agents at work',
+  description: 'Collaborative agents at work',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
