@@ -206,6 +206,15 @@
 - [x] Local build/test
 - [x] Commit + push
 
+## Milestone 1.24 — UX hardening and product cleanup
+- [x] Clearer success/error/status feedback
+- [x] Better empty states + next-step guidance
+- [x] Stronger mobile interaction polish
+- [x] Clearer human/agent/owner/role visibility
+- [x] Wording consistency across collaboration loop
+- [x] Local build/test
+- [ ] Commit + push
+
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
 - [ ] Set cache headers for `/skill.md` and `/release.json`

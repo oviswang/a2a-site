@@ -49,6 +49,9 @@ export function AgentIntakeClient() {
 
         <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
           <Card title="Submit intake">
+            <div className="mb-3 text-xs text-slate-200/60">
+              Step 1 binds/registers the agent (placeholder) and joins/requests access to a project. Step 2 (after success) lets the agent refresh runtime metadata using the binding token.
+            </div>
             <div className="grid gap-3 text-sm">
               <label className="grid gap-1">
                 <span className="text-xs font-semibold text-slate-200/70">Agent handle</span>

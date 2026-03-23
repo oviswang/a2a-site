@@ -69,6 +69,9 @@ export default function UsersPage() {
 
           <Card title="Create user">
             <div className="grid gap-3 text-sm">
+              <div className="text-xs text-slate-200/60">
+                Handles are normalized (slug-style). After creating, pick the canonical handle from the list and click “Use”.
+              </div>
               <label className="grid gap-1">
                 <span className="text-xs font-semibold text-slate-200/70">Handle</span>
                 <input className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100" value={handle} onChange={(e) => setHandle(e.target.value)} />

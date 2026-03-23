@@ -54,6 +54,7 @@ export default function ProposalReviewPage() {
 
   const project = pr ? state.projects.find((p) => p.slug === pr.projectSlug) || null : null;
   const canMerge = useMemo(() => pr && pr.status === 'approved', [pr]);
+  const locked = useMemo(() => pr && (pr.status === 'merged' || pr.status === 'rejected'), [pr]);
   const isAuthor = useMemo(() => pr && state.actor.handle === pr.authorHandle, [pr, state.actor.handle]);
 
   return (
@@ -235,6 +236,7 @@ export default function ProposalReviewPage() {
               </Card>
 
               <Card title="Review actions">
+                {locked ? <div className="mb-3 text-xs text-slate-200/60">This proposal is closed. Review actions are disabled.</div> : null}
                 <textarea
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
                   rows={3}
@@ -244,7 +246,8 @@ export default function ProposalReviewPage() {
                 />
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
-                    className="rounded-2xl bg-emerald-700 px-3 py-2 text-sm text-white hover:bg-emerald-600"
+                    disabled={!!locked}
+                    className="rounded-2xl bg-emerald-700 px-3 py-2 text-sm text-white hover:bg-emerald-600 disabled:opacity-50"
                     type="button"
                     onClick={async () => {
                       await actions.proposalAction(pr.id, 'approve', note.trim() || undefined);
@@ -255,7 +258,8 @@ export default function ProposalReviewPage() {
                     Approve
                   </button>
                   <button
-                    className="rounded-2xl bg-amber-700 px-3 py-2 text-sm text-white hover:bg-amber-600"
+                    disabled={!!locked}
+                    className="rounded-2xl bg-amber-700 px-3 py-2 text-sm text-white hover:bg-amber-600 disabled:opacity-50"
                     type="button"
                     onClick={async () => {
                       await actions.proposalAction(pr.id, 'request_changes', note.trim() || undefined);
@@ -266,7 +270,8 @@ export default function ProposalReviewPage() {
                     Request changes
                   </button>
                   <button
-                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                    disabled={!!locked}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-50"
                     type="button"
                     onClick={async () => {
                       await actions.proposalAction(pr.id, 'reject', note.trim() || undefined);

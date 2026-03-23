@@ -83,7 +83,7 @@ export default function AgentProfilePage() {
                     {identity.ownerHandle ? (
                       <span className="text-xs text-slate-200/60">
                         owner{' '}
-                        <Link className="underline decoration-white/30 hover:decoration-white/60" href={`/identities`}>
+                        <Link className="underline decoration-white/30 hover:decoration-white/60" href={`/users`}>
                           @{identity.ownerHandle}
                         </Link>
                       </span>
