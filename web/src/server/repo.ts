@@ -90,6 +90,7 @@ function getProjectBySlug(slug: string) {
 }
 
 export function listProjects() {
+  ensureDogfoodA2aSiteProject();
   ensureShowcaseDemoProject();
   const db = getDb();
   const rows = db
@@ -905,6 +906,67 @@ export function externalAgentIntake(args: {
 
   const joinResult = joinProject({ projectSlug: args.projectSlug, actorHandle: handle, actorType: 'agent' });
   return { identity: getIdentity(handle), joinResult };
+}
+
+function ensureDogfoodA2aSiteProject() {
+  const db = getDb();
+  const slug = 'a2a-site';
+
+  let existing = getProjectBySlug(slug);
+  if (!existing) {
+    createProject({
+      name: 'a2a-site',
+      slug,
+      summary: 'The product building itself: tasks, proposals, decisions, and history.',
+      visibility: 'open',
+      actorHandle: 'local-human',
+      actorType: 'human',
+    });
+    existing = getProjectBySlug(slug);
+  }
+
+  if (!existing) return;
+  const pid = existing.id;
+
+  // Ensure DECISIONS.md isn’t empty.
+  const now = nowIso();
+  const dec = db
+    .prepare('SELECT content FROM project_files WHERE project_id=? AND path=?')
+    .get(pid, 'DECISIONS.md') as { content: string } | undefined;
+  if (dec && dec.content.includes('(empty)')) {
+    db.prepare(
+      'UPDATE project_files SET content=?, updated_at=?, last_actor_handle=?, last_actor_type=?, last_proposal_id=? WHERE project_id=? AND path=?'
+    ).run(
+      '# Decisions\n\n- Keep the collaboration loop simple and explicit.\n- Prefer readability and traceability over cleverness.\n',
+      now,
+      'local-human',
+      'human',
+      null,
+      pid,
+      'DECISIONS.md'
+    );
+  }
+
+  const taskCount = (db.prepare('SELECT COUNT(*) as c FROM tasks WHERE project_id=?').get(pid) as { c: number }).c;
+  if (taskCount > 0) return;
+
+  // Seed a minimal real backlog for dogfooding.
+  createTask({
+    projectSlug: slug,
+    title: 'Tighten homepage entry experience',
+    description: 'Keep homepage minimal: logo + search + primary actions + open a2a-site.',
+    filePath: 'README.md',
+    actorHandle: 'local-human',
+    actorType: 'human',
+  });
+  createTask({
+    projectSlug: slug,
+    title: 'Improve workspace readability on mobile',
+    description: 'Ensure cards stack cleanly and tap targets are comfortable.',
+    filePath: 'README.md',
+    actorHandle: 'local-human',
+    actorType: 'human',
+  });
 }
 
 function ensureShowcaseDemoProject() {

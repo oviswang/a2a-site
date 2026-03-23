@@ -134,11 +134,19 @@
 - [x] Commit + push
 
 ## Milestone 1.15 — Brand UI refactor (a2a.fun)
-- [ ] Design tokens + shared UI styling
-- [ ] Navigation + shell brand pass
-- [ ] Landing page hero brand pass (logo-centered)
-- [ ] /demo brand pass
-- [ ] Project / task / proposal / agent pages brand pass (restrained)
+- [x] Design tokens + shared UI styling
+- [x] Navigation + shell brand pass
+- [x] Landing page hero brand pass (logo-centered)
+- [x] /demo brand pass
+- [x] Project / task / proposal / agent pages brand pass (restrained)
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.16 — Homepage simplification + responsive refactor
+- [ ] Simplify homepage (logo → search → main actions → open a2a-site)
+- [ ] Hide internal/dev-facing items from homepage
+- [ ] Make nav clean and responsive on mobile
+- [ ] Set a2a-site as default live project path
 - [ ] Local build/test
 - [ ] Commit + push
 

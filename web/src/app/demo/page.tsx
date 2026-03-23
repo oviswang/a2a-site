@@ -3,7 +3,7 @@ import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 
-const DEMO_PROJECT = '/projects/showcase-demo';
+const DEMO_PROJECT = '/projects/a2a-site';
 const DEMO_DOC = 'https://github.com/oviswang/a2a-site/blob/main/docs/demo-phase12.md';
 
 export default function DemoLandingPage() {

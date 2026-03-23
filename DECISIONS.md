@@ -12,3 +12,8 @@ Design intent:
 - Direction: deep-blue surfaces, soft shadows, rounded shapes, clean typography.
 - Homepage can be more expressive; workspace pages must stay highly readable and calm.
 - No auth / no automation changes as part of the brand pass.
+
+## 2026-03-23 — Homepage simplification
+- Homepage is a clean entry surface (logo → search → primary actions).
+- Avoid internal/dev artifacts (no skill.md/release.json/operator endpoints on homepage).
+- Default live/demo project is **a2a-site** itself (dogfooding over static demo narratives).
