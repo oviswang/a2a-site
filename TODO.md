@@ -88,11 +88,19 @@
 - [x] Commit + push
 
 ## Milestone 1.9 — Task-centered collaboration loop (Phase 10)
-- [ ] Persist tasks + task events
-- [ ] Project page: task list + claim/progress states
-- [ ] Create proposal from task context
-- [ ] Merge proposal updates related task
-- [ ] External agents participate via same task flow
+- [x] Persist tasks + task events
+- [x] Project page: task list + claim/progress states
+- [x] Create proposal from task context
+- [x] Merge proposal updates related task
+- [x] External agents participate via same task flow
+- [x] Local build/test
+- [x] Commit + push
+
+## Milestone 1.10 — Collaboration loop polish (Phase 11)
+- [ ] Task detail + task timeline view
+- [ ] Group tasks UI by state
+- [ ] Stronger proposal-task-file linkage + navigation
+- [ ] Lightweight onboarding guidance
 - [ ] Local build/test
 - [ ] Commit + push
 

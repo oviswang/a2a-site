@@ -43,6 +43,13 @@ export default function ProjectDetailPage() {
   const proposals = state.proposalsByProject[slug] || [];
   const tasks = state.tasksByProject[slug] || [];
 
+  const tasksGrouped = {
+    open: tasks.filter((t) => t.status === 'open'),
+    claimed: tasks.filter((t) => t.status === 'claimed'),
+    in_progress: tasks.filter((t) => t.status === 'in_progress'),
+    completed: tasks.filter((t) => t.status === 'completed'),
+  };
+
   const actor = state.actor;
   const myMember = project?.members?.find((m) => m.handle === actor.handle) || null;
   const isOwnerOrMaintainer = myMember ? myMember.role === 'owner' || myMember.role === 'maintainer' : false;
@@ -152,6 +159,16 @@ export default function ProjectDetailPage() {
                   </pre>
                 </Card>
 
+                <Card title="How this collaboration loop works">
+                  <ol className="list-decimal pl-5 text-sm text-slate-700">
+                    <li>Create a task (human or agent) and attach a file context.</li>
+                    <li>Claim/start work, then create a proposal from the task.</li>
+                    <li>Review + merge the proposal to update files.</li>
+                    <li>Merge auto-completes the linked task and records history.</li>
+                  </ol>
+                  <div className="mt-2 text-xs text-slate-600">No auth, no automation: everything is local + explicit for now.</div>
+                </Card>
+
                 <Card title="Tasks">
                   <div className="text-xs text-slate-600">A shared collaboration queue (human + agent). No automation yet.</div>
 
@@ -185,69 +202,94 @@ export default function ProjectDetailPage() {
                     </button>
                   </div>
 
-                  <div className="mt-4 flex flex-col gap-2">
-                    {tasks.map((t) => (
-                      <div key={t.id} className="rounded border bg-white p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="text-sm font-medium">
-                            {t.title}{' '}
-                            <span className="ml-2 font-mono text-xs text-slate-500">{t.id}</span>
-                          </div>
-                          <div className="text-xs text-slate-600">{t.status}</div>
+                  <div className="mt-4 grid gap-4">
+                    {([
+                      ['open', tasksGrouped.open],
+                      ['claimed', tasksGrouped.claimed],
+                      ['in_progress', tasksGrouped.in_progress],
+                      ['completed', tasksGrouped.completed],
+                    ] as const).map(([label, list]) => (
+                      <div key={label}>
+                        <div className="mb-2 text-xs font-semibold text-slate-600">
+                          {label} <span className="text-slate-400">({list.length})</span>
                         </div>
-                        {t.description ? <div className="mt-1 text-sm text-slate-700">{t.description}</div> : null}
-                        <div className="mt-2 text-xs text-slate-600">
-                          {t.claimedByHandle ? (
-                            <span>
-                              Claimed by @{t.claimedByHandle} ({t.claimedByType || '—'})
-                            </span>
-                          ) : (
-                            <span>Unclaimed</span>
-                          )}
-                          {t.filePath ? <span className="ml-2">· file <span className="font-mono">{t.filePath}</span></span> : null}
-                        </div>
+                        <div className="flex flex-col gap-2">
+                          {list.map((t) => (
+                            <div key={t.id} className="rounded border bg-white p-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="text-sm font-medium">
+                                  <Link className="underline" href={`/tasks/${t.id}`}>
+                                    {t.title}
+                                  </Link>{' '}
+                                  <span className="ml-2 font-mono text-xs text-slate-500">{t.id}</span>
+                                </div>
+                                <div className="text-xs text-slate-600">{t.status}</div>
+                              </div>
+                              {t.description ? <div className="mt-1 text-sm text-slate-700">{t.description}</div> : null}
+                              <div className="mt-2 text-xs text-slate-600">
+                                {t.claimedByHandle ? (
+                                  <span>
+                                    Claimed by @{t.claimedByHandle} ({t.claimedByType || '—'})
+                                  </span>
+                                ) : (
+                                  <span>Unclaimed</span>
+                                )}
+                                {t.filePath ? (
+                                  <span className="ml-2">
+                                    · file{' '}
+                                    <Link className="font-mono underline" href={`/projects/${slug}?file=${encodeURIComponent(t.filePath)}`}>
+                                      {t.filePath}
+                                    </Link>
+                                  </span>
+                                ) : null}
+                              </div>
 
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            className="rounded border px-2 py-1 text-xs hover:bg-slate-50"
-                            type="button"
-                            onClick={async () => {
-                              await actions.taskAction(t.id, t.claimedByHandle ? 'unclaim' : 'claim');
-                              await actions.loadProject(slug);
-                            }}
-                          >
-                            {t.claimedByHandle ? 'Unclaim' : 'Claim'}
-                          </button>
-                          <button
-                            className="rounded border px-2 py-1 text-xs hover:bg-slate-50"
-                            type="button"
-                            onClick={async () => {
-                              await actions.taskAction(t.id, 'start');
-                              await actions.loadProject(slug);
-                            }}
-                          >
-                            Start
-                          </button>
-                          <button
-                            className="rounded border px-2 py-1 text-xs hover:bg-slate-50"
-                            type="button"
-                            onClick={async () => {
-                              await actions.taskAction(t.id, 'complete');
-                              await actions.loadProject(slug);
-                            }}
-                          >
-                            Complete
-                          </button>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                  className="rounded border px-2 py-1 text-xs hover:bg-slate-50"
+                                  type="button"
+                                  onClick={async () => {
+                                    await actions.taskAction(t.id, t.claimedByHandle ? 'unclaim' : 'claim');
+                                    await actions.loadProject(slug);
+                                  }}
+                                >
+                                  {t.claimedByHandle ? 'Unclaim' : 'Claim'}
+                                </button>
+                                <button
+                                  className="rounded border px-2 py-1 text-xs hover:bg-slate-50"
+                                  type="button"
+                                  onClick={async () => {
+                                    await actions.taskAction(t.id, 'start');
+                                    await actions.loadProject(slug);
+                                  }}
+                                >
+                                  Start
+                                </button>
+                                <button
+                                  className="rounded border px-2 py-1 text-xs hover:bg-slate-50"
+                                  type="button"
+                                  onClick={async () => {
+                                    await actions.taskAction(t.id, 'complete');
+                                    await actions.loadProject(slug);
+                                  }}
+                                >
+                                  Complete
+                                </button>
 
-                          <Link
-                            className="rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
-                            href={`/projects/${slug}/proposals/new?file=${encodeURIComponent(t.filePath || selectedFile?.path || 'README.md')}&taskId=${encodeURIComponent(t.id)}`}
-                          >
-                            Propose from task
-                          </Link>
+                                <Link
+                                  className="rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
+                                  href={`/projects/${slug}/proposals/new?file=${encodeURIComponent(t.filePath || selectedFile?.path || 'README.md')}&taskId=${encodeURIComponent(t.id)}`}
+                                >
+                                  Propose from task
+                                </Link>
+                              </div>
+                            </div>
+                          ))}
+                          {list.length === 0 ? <div className="text-sm text-slate-600">None</div> : null}
                         </div>
                       </div>
                     ))}
+
                     {tasks.length === 0 ? <div className="text-sm text-slate-600">No tasks yet</div> : null}
                   </div>
                 </Card>
@@ -281,6 +323,15 @@ export default function ProjectDetailPage() {
                         </div>
                         <div className="mt-1 text-xs text-slate-600">
                           Opened by @{p.authorHandle} ({p.authorType}) · file <span className="font-mono">{p.filePath}</span>
+                          {p.taskId ? (
+                            <>
+                              {' '}
+                              · task{' '}
+                              <Link className="font-mono underline" href={`/tasks/${encodeURIComponent(p.taskId)}`}>
+                                {p.taskId}
+                              </Link>
+                            </>
+                          ) : null}
                         </div>
                         {p.lastReview ? (
                           <div className="mt-2 text-xs">

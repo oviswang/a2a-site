@@ -417,6 +417,78 @@ export function taskAction(args: {
   return { ok: true };
 }
 
+export type TaskEvent = {
+  ts: string;
+  actorHandle: string | null;
+  actorType: MemberType | null;
+  kind: string;
+  note: string | null;
+  proposalId: string | null;
+};
+
+export function getTask(taskId: string): Task | null {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT t.id, t.title, t.description, t.status, t.claimed_by_handle, t.claimed_by_type, t.created_at, t.updated_at, t.file_path,
+              p.slug as project_slug
+       FROM tasks t
+       JOIN projects p ON p.id = t.project_id
+       WHERE t.id=?`
+    )
+    .get(taskId) as
+    | {
+        id: string;
+        title: string;
+        description: string;
+        status: string;
+        claimed_by_handle: string | null;
+        claimed_by_type: string | null;
+        created_at: string;
+        updated_at: string;
+        file_path: string | null;
+        project_slug: string;
+      }
+    | undefined;
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    projectSlug: row.project_slug,
+    title: row.title,
+    description: row.description,
+    status: (row.status as 'open' | 'claimed' | 'in_progress' | 'completed') || 'open',
+    claimedByHandle: row.claimed_by_handle,
+    claimedByType: row.claimed_by_type === 'agent' ? 'agent' : row.claimed_by_type === 'human' ? 'human' : null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    filePath: row.file_path,
+  };
+}
+
+export function listTaskEvents(taskId: string): TaskEvent[] {
+  const db = getDb();
+  const rows = db
+    .prepare('SELECT ts, actor_handle, actor_type, kind, note, proposal_id FROM task_events WHERE task_id=? ORDER BY id ASC')
+    .all(taskId) as Array<{
+    ts: string;
+    actor_handle: string | null;
+    actor_type: string | null;
+    kind: string;
+    note: string | null;
+    proposal_id: string | null;
+  }>;
+
+  return rows.map((r) => ({
+    ts: r.ts,
+    actorHandle: r.actor_handle,
+    actorType: r.actor_type === 'agent' ? 'agent' : r.actor_type === 'human' ? 'human' : null,
+    kind: r.kind,
+    note: r.note,
+    proposalId: r.proposal_id,
+  }));
+}
+
 export function createProposal(args: {
   projectSlug: string;
   title: string;

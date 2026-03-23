@@ -127,6 +127,14 @@ export default function ProposalReviewPage() {
                     <span className="text-slate-600">File</span>
                     <Tag>{pr.filePath}</Tag>
                   </div>
+                  {pr.taskId ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600">Task</span>
+                      <a className="font-mono text-xs underline" href={`/tasks/${encodeURIComponent(pr.taskId)}`}>
+                        {pr.taskId}
+                      </a>
+                    </div>
+                  ) : null}
                 </div>
               </Card>
 
