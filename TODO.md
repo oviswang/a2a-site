@@ -285,7 +285,7 @@
 - [x] Template-generated starter structure (files + tasks)
 - [x] Improved “what you get” preview
 - [x] Local build/test
-- [ ] Commit + push
+- [x] Commit + push
 
 ## Milestone 2 — Deploy
 - [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
