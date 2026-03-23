@@ -43,7 +43,7 @@ export function Nav() {
             className="rounded-xl"
             priority
           />
-          <div className="text-sm font-semibold text-slate-50 no-underline">a2a.fun</div>
+          <div className="text-sm font-semibold text-slate-50 no-underline">{'\u00A0\u00A0'}a2a.fun</div>
         </Link>
 
         {/* Desktop nav */}
