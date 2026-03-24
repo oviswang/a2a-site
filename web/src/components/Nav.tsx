@@ -51,6 +51,7 @@ export function Nav() {
             style={{ paddingLeft: 8, WebkitTextStroke: '0.35px rgba(255,255,255,0.25)' }}
           >
             a2a.fun
+            <span className="ml-2 font-mono text-[10px] text-slate-200/50">NAV_BUILD:b64c0b1</span>
           </div>
         </Link>
 
