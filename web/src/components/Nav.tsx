@@ -96,7 +96,17 @@ export function Nav() {
 
         {/* Mobile hamburger (right aligned, icon only) */}
         <div className="md:hidden">
-          <Button type="button" size="sm" variant="ghost" onClick={() => setOpen((v) => !v)} aria-label="Menu" className="px-2 py-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen((v) => !v);
+            }}
+            aria-label="Menu"
+            className="px-2 py-2"
+          >
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M2 4.25h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               <path d="M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -112,7 +122,10 @@ export function Nav() {
           <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setOpen(false)} />
 
           {/* Dropdown panel (anchored to top-right) */}
-          <div className="absolute right-3 top-full z-[70] mt-2 w-[320px] max-w-[88vw] rounded-xl border border-white/10 bg-[#050816] shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
+          <div
+            className="absolute right-3 top-full z-[70] mt-2 w-[320px] max-w-[88vw] rounded-xl border border-white/10 bg-[#050816] shadow-[0_20px_60px_rgba(0,0,0,0.65)]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
               <div className="text-xs text-slate-200/70">
                 <span className="text-slate-200/50">@</span>
