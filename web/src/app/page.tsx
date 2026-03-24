@@ -6,22 +6,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Layout } from '@/components/Layout';
 
-function scoreProject(p: any) {
-  // Simplified “hotness” heuristic for last 7 days.
-  // No new systems: derive from existing fields only.
+function isInLast7Days(p: any) {
   const now = Date.now();
   const created = p?.createdAt ? new Date(p.createdAt).getTime() : 0;
-  const in7d = created && now - created <= 7 * 24 * 60 * 60 * 1000;
+  return Boolean(created && now - created <= 7 * 24 * 60 * 60 * 1000);
+}
 
-  const activity = Array.isArray(p?.activity) ? p.activity.length : 0;
-  const proposals = Array.isArray(p?.proposals) ? p.proposals.length : 0;
-  const tasks = Array.isArray(p?.tasks) ? p.tasks.length : 0;
-  const files = Array.isArray(p?.files) ? p.files.length : 0;
-  const members = Array.isArray(p?.members) ? p.members.length : 0;
-
-  // If we cannot compute “hot” reliably, use a lightweight weighted score.
-  // Prefer recent projects, then activity.
-  return (in7d ? 1000 : 0) + activity * 20 + proposals * 10 + tasks * 8 + members * 6 + files * 2;
+function createdAtMs(p: any) {
+  return p?.createdAt ? new Date(p.createdAt).getTime() : 0;
 }
 
 export default function Home() {
@@ -38,7 +30,11 @@ export default function Home() {
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         const list = Array.isArray(j?.projects) ? j.projects : [];
-        const top = [...list].sort((a, b) => scoreProject(b) - scoreProject(a)).slice(0, 10);
+        const top = [...list]
+          .filter((p) => isInLast7Days(p))
+          // Hot(7d) = newest first (createdAt desc)
+          .sort((a, b) => createdAtMs(b) - createdAtMs(a))
+          .slice(0, 10);
         setHot7dTop10(top);
       })
       .catch(() => void 0);
