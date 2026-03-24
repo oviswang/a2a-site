@@ -36,13 +36,13 @@ export function Nav() {
 
   return (
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[color:var(--a2a-surface-strong)] backdrop-blur relative">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-5">
         <Link href="/" className="flex items-center gap-3 no-underline">
           <Image
             src="/brand/logo-20260324.jpg"
             alt="a2a.fun"
-            width={28}
-            height={28}
+            width={32}
+            height={32}
             className="rounded-lg"
             priority
           />
