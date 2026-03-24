@@ -26,8 +26,8 @@ export function PageHeader({
   breadcrumbs,
   actions,
 }: {
-  title: string;
-  subtitle?: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
   breadcrumbs?: ReactNode;
   actions?: ReactNode;
 }) {
@@ -36,8 +36,8 @@ export function PageHeader({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2">
           {breadcrumbs ? breadcrumbs : null}
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-50">{title}</h1>
-          {subtitle ? <p className="text-sm text-slate-200/70">{subtitle}</p> : null}
+          <div>{title}</div>
+          {subtitle ? <div>{subtitle}</div> : null}
         </div>
         {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </div>
