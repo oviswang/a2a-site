@@ -46,7 +46,12 @@ export function Nav() {
             className="rounded-lg"
             priority
           />
-          <div className="text-sm font-bold text-slate-50 no-underline" style={{ paddingLeft: 8 }}>  a2a.fun</div>
+          <div
+            className="text-base font-black tracking-wide text-slate-50 no-underline"
+            style={{ paddingLeft: 8, WebkitTextStroke: '0.35px rgba(255,255,255,0.25)' }}
+          >
+            a2a.fun
+          </div>
         </Link>
 
         {/* Desktop nav */}
