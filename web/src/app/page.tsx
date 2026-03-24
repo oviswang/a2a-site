@@ -72,7 +72,7 @@ export default function Home() {
               style={{
                 flex: 1,
                 minWidth: 0,
-                padding: '14px 18px',
+                padding: '12px 16px',
                 borderRadius: 0,
                 border: '1px solid rgba(255,255,255,0.14)',
                 borderRight: 'none',
@@ -91,7 +91,7 @@ export default function Home() {
               type="button"
               className="shrink-0 bg-sky-400/20 px-6 py-4 text-[15px] font-semibold text-sky-100 hover:bg-sky-400/25"
               style={{
-                padding: '14px 20px',
+                padding: '12px 18px',
                 borderRadius: 0,
                 border: '1px solid rgba(255,255,255,0.18)',
                 borderLeft: '1px solid rgba(255,255,255,0.14)',
