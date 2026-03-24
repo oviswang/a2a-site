@@ -61,6 +61,13 @@ export default function ProjectDetailPage() {
   const [timelineQuery, setTimelineQuery] = useState('');
   const [timelineKindFilter, setTimelineKindFilter] = useState<'all' | 'task' | 'proposal' | 'review' | 'merge' | 'invite' | 'member' | 'access' | 'event'>('all');
 
+  // Dense-page defaults: summary-first
+  const [showActiveDetails, setShowActiveDetails] = useState(false);
+  const [showProposalMeta, setShowProposalMeta] = useState(false);
+  const [showJoinRequests, setShowJoinRequests] = useState(false);
+  const [showInvites, setShowInvites] = useState(false);
+  const [showMemberOps, setShowMemberOps] = useState(false);
+
   const [reqRoles, setReqRoles] = useState<Record<string, 'contributor' | 'maintainer'>>({});
   const [inviteHandle, setInviteHandle] = useState('');
   const [inviteType, setInviteType] = useState<'human' | 'agent'>('agent');
@@ -275,50 +282,65 @@ export default function ProjectDetailPage() {
                 </div>
 
                 <div className="mt-4 grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs font-semibold text-slate-200/70">Active work (needs attention)</div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs font-semibold text-slate-200/70">Active work</div>
+                    <button
+                      type="button"
+                      className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                      onClick={() => setShowActiveDetails((s) => !s)}
+                    >
+                      {showActiveDetails ? 'Hide details' : 'Show details'}
+                    </button>
+                  </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                       <div className="text-xs text-slate-200/60">Proposals needing review</div>
                       <div className="mt-1 text-lg font-semibold text-slate-50">{proposals.filter((p) => p.status === 'needs_review').length}</div>
-                      <div className="mt-2 grid gap-1 text-xs">
-                        {proposals
-                          .filter((p) => p.status === 'needs_review')
-                          .slice(0, 3)
-                          .map((p) => (
-                            <Link key={p.id} className="underline decoration-white/20 hover:decoration-white/50" href={`/proposals/${encodeURIComponent(p.id)}/review`}>
-                              {p.title}
-                            </Link>
-                          ))}
-                        {proposals.filter((p) => p.status === 'needs_review').length === 0 ? <div className="text-slate-200/50">None</div> : null}
-                      </div>
+                      {showActiveDetails ? (
+                        <div className="mt-2 grid gap-1 text-xs">
+                          {proposals
+                            .filter((p) => p.status === 'needs_review')
+                            .slice(0, 3)
+                            .map((p) => (
+                              <Link key={p.id} className="underline decoration-white/20 hover:decoration-white/50" href={`/proposals/${encodeURIComponent(p.id)}/review`}>
+                                {p.title}
+                              </Link>
+                            ))}
+                          {proposals.filter((p) => p.status === 'needs_review').length === 0 ? <div className="text-slate-200/50">None</div> : null}
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                       <div className="text-xs text-slate-200/60">Open tasks</div>
                       <div className="mt-1 text-lg font-semibold text-slate-50">{tasksGrouped.open.length}</div>
-                      <div className="mt-2 grid gap-1 text-xs">
-                        {tasksGrouped.open.slice(0, 3).map((t) => (
-                          <Link key={t.id} className="underline decoration-white/20 hover:decoration-white/50" href={`/tasks/${encodeURIComponent(t.id)}`}>
-                            {t.title}
-                          </Link>
-                        ))}
-                        {tasksGrouped.open.length === 0 ? <div className="text-slate-200/50">None</div> : null}
-                      </div>
+                      {showActiveDetails ? (
+                        <div className="mt-2 grid gap-1 text-xs">
+                          {tasksGrouped.open.slice(0, 3).map((t) => (
+                            <Link key={t.id} className="underline decoration-white/20 hover:decoration-white/50" href={`/tasks/${encodeURIComponent(t.id)}`}>
+                              {t.title}
+                            </Link>
+                          ))}
+                          {tasksGrouped.open.length === 0 ? <div className="text-slate-200/50">None</div> : null}
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                       <div className="text-xs text-slate-200/60">Recent files</div>
-                      <div className="mt-2 grid gap-1 text-xs">
-                        {[...files]
-                          .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
-                          .slice(0, 3)
-                          .map((f) => (
-                            <Link key={f.path} className="underline decoration-white/20 hover:decoration-white/50" href={`/projects/${slug}?file=${encodeURIComponent(f.path)}`}>
-                              {f.path}
-                            </Link>
-                          ))}
-                        {files.length === 0 ? <div className="text-slate-200/50">None</div> : null}
-                      </div>
+                      {showActiveDetails ? (
+                        <div className="mt-2 grid gap-1 text-xs">
+                          {[...files]
+                            .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
+                            .slice(0, 3)
+                            .map((f) => (
+                              <Link key={f.path} className="underline decoration-white/20 hover:decoration-white/50" href={`/projects/${slug}?file=${encodeURIComponent(f.path)}`}>
+                                {f.path}
+                              </Link>
+                            ))}
+                          {files.length === 0 ? <div className="text-slate-200/50">None</div> : null}
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
@@ -548,6 +570,10 @@ export default function ProjectDetailPage() {
                       <input type="checkbox" checked={proposalMine} onChange={(e) => setProposalMine(e.target.checked)} />
                       Mine
                     </label>
+                    <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">
+                      <input type="checkbox" checked={showProposalMeta} onChange={(e) => setShowProposalMeta(e.target.checked)} />
+                      Meta
+                    </label>
                     <ToolbarLabel label="Sort">
                       <select
                         className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
@@ -568,7 +594,7 @@ export default function ProjectDetailPage() {
 
                 <div className="mt-3 flex flex-col gap-3">
                   {sortedProposals.map((p) => (
-                    <div key={p.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <div key={p.id} className="rounded-2xl border border-white/10 bg-white/5 p-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <Link className="text-sm font-medium underline decoration-white/30 hover:decoration-white/60" href={`/proposals/${p.id}/review`}>
                           {p.title}
@@ -635,28 +661,32 @@ export default function ProjectDetailPage() {
                         </div>
                       </div>
                       <div className="mt-1 text-xs text-slate-200/60">
-                        @{p.authorHandle} ({p.authorType})
-                        {identityByHandle.get(p.authorHandle)?.displayName ? (
-                          <span className="text-slate-200/40"> — {identityByHandle.get(p.authorHandle)?.displayName}</span>
-                        ) : null}
-                        {' '}· file <span className="font-mono">{p.filePath}</span>
-                        {p.taskId ? (
-                          <>
-                            {' '}· task{' '}
-                            <Link className="font-mono underline decoration-white/30 hover:decoration-white/60" href={`/tasks/${encodeURIComponent(p.taskId)}`}>
-                              {p.taskId}
-                            </Link>
-                          </>
-                        ) : null}
+                        <span className="font-mono">@{p.authorHandle}</span> ({p.authorType}) · <span className="font-mono">{p.filePath}</span>
                       </div>
-                      {p.lastReview ? (
-                        <div className="mt-2 text-xs text-slate-200/70">
-                          Last review: {p.lastReview.action} by @{p.lastReview.actorHandle || 'unknown'} ({p.lastReview.actorType || '—'}) ·{' '}
-                          {String(p.lastReview.createdAt).slice(0, 19).replace('T', ' ')}
-                        </div>
-                      ) : (
-                        <div className="mt-2 text-xs text-slate-200/40">No review events yet</div>
-                      )}
+
+                      {showProposalMeta ? (
+                        <>
+                          {identityByHandle.get(p.authorHandle)?.displayName ? (
+                            <div className="mt-1 text-xs text-slate-200/50">{identityByHandle.get(p.authorHandle)?.displayName}</div>
+                          ) : null}
+                          {p.taskId ? (
+                            <div className="mt-1 text-xs text-slate-200/60">
+                              task{' '}
+                              <Link className="font-mono underline decoration-white/30 hover:decoration-white/60" href={`/tasks/${encodeURIComponent(p.taskId)}`}>
+                                {p.taskId}
+                              </Link>
+                            </div>
+                          ) : null}
+
+                          {p.lastReview ? (
+                            <div className="mt-1 text-xs text-slate-200/70">
+                              last: {p.lastReview.action} · @{p.lastReview.actorHandle || 'unknown'} · {String(p.lastReview.createdAt).slice(0, 16).replace('T', ' ')}
+                            </div>
+                          ) : (
+                            <div className="mt-1 text-xs text-slate-200/40">no review yet</div>
+                          )}
+                        </>
+                      ) : null}
                     </div>
                   ))}
                   {sortedProposals.length === 0 ? <div className="text-sm text-slate-200/60">No matching proposals.</div> : null}
@@ -899,170 +929,216 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {isOwnerOrMaintainer ? (
-                  <> 
-                    <div className="mt-6">
-                    <div className="text-xs font-semibold text-slate-200/70">Join requests</div>
-                    <ul className="mt-2 list-disc pl-5 text-sm text-slate-200/80">
-                      {(project.joinRequests || [])
-                        .filter((r) => (!showPendingOnly || r.status === 'pending') && memberMatchesQ(r.handle))
-                        .map((r) => (
-                        <li key={r.id}>
-                          @{r.handle} ({r.memberType}) — {r.status}
-                          {r.status === 'pending' ? (
-                            <span className="ml-2 inline-flex flex-wrap items-center gap-2">
+                  <div className="mt-6 grid gap-6">
+                    {/* Join requests */}
+                    <div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-xs font-semibold text-slate-200/70">
+                          Join requests{' '}
+                          <span className="text-slate-200/40">({(project.joinRequests || []).filter((r) => r.status === 'pending').length} pending)</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                          onClick={() => setShowJoinRequests((s) => !s)}
+                        >
+                          {showJoinRequests ? 'Hide' : 'Show'}
+                        </button>
+                      </div>
+
+                      {showJoinRequests ? (
+                        <ul className="mt-2 list-disc pl-5 text-sm text-slate-200/80">
+                          {(project.joinRequests || [])
+                            .filter((r) => (!showPendingOnly || r.status === 'pending') && memberMatchesQ(r.handle))
+                            .map((r) => (
+                              <li key={r.id}>
+                                @{r.handle} ({r.memberType}) — {r.status}
+                                {r.status === 'pending' ? (
+                                  <span className="ml-2 inline-flex flex-wrap items-center gap-2">
+                                    <select
+                                      className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                                      value={reqRoles[r.id] || 'contributor'}
+                                      onChange={(e) =>
+                                        setReqRoles((s) => ({
+                                          ...s,
+                                          [r.id]: e.target.value === 'maintainer' ? 'maintainer' : 'contributor',
+                                        }))
+                                      }
+                                    >
+                                      <option value="contributor">contributor</option>
+                                      <option value="maintainer">maintainer</option>
+                                    </select>
+                                    <button
+                                      className="rounded-xl bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
+                                      type="button"
+                                      onClick={async () => {
+                                        const role = reqRoles[r.id] || 'contributor';
+                                        const ok = await actions.reviewJoinRequest(r.id, 'approve', role);
+                                        setToast(ok ? { message: `Join request approved (${role}).`, variant: 'success' } : { message: 'Approve failed.', variant: 'error' });
+                                        await actions.loadProject(slug);
+                                      }}
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      className="rounded-xl bg-rose-700 px-2 py-1 text-xs text-white hover:bg-rose-600"
+                                      type="button"
+                                      onClick={async () => {
+                                        if (!window.confirm(`Reject join request from @${r.handle}?`)) return;
+                                        const ok = await actions.reviewJoinRequest(r.id, 'reject');
+                                        setToast(ok ? { message: 'Join request rejected.', variant: 'success' } : { message: 'Reject failed.', variant: 'error' });
+                                        await actions.loadProject(slug);
+                                      }}
+                                    >
+                                      Reject
+                                    </button>
+                                  </span>
+                                ) : null}
+                              </li>
+                            ))}
+                          {(project.joinRequests || []).length === 0 ? <li>No join requests</li> : null}
+                        </ul>
+                      ) : null}
+                    </div>
+
+                    {/* Invitations */}
+                    <div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-xs font-semibold text-slate-200/70">
+                          Invitations{' '}
+                          <span className="text-slate-200/40">({(project.invitations || []).filter((i) => i.status === 'pending').length} pending)</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                          onClick={() => setShowInvites((s) => !s)}
+                        >
+                          {showInvites ? 'Hide' : 'Show'}
+                        </button>
+                      </div>
+
+                      {showInvites ? (
+                        <div className="mt-2 grid gap-2">
+                          <div className="flex flex-wrap items-end gap-2">
+                            <label className="grid gap-1">
+                              <span className="text-xs text-slate-200/60">Handle</span>
+                              <input
+                                className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                                value={inviteHandle}
+                                onChange={(e) => setInviteHandle(e.target.value)}
+                                placeholder="e.g. oc_demo_agent"
+                              />
+                            </label>
+                            <label className="grid gap-1">
+                              <span className="text-xs text-slate-200/60">Type</span>
                               <select
                                 className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
-                                value={reqRoles[r.id] || 'contributor'}
-                                onChange={(e) =>
-                                  setReqRoles((s) => ({
-                                    ...s,
-                                    [r.id]: e.target.value === 'maintainer' ? 'maintainer' : 'contributor',
-                                  }))
-                                }
+                                value={inviteType}
+                                onChange={(e) => setInviteType(e.target.value === 'human' ? 'human' : 'agent')}
+                              >
+                                <option value="agent">agent</option>
+                                <option value="human">human</option>
+                              </select>
+                            </label>
+                            <label className="grid gap-1">
+                              <span className="text-xs text-slate-200/60">Role</span>
+                              <select
+                                className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                                value={inviteRole}
+                                onChange={(e) => setInviteRole(e.target.value === 'maintainer' ? 'maintainer' : 'contributor')}
                               >
                                 <option value="contributor">contributor</option>
                                 <option value="maintainer">maintainer</option>
                               </select>
-                              <button
-                                className="rounded-xl bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
-                                type="button"
-                                onClick={async () => {
-                                  const role = reqRoles[r.id] || 'contributor';
-                                  const ok = await actions.reviewJoinRequest(r.id, 'approve', role);
-                                  setToast(ok ? { message: `Join request approved (${role}).`, variant: 'success' } : { message: 'Approve failed.', variant: 'error' });
-                                  await actions.loadProject(slug);
-                                }}
-                              >
-                                Approve
-                              </button>
-                              <button
-                                className="rounded-xl bg-rose-700 px-2 py-1 text-xs text-white hover:bg-rose-600"
-                                type="button"
-                                onClick={async () => {
-                                  if (!window.confirm(`Reject join request from @${r.handle}?`)) return;
-                                  const ok = await actions.reviewJoinRequest(r.id, 'reject');
-                                  setToast(ok ? { message: 'Join request rejected.', variant: 'success' } : { message: 'Reject failed.', variant: 'error' });
-                                  await actions.loadProject(slug);
-                                }}
-                              >
-                                Reject
-                              </button>
-                            </span>
-                          ) : null}
-                        </li>
-                      ))}
-                      {(project.joinRequests || []).length === 0 ? <li>No join requests</li> : null}
-                    </ul>
-                  </div>
+                            </label>
+                            <button
+                              type="button"
+                              className="rounded-xl bg-sky-400/20 px-2 py-1 text-xs text-sky-100 hover:bg-sky-400/25"
+                              onClick={async () => {
+                                setPeopleMsg(null);
+                                const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/invites`, {
+                                  method: 'POST',
+                                  headers: { 'content-type': 'application/json' },
+                                  body: JSON.stringify({
+                                    inviteeHandle: inviteHandle,
+                                    inviteeType: inviteType,
+                                    role: inviteRole,
+                                    actorHandle: actor.handle,
+                                    actorType: actor.actorType,
+                                  }),
+                                });
+                                const j = await res.json().catch(() => null);
+                                if (!res.ok || !j?.ok) {
+                                  setPeopleMsg(j?.error || 'invite_failed');
+                                  return;
+                                }
+                                setInviteHandle('');
+                                setPeopleMsg('Invite created. The invitee can now join and it will auto-accept.');
+                                await actions.loadProject(slug);
+                              }}
+                            >
+                              Invite
+                            </button>
+                          </div>
 
-                  <div className="mt-6">
-                    <div className="text-xs font-semibold text-slate-200/70">Invitations</div>
-                    <div className="mt-2 grid gap-2">
-                      <div className="flex flex-wrap items-end gap-2">
-                        <label className="grid gap-1">
-                          <span className="text-xs text-slate-200/60">Handle</span>
-                          <input
-                            className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
-                            value={inviteHandle}
-                            onChange={(e) => setInviteHandle(e.target.value)}
-                            placeholder="e.g. oc_demo_agent"
-                          />
-                        </label>
-                        <label className="grid gap-1">
-                          <span className="text-xs text-slate-200/60">Type</span>
-                          <select
-                            className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
-                            value={inviteType}
-                            onChange={(e) => setInviteType(e.target.value === 'human' ? 'human' : 'agent')}
-                          >
-                            <option value="agent">agent</option>
-                            <option value="human">human</option>
-                          </select>
-                        </label>
-                        <label className="grid gap-1">
-                          <span className="text-xs text-slate-200/60">Role</span>
-                          <select
-                            className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
-                            value={inviteRole}
-                            onChange={(e) => setInviteRole(e.target.value === 'maintainer' ? 'maintainer' : 'contributor')}
-                          >
-                            <option value="contributor">contributor</option>
-                            <option value="maintainer">maintainer</option>
-                          </select>
-                        </label>
+                          {peopleMsg ? <div className="text-xs text-slate-200/70">{peopleMsg}</div> : null}
+
+                          <div className="grid gap-2">
+                            {(project.invitations || [])
+                              .filter((inv) => (!showPendingOnly || inv.status === 'pending') && memberMatchesQ(inv.handle))
+                              .map((inv) => (
+                                <div key={inv.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs">
+                                  <div>
+                                    <span className="font-mono">@{inv.handle}</span> ({inv.memberType}) · {inv.role} · {inv.status}
+                                    <div className="text-slate-200/50">invited by @{inv.createdByHandle}</div>
+                                  </div>
+                                  {inv.status === 'pending' ? (
+                                    <button
+                                      type="button"
+                                      className="rounded-xl bg-rose-700 px-2 py-1 text-xs text-white hover:bg-rose-600"
+                                      onClick={async () => {
+                                        if (!window.confirm(`Revoke invite for @${inv.handle}?`)) return;
+                                        const res = await fetch(`/api/invites/${encodeURIComponent(inv.id)}/action`, {
+                                          method: 'POST',
+                                          headers: { 'content-type': 'application/json' },
+                                          body: JSON.stringify({ actorHandle: actor.handle }),
+                                        });
+                                        const j = await res.json().catch(() => null);
+                                        if (!res.ok || !j?.ok) {
+                                          setPeopleMsg(j?.error || 'revoke_failed');
+                                          setToast({ message: j?.error || 'Revoke failed.', variant: 'error' });
+                                          return;
+                                        }
+                                        setPeopleMsg('Invite revoked.');
+                                        setToast({ message: 'Invite revoked.', variant: 'success' });
+                                        await actions.loadProject(slug);
+                                      }}
+                                    >
+                                      Revoke
+                                    </button>
+                                  ) : null}
+                                </div>
+                              ))}
+                            {(project.invitations || []).length === 0 ? <div className="text-xs text-slate-200/60">No invites yet.</div> : null}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* Member operations */}
+                    <div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-xs font-semibold text-slate-200/70">Member operations</div>
                         <button
                           type="button"
-                          className="rounded-xl bg-sky-400/20 px-2 py-1 text-xs text-sky-100 hover:bg-sky-400/25"
-                          onClick={async () => {
-                            setPeopleMsg(null);
-                            const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/invites`, {
-                              method: 'POST',
-                              headers: { 'content-type': 'application/json' },
-                              body: JSON.stringify({
-                                inviteeHandle: inviteHandle,
-                                inviteeType: inviteType,
-                                role: inviteRole,
-                                actorHandle: actor.handle,
-                                actorType: actor.actorType,
-                              }),
-                            });
-                            const j = await res.json().catch(() => null);
-                            if (!res.ok || !j?.ok) {
-                              setPeopleMsg(j?.error || 'invite_failed');
-                              return;
-                            }
-                            setInviteHandle('');
-                            setPeopleMsg('Invite created. The invitee can now join and it will auto-accept.');
-                            await actions.loadProject(slug);
-                          }}
+                          className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                          onClick={() => setShowMemberOps((s) => !s)}
                         >
-                          Invite
+                          {showMemberOps ? 'Hide' : 'Show'}
                         </button>
                       </div>
 
-                      {peopleMsg ? <div className="text-xs text-slate-200/70">{peopleMsg}</div> : null}
-
-                      <div className="grid gap-2">
-                        {(project.invitations || [])
-                          .filter((inv) => (!showPendingOnly || inv.status === 'pending') && memberMatchesQ(inv.handle))
-                          .map((inv) => (
-                          <div key={inv.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs">
-                            <div>
-                              <span className="font-mono">@{inv.handle}</span> ({inv.memberType}) · {inv.role} · {inv.status}
-                              <div className="text-slate-200/50">invited by @{inv.createdByHandle}</div>
-                            </div>
-                            {inv.status === 'pending' ? (
-                              <button
-                                type="button"
-                                className="rounded-xl bg-rose-700 px-2 py-1 text-xs text-white hover:bg-rose-600"
-                                onClick={async () => {
-                                  if (!window.confirm(`Revoke invite for @${inv.handle}?`)) return;
-                                  const res = await fetch(`/api/invites/${encodeURIComponent(inv.id)}/action`, {
-                                    method: 'POST',
-                                    headers: { 'content-type': 'application/json' },
-                                    body: JSON.stringify({ actorHandle: actor.handle }),
-                                  });
-                                  const j = await res.json().catch(() => null);
-                                  if (!res.ok || !j?.ok) {
-                                    setPeopleMsg(j?.error || 'revoke_failed');
-                                    setToast({ message: j?.error || 'Revoke failed.', variant: 'error' });
-                                    return;
-                                  }
-                                  setPeopleMsg('Invite revoked.');
-                                  setToast({ message: 'Invite revoked.', variant: 'success' });
-                                  await actions.loadProject(slug);
-                                }}
-                              >
-                                Revoke
-                              </button>
-                            ) : null}
-                          </div>
-                        ))}
-                        {(project.invitations || []).length === 0 ? <div className="text-xs text-slate-200/60">No invites yet.</div> : null}
-                      </div>
-
-                      <div className="mt-4">
-                        <div className="text-xs font-semibold text-slate-200/70">Member operations</div>
+                      {showMemberOps ? (
                         <div className="mt-2 grid gap-2">
                           {(project.members || []).filter((m) => memberMatchesQ(m.handle)).map((m) => (
                             <div key={`${m.memberType}:${m.handle}`} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs">
@@ -1134,10 +1210,9 @@ export default function ProjectDetailPage() {
                             </div>
                           ))}
                         </div>
-                      </div>
+                      ) : null}
                     </div>
                   </div>
-                  </>
                 ) : null}
               </Card>
 
