@@ -151,9 +151,9 @@ export default function InboxPage() {
             </div>
           </Toolbar>
 
-          <div className="mt-3 grid gap-2">
-            {visible.map((n) => (
-              <div key={n.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-2">
+          <div className="mt-3 rounded-xl border border-white/10 bg-[color:var(--a2a-surface)]">
+            {visible.map((n, idx) => (
+              <div key={n.id} className={`flex flex-wrap items-center justify-between gap-2 px-4 py-3 hover:bg-white/5 ${idx === 0 ? '' : 'border-t border-white/10'}`}>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     {!n.readAt ? <span className="h-2 w-2 rounded-full bg-sky-300" /> : <span className="h-2 w-2 rounded-full bg-white/10" />}

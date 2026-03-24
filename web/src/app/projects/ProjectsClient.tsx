@@ -69,12 +69,12 @@ export function ProjectsClient() {
           </div>
         </form>
 
-        <div className="grid gap-2">
-          {projects.map((p) => (
+        <div className="rounded-xl border border-white/10 bg-[color:var(--a2a-surface)]">
+          {projects.map((p, idx) => (
             <Link
               key={p.slug}
               href={`/projects/${p.slug}`}
-              className="rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
+              className={`block px-4 py-3 hover:bg-white/5 ${idx === 0 ? '' : 'border-t border-white/10'}`}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -82,23 +82,17 @@ export function ProjectsClient() {
                     <div className="text-sm font-semibold text-slate-50">{p.name}</div>
                     <span className="font-mono text-xs text-slate-200/50">/{p.slug}</span>
                   </div>
-                  <div className="mt-1 text-xs text-slate-200/70">{p.summary}</div>
+                  <div className="mt-1 text-xs text-slate-200/60">{p.summary}</div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <Tag tone="brand">{p.visibility}</Tag>
-                  <span className="text-[11px] text-slate-200/60">files {p.files.length}</span>
-                </div>
-              </div>
-
-              {p.tags.length ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {p.tags.slice(0, 6).map((t) => (
+                  {p.tags.slice(0, 2).map((t) => (
                     <Tag key={t}>{t}</Tag>
                   ))}
-                  {p.tags.length > 6 ? <span className="text-[11px] text-slate-200/50">+{p.tags.length - 6}</span> : null}
+                  {p.tags.length > 2 ? <span className="text-[11px] text-slate-200/50">+{p.tags.length - 2}</span> : null}
                 </div>
-              ) : null}
+              </div>
             </Link>
           ))}
         </div>
