@@ -64,7 +64,20 @@ export function WorkspaceShell({ slug, children }: { slug: string; children: Rea
         </div>
       </div>
 
-      <div className="flex flex-col gap-6">{children}</div>
+      <div className="flex flex-col gap-6">
+        {/* GitHub-ish subnav (desktop + mobile) */}
+        <div className="sticky top-[62px] z-40 -mx-0 rounded-xl border border-white/10 bg-[color:var(--a2a-surface-strong)] px-3 py-2 backdrop-blur">
+          <div className="flex flex-wrap gap-2">
+            {items.map((it) => (
+              <Link key={it.href} className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-100 hover:bg-white/10" href={it.href}>
+                {it.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {children}
+      </div>
     </div>
   );
 }
