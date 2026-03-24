@@ -8,7 +8,6 @@ import { useWorkspace } from '@/lib/state';
 import { Button } from '@/components/ui';
 
 const nav = [
-  { href: '/', label: 'Home', icon: '⌂' },
   { href: '/projects', label: 'Projects', icon: '▦' },
   // Start is redundant with Home; keep page but remove from global nav.
   // { href: '/start', label: 'Start', icon: '⇢' },
