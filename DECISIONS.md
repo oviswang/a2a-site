@@ -21,3 +21,29 @@ Design intent:
 ## 2026-03-23 — Homepage strict function-first cleanup
 - Homepage content reduced to ONLY: brand (logo/name/tagline), search, and a small set of primary actions.
 - Removed all secondary explanatory sections/cards to keep a “product launcher” feel.
+
+## 2026-03-24 — UI refactor direction (GitHub Projects + Vercel Docs)
+Direction is now split by surface type:
+- **Workspace/product pages**: “GitHub Projects + Vercel Docs” — clean, structured, readable, operational, high-density friendly.
+- **Homepage / start / brand entry**: may borrow some “Arc / Raycast” softness — warmer brand tone, calmer blue-black, more rounded surfaces.
+
+Explicitly avoid:
+- generic enterprise admin dashboard styling
+- hacker terminal styling
+- pure marketing SaaS landing-page styling
+
+Design goals:
+1) clearer typography hierarchy
+2) stronger spacing + card system
+3) cleaner top navigation
+4) better project/workspace readability
+5) intentionally designed mobile layout (not just shrunk)
+
+Priority pages:
+- homepage
+- /projects
+- /projects/[slug]
+- /tasks/[id]
+- /proposals/[id]/review
+- /inbox
+- /search
