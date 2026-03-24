@@ -36,17 +36,30 @@ export function Nav() {
   return (
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[color:var(--a2a-surface-strong)] backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-        <Link href="/" className="flex items-center gap-6 no-underline">
-          <Image
-            src="/brand/logo-20260324.jpg"
-            alt="a2a.fun"
-            width={34}
-            height={34}
-            className="rounded-xl"
-            priority
-          />
-          <div className="text-sm font-semibold text-slate-50 no-underline">{'\u00A0\u00A0'}a2a.fun</div>
-        </Link>
+        <div className="flex items-center gap-3">
+          {/* Mobile hamburger (GitHub-ish: left aligned icon) */}
+          <div className="md:hidden">
+            <Button type="button" size="sm" variant="ghost" onClick={() => setOpen((v) => !v)} aria-label="Menu" className="px-2 py-2">
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M2 4.25h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M2 11.75h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </Button>
+          </div>
+
+          <Link href="/" className="flex items-center gap-3 no-underline">
+            <Image
+              src="/brand/logo-20260324.jpg"
+              alt="a2a.fun"
+              width={28}
+              height={28}
+              className="rounded-lg"
+              priority
+            />
+            <div className="text-sm font-semibold text-slate-50 no-underline">a2a.fun</div>
+          </Link>
+        </div>
 
         {/* Desktop nav */}
         <div className="hidden items-center gap-4 md:flex">
@@ -94,12 +107,6 @@ export function Nav() {
           </div>
         </div>
 
-        {/* Mobile menu */}
-        <div className="md:hidden">
-          <Button type="button" size="sm" onClick={() => setOpen((v) => !v)} aria-label="Menu">
-            {open ? 'Close' : 'Menu'}
-          </Button>
-        </div>
       </div>
 
       {open ? (
