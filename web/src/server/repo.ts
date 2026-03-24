@@ -1958,6 +1958,7 @@ function ensureScenarioSeedProjects() {
     template: 'general' | 'research' | 'product';
     owner: string;
     members: Array<{ handle: string; type: MemberType; role: MemberRole }>;
+    externalAgents?: Array<{ handle: string; displayName: string; runtime?: Record<string, unknown> }>;
     extraFiles: Array<{ path: string; content: string }>;
     extraTasks: Array<{ title: string; description: string; filePath?: string | null; actor?: { handle: string; type: MemberType } }>;
     // proposals are created only if missing by title
@@ -2349,6 +2350,224 @@ function ensureScenarioSeedProjects() {
       ],
       decisions: ['Agents should propose small diffs for review.', 'Log runs with short, comparable summaries.'],
     },
+
+    // --- Chinese scenario set (for richer pilot data) ---
+    {
+      slug: 'cn-product-build',
+      name: '产品迭代 · 结算体验优化',
+      summary: '产品研发项目：围绕结算流程优化、埋点与回归验证。',
+      visibility: 'open',
+      template: 'product',
+      owner: 'seed_bella',
+      members: [
+        { handle: 'seed_bella', type: 'human', role: 'owner' },
+        { handle: 'seed_alex', type: 'human', role: 'maintainer' },
+      ],
+      externalAgents: [
+        { handle: 'oc_agent_checkout', displayName: '外部代理 · CheckoutBot', runtime: { capabilities: ['tasks', 'proposals', 'review'], note: '来自 OpenClaw 的外部代理示例' } },
+      ],
+      extraFiles: [
+        { path: 'PRD.md', content: '# PRD\n\n## 背景\n结算转化率下滑，需要梳理关键摩擦点。\n\n## 目标\n- 降低支付失败率\n- 提升填写效率\n\n## 约束\n- 不改支付供应商\n' },
+        { path: 'METRICS.md', content: '# 指标与埋点\n\n- 下单成功率\n- 支付失败分布\n- 表单完成耗时\n' },
+      ],
+      extraTasks: [
+        { title: '梳理结算关键路径', description: '列出关键页面与字段，标注潜在摩擦点。', filePath: 'PRD.md' },
+        { title: '补齐埋点定义', description: '在 METRICS.md 中补齐事件名、属性与采样策略。', filePath: 'METRICS.md', actor: { handle: 'seed_agent_ops', type: 'agent' } },
+      ],
+      proposals: [
+        { title: 'PRD 增加非目标与风险', summary: '补充非目标/风险，避免范围蔓延。', filePath: 'PRD.md', author: { handle: 'oc_agent_checkout', type: 'agent' }, flow: 'request_changes_loop' },
+        { title: '完善指标口径说明', summary: '把“成功率/失败率”口径写清楚。', filePath: 'METRICS.md', author: { handle: 'seed_alex', type: 'human' }, flow: 'needs_review' },
+      ],
+      decisions: ['优先保证关键路径稳定，再做微优化。', '所有改动必须可回滚并可度量。'],
+    },
+    {
+      slug: 'cn-research-spec',
+      name: '研究专项 · 竞品协作流程对比',
+      summary: '研究/规格项目：对比 3 个协作产品的任务-提案-评审闭环。',
+      visibility: 'open',
+      template: 'research',
+      owner: 'seed_dana',
+      members: [
+        { handle: 'seed_dana', type: 'human', role: 'owner' },
+        { handle: 'seed_agent_research', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: '竞品清单.md', content: '# 竞品清单\n\n- A：看板 + PR\n- B：任务 + 评审\n- C：知识库 + 讨论\n' },
+        { path: '观察记录.md', content: '# 观察记录\n\n## 入口\n- \n\n## 评审\n- \n' },
+      ],
+      extraTasks: [
+        { title: '整理对比维度', description: '入口、权限、任务/提案、通知、搜索、移动端。', filePath: 'SPEC.md' },
+        { title: '补齐观察记录', description: '把关键截图/步骤写进 观察记录.md。', filePath: '观察记录.md', actor: { handle: 'seed_agent_research', type: 'agent' } },
+      ],
+      proposals: [
+        { title: 'SPEC 增加评估标准', summary: '把“好用”的标准写成可验证条目。', filePath: 'SPEC.md', author: { handle: 'seed_dana', type: 'human' }, flow: 'merge' },
+        { title: '新增竞品入口小结', summary: '补充竞品入口体验小结。', filePath: '观察记录.md', author: { handle: 'seed_agent_research', type: 'agent' }, flow: 'needs_review' },
+      ],
+      decisions: ['研究输出必须落到一页可执行建议。', '避免“泛泛而谈”，只记录可复现步骤。'],
+    },
+    {
+      slug: 'cn-content-workflow',
+      name: '内容工作流 · 教程系列制作',
+      summary: '内容/创作项目：选题-大纲-初稿-审稿-发布清单。',
+      visibility: 'open',
+      template: 'general',
+      owner: 'seed_chris',
+      members: [
+        { handle: 'seed_chris', type: 'human', role: 'owner' },
+        { handle: 'seed_bella', type: 'human', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: '选题池.md', content: '# 选题池\n\n- 入门：协作闭环是什么\n- 进阶：提案评审怎么做\n' },
+        { path: '发布清单.md', content: '# 发布清单\n\n- 标题检查\n- 目录\n- 术语统一\n- 链接检查\n' },
+      ],
+      extraTasks: [
+        { title: '写第一篇大纲', description: '把结构写清楚：背景→步骤→常见坑。', filePath: '选题池.md' },
+        { title: '审阅发布清单', description: '删除冗余项，保留可执行检查。', filePath: '发布清单.md' },
+      ],
+      proposals: [
+        { title: '发布清单加入“截图一致性”', summary: '补充截图与文案一致性检查。', filePath: '发布清单.md', author: { handle: 'seed_bella', type: 'human' }, flow: 'merge' },
+        { title: '选题池增加“FAQ 结构”', summary: '给每篇文章预留 FAQ 段落。', filePath: '选题池.md', author: { handle: 'seed_chris', type: 'human' }, flow: 'needs_review' },
+      ],
+      decisions: ['内容评审优先看结构与可执行性。', '发布清单宁少勿多。'],
+    },
+    {
+      slug: 'cn-community-restricted',
+      name: '社群运营 · 事件处置（受限）',
+      summary: '社群运营：投诉工单、处置流程、对外话术。',
+      visibility: 'restricted',
+      template: 'general',
+      owner: 'seed_alex',
+      members: [
+        { handle: 'seed_alex', type: 'human', role: 'owner' },
+        { handle: 'seed_agent_ops', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: '处置流程.md', content: '# 处置流程\n\n## 分级\n- P0：安全/合规\n- P1：高风险舆情\n- P2：一般投诉\n\n## 时限\n- P0：15 分钟内响应\n' },
+        { path: '对外话术.md', content: '# 对外话术\n\n- 感谢反馈\n- 说明处理进度\n- 给出下一步时间点\n' },
+      ],
+      extraTasks: [
+        { title: '补齐 P0 升级路径', description: '明确谁负责、怎么升级、何时关单。', filePath: '处置流程.md' },
+        { title: '话术去模板化', description: '减少套话，提升信息密度。', filePath: '对外话术.md', actor: { handle: 'seed_agent_reviewer', type: 'agent' } },
+      ],
+      proposals: [
+        { title: '处置流程增加“复盘模板”', summary: '补充复盘模板与记录字段。', filePath: '处置流程.md', author: { handle: 'seed_agent_ops', type: 'agent' }, flow: 'request_changes_loop' },
+        { title: '对外话术补充“边界说明”', summary: '写清楚可承诺与不可承诺内容。', filePath: '对外话术.md', author: { handle: 'seed_alex', type: 'human' }, flow: 'needs_review' },
+      ],
+      decisions: ['受限项目：对外话术必须由负责人审核。', 'P0 事件先止血再优化。'],
+    },
+    {
+      slug: 'cn-client-secure',
+      name: '客户交付 · 需求与验收（受限）',
+      summary: '客户项目：需求澄清、验收标准、里程碑与交付清单。',
+      visibility: 'restricted',
+      template: 'product',
+      owner: 'seed_owner',
+      members: [
+        { handle: 'seed_owner', type: 'human', role: 'owner' },
+        { handle: 'seed_bella', type: 'human', role: 'maintainer' },
+      ],
+      externalAgents: [
+        { handle: 'oc_agent_client', displayName: '外部代理 · ClientOps', runtime: { capabilities: ['tasks', 'proposals'], note: '模拟外部交付代理' } },
+      ],
+      extraFiles: [
+        { path: '需求澄清.md', content: '# 需求澄清\n\n## 现状\n\n## 目标\n\n## 不做什么\n' },
+        { path: '验收标准.md', content: '# 验收标准\n\n- 功能点\n- 性能\n- 回归\n' },
+        { path: '里程碑.md', content: '# 里程碑\n\n- M1\n- M2\n- M3\n' },
+      ],
+      extraTasks: [
+        { title: '补齐验收标准细则', description: '把“可验证”写到每条验收标准里。', filePath: '验收标准.md' },
+        { title: '梳理里程碑风险', description: '标注依赖与潜在延误点。', filePath: '里程碑.md' },
+      ],
+      proposals: [
+        { title: '验收标准增加“回归范围”', summary: '补充回归范围与测试环境说明。', filePath: '验收标准.md', author: { handle: 'oc_agent_client', type: 'agent' }, flow: 'request_changes_loop' },
+        { title: '需求澄清加入“非目标”', summary: '明确不做什么，减少扯皮。', filePath: '需求澄清.md', author: { handle: 'seed_bella', type: 'human' }, flow: 'needs_review' },
+      ],
+      decisions: ['受限项目：所有对外承诺必须可追溯到文件。', '验收标准优先写“怎么验证”。'],
+    },
+    {
+      slug: 'cn-consulting-restricted',
+      name: '咨询项目 · 访谈纪要（受限）',
+      summary: '咨询/研究：访谈问题、纪要、结论与下一步建议。',
+      visibility: 'restricted',
+      template: 'research',
+      owner: 'seed_dana',
+      members: [
+        { handle: 'seed_dana', type: 'human', role: 'owner' },
+        { handle: 'seed_alex', type: 'human', role: 'contributor' },
+      ],
+      externalAgents: [
+        { handle: 'oc_agent_notes', displayName: '外部代理 · NotesBot', runtime: { capabilities: ['tasks', 'proposals'], note: '访谈纪要整理代理' } },
+      ],
+      extraFiles: [
+        { path: '访谈问题.md', content: '# 访谈问题\n\n- 现有流程最痛的点？\n- 现有协作方式的失败模式？\n' },
+        { path: '访谈纪要.md', content: '# 访谈纪要\n\n## 受访者 A\n- \n' },
+        { path: '结论与建议.md', content: '# 结论与建议\n\n- \n' },
+      ],
+      extraTasks: [
+        { title: '整理纪要结构', description: '统一纪要结构：背景→关键语录→结论。', filePath: '访谈纪要.md', actor: { handle: 'oc_agent_notes', type: 'agent' } },
+        { title: '输出 3 条可执行建议', description: '写成“动作 + 预期结果 + 验证方式”。', filePath: '结论与建议.md' },
+      ],
+      proposals: [
+        { title: '纪要增加“关键语录”段', summary: '补充关键语录结构，方便复核。', filePath: '访谈纪要.md', author: { handle: 'oc_agent_notes', type: 'agent' }, flow: 'merge' },
+        { title: '建议增加“验证方式”', summary: '每条建议补充验证方式。', filePath: '结论与建议.md', author: { handle: 'seed_dana', type: 'human' }, flow: 'needs_review' },
+      ],
+      decisions: ['受限项目：访谈内容不可外泄。', '建议必须可验证、可执行。'],
+    },
+    {
+      slug: 'cn-ops-proc',
+      name: '内部流程 · 发布与回滚（受限）',
+      summary: '内部流程项目：发布流程、回滚、值班交接与事故复盘。',
+      visibility: 'restricted',
+      template: 'general',
+      owner: 'seed_alex',
+      members: [
+        { handle: 'seed_alex', type: 'human', role: 'owner' },
+        { handle: 'seed_agent_ops', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: '发布流程.md', content: '# 发布流程\n\n1) 预检\n2) 灰度\n3) 扩量\n4) 观察\n' },
+        { path: '回滚预案.md', content: '# 回滚预案\n\n- 触发条件\n- 回滚步骤\n- 风险提示\n' },
+        { path: '事故复盘.md', content: '# 事故复盘\n\n## 时间线\n\n## 根因\n\n## 行动项\n' },
+      ],
+      extraTasks: [
+        { title: '补齐回滚触发条件', description: '把触发条件写成可观测指标阈值。', filePath: '回滚预案.md' },
+        { title: '完善值班交接清单', description: '交接必须包含监控/报警/进行中变更。', filePath: '发布流程.md', actor: { handle: 'seed_agent_ops', type: 'agent' } },
+      ],
+      proposals: [
+        { title: '回滚预案补充“沟通模板”', summary: '加入对内/对外沟通模板。', filePath: '回滚预案.md', author: { handle: 'seed_agent_ops', type: 'agent' }, flow: 'merge' },
+        { title: '事故复盘增加“预防措施”', summary: '明确预防措施与负责人。', filePath: '事故复盘.md', author: { handle: 'seed_alex', type: 'human' }, flow: 'needs_review' },
+      ],
+      decisions: ['受限项目：发布与回滚流程必须统一版本。', '所有事故复盘必须产出行动项。'],
+    },
+    {
+      slug: 'cn-agent-heavy',
+      name: '代理实验室 · 多代理协作实验',
+      summary: '代理密集项目：多代理分工（写作/审阅/研究/运维）与合并策略。',
+      visibility: 'open',
+      template: 'product',
+      owner: 'seed_owner',
+      members: [
+        { handle: 'seed_owner', type: 'human', role: 'owner' },
+        { handle: 'seed_agent_builder', type: 'agent', role: 'contributor' },
+        { handle: 'seed_agent_reviewer', type: 'agent', role: 'contributor' },
+      ],
+      externalAgents: [
+        { handle: 'oc_agent_lab', displayName: '外部代理 · LabBot', runtime: { capabilities: ['tasks', 'proposals', 'review'], note: '外部代理参与示例' } },
+      ],
+      extraFiles: [
+        { path: '实验设计.md', content: '# 实验设计\n\n- 目标\n- 方法\n- 指标\n- 风险\n' },
+        { path: '运行记录.md', content: '# 运行记录\n\n- (empty)\n' },
+      ],
+      extraTasks: [
+        { title: '定义分工边界', description: '明确每个代理负责什么、不负责什么。', filePath: '实验设计.md' },
+        { title: '记录一次协作运行', description: '把输入/输出/复盘写入运行记录。', filePath: '运行记录.md', actor: { handle: 'oc_agent_lab', type: 'agent' } },
+      ],
+      proposals: [
+        { title: '实验设计补充“失败模式”', summary: '列出最可能失败的 3 种模式及应对。', filePath: '实验设计.md', author: { handle: 'oc_agent_lab', type: 'agent' }, flow: 'merge' },
+        { title: '运行记录增加模板', summary: '加入运行记录模板字段。', filePath: '运行记录.md', author: { handle: 'seed_agent_reviewer', type: 'agent' }, flow: 'needs_review' },
+      ],
+      decisions: ['多代理协作优先保证可追溯。', '合并前必须明确“谁负责最终决策”。'],
+    },
   ];
 
   for (const s of scenarios) {
@@ -2377,6 +2596,22 @@ function ensureScenarioSeedProjects() {
         m.role,
         now
       );
+    }
+
+    // External/OpenClaw-style agent participation (origin=openclaw + binding token + runtime).
+    if (s.externalAgents && s.externalAgents.length) {
+      for (const ea of s.externalAgents) {
+        try {
+          externalAgentIntake({
+            agentHandle: ea.handle,
+            displayName: ea.displayName,
+            projectSlug: s.slug,
+            runtime: ea.runtime || { capabilities: ['tasks', 'proposals', 'review'] },
+          });
+        } catch {
+          // best-effort
+        }
+      }
     }
 
     // Decisions: append to DECISIONS.md if still empty.

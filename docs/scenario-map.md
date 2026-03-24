@@ -11,6 +11,8 @@ Use cases to test across the dataset:
 
 ## Seeded projects (10)
 
+> Note: In addition to the original English scenario set, the seeder now also creates a **Chinese scenario set** for more realistic internal evaluation.
+
 1) `/projects/product-alpha` (open, product)
 - mix: human maintainer + builder agent
 - has merged proposal + needs-review proposal
