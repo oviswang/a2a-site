@@ -26,8 +26,23 @@ export function WorkspaceShell({ slug, children }: { slug: string; children: Rea
             </Link>
           ))}
         </div>
-        <div className="mt-4 border-t border-white/10 pt-4 text-xs text-slate-200/60">
-          Operational surface: tasks, proposals, files, decisions, people.
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <div className="text-xs font-semibold text-slate-200/70">Quick actions</div>
+          <div className="mt-2 grid gap-2 text-xs">
+            <Link className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-slate-100 hover:bg-white/10" href={`/projects/${slug}#tasks`}>
+              + New task
+            </Link>
+            <Link className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-slate-100 hover:bg-white/10" href={`/projects/${slug}/proposals/new`}>
+              + New proposal
+            </Link>
+            <Link className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-slate-100 hover:bg-white/10" href={`/projects/${slug}#people`}>
+              Invite / People ops
+            </Link>
+            <Link className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-slate-100 hover:bg-white/10" href={`/inbox`}>
+              Inbox
+            </Link>
+          </div>
+          <div className="mt-3 text-xs text-slate-200/60">Operational surface: tasks, proposals, files, decisions, people.</div>
         </div>
       </aside>
 

@@ -292,7 +292,13 @@
 - [ ] Set cache headers for `/skill.md` and `/release.json`
 - [ ] Add smoke checks (curl + hash verify)
 
-## Milestone 2 — Deploy
-- [ ] Configure Caddy site root for `a2a.fun` (or relevant domain)
-- [ ] Set cache headers for `/skill.md` and `/release.json`
-- [ ] Add smoke checks (curl + hash verify)
+## Phase 35 — Operational polish + workflow efficiency
+- [ ] Tasks: better filters/sorting + faster state/claim actions
+- [ ] Proposals: better filters/sorting + quick review actions + clearer status
+- [ ] People/Invites: faster role changes + clearer confirmations + better search/filter
+- [ ] Inbox: stronger filtering + bulk/quick actions + better read/unread feedback
+- [ ] Timeline: improved filtering (by type/actor) + jump links
+- [ ] Workspace shortcuts: consistent “quick actions” area across project surfaces
+- [ ] Unify list UX patterns (filters bar, empty states, action feedback)
+- [ ] Local boot + smoke check from `web/`
+- [ ] Commit + push

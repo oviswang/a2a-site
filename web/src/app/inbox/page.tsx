@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
+import { Toast } from '@/components/Toast';
+import { Toolbar, ToolbarGroup, ToolbarLabel } from '@/components/Toolbar';
 import { useWorkspace } from '@/lib/state';
 
 type N = { id: string; kind: string; text: string; link: string | null; createdAt: string; readAt: string | null };
@@ -13,34 +15,55 @@ export default function InboxPage() {
   const { state } = useWorkspace();
   const [items, setItems] = useState<N[]>([]);
   const [unread, setUnread] = useState(0);
+  const [toast, setToast] = useState<{ message: string; variant?: 'info' | 'success' | 'error' } | null>(null);
 
-  async function markRead(id: string) {
-    await fetch(`/api/inbox/${encodeURIComponent(id)}/read`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ userHandle: state.actor.handle }),
-    });
+  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('unread');
+  const [kind, setKind] = useState<'all' | string>('all');
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<'created_desc' | 'created_asc'>('created_desc');
 
-    // Refresh after marking.
+  async function refresh() {
     const res = await fetch(`/api/inbox?userHandle=${encodeURIComponent(state.actor.handle)}`, { cache: 'no-store' });
     const j = (await res.json()) as { unread: number; notifications: N[] };
     setUnread(j.unread || 0);
     setItems(j.notifications || []);
   }
 
+  async function markRead(id: string) {
+    const res = await fetch(`/api/inbox/${encodeURIComponent(id)}/read`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userHandle: state.actor.handle }),
+    });
+
+    setToast(res.ok ? { message: 'Marked read.', variant: 'success' } : { message: 'Mark read failed.', variant: 'error' });
+    await refresh();
+  }
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const res = await fetch(`/api/inbox?userHandle=${encodeURIComponent(state.actor.handle)}`, { cache: 'no-store' });
-      const j = (await res.json()) as { unread: number; notifications: N[] };
-      if (cancelled) return;
-      setUnread(j.unread || 0);
-      setItems(j.notifications || []);
+      await refresh();
     })().catch(() => void 0);
     return () => {
       cancelled = true;
     };
   }, [state.actor.handle]);
+
+  const kinds = Array.from(new Set(items.map((n) => n.kind))).sort();
+
+  const visible = [...items]
+    .filter((n) => {
+      if (filter === 'unread' && n.readAt) return false;
+      if (filter === 'read' && !n.readAt) return false;
+      if (kind !== 'all' && n.kind !== kind) return false;
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return `${n.text}\n${n.kind}\n${n.id}`.toLowerCase().includes(q);
+    })
+    .sort((a, b) => (sort === 'created_asc' ? String(a.createdAt).localeCompare(String(b.createdAt)) : String(b.createdAt).localeCompare(String(a.createdAt))));
+
+  const visibleUnread = visible.filter((n) => !n.readAt);
 
   return (
     <Layout>
@@ -51,9 +74,85 @@ export default function InboxPage() {
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'Inbox' }]} />}
         />
 
+        <Toast message={toast?.message || null} variant={toast?.variant || 'info'} onClose={() => setToast(null)} autoHideMs={4000} />
+
         <Card title="Notifications">
-          <div className="grid gap-2">
-            {items.map((n) => (
+          <Toolbar>
+            <ToolbarGroup>
+              <ToolbarLabel label="View">
+                <select
+                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value === 'read' ? 'read' : e.target.value === 'all' ? 'all' : 'unread')}
+                >
+                  <option value="unread">unread</option>
+                  <option value="all">all</option>
+                  <option value="read">read</option>
+                </select>
+              </ToolbarLabel>
+              <ToolbarLabel label="Kind">
+                <select
+                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value || 'all')}
+                >
+                  <option value="all">all</option>
+                  {kinds.map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
+                  ))}
+                </select>
+              </ToolbarLabel>
+              <ToolbarLabel label="Search">
+                <input
+                  className="w-[240px] rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="text"
+                />
+              </ToolbarLabel>
+              <ToolbarLabel label="Sort">
+                <select
+                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value === 'created_asc' ? 'created_asc' : 'created_desc')}
+                >
+                  <option value="created_desc">newest</option>
+                  <option value="created_asc">oldest</option>
+                </select>
+              </ToolbarLabel>
+            </ToolbarGroup>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="text-xs text-slate-200/60">{visible.length} shown · {visibleUnread.length} unread</div>
+              {visibleUnread.length ? (
+                <button
+                  type="button"
+                  className="rounded-xl bg-sky-400/20 px-2 py-1 text-xs text-sky-100 hover:bg-sky-400/25"
+                  onClick={async () => {
+                    if (!window.confirm(`Mark ${visibleUnread.length} notifications as read?`)) return;
+                    await Promise.all(
+                      visibleUnread.map((n) =>
+                        fetch(`/api/inbox/${encodeURIComponent(n.id)}/read`, {
+                          method: 'POST',
+                          headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({ userHandle: state.actor.handle }),
+                        }).catch(() => void 0)
+                      )
+                    );
+                    setToast({ message: `Marked ${visibleUnread.length} as read.`, variant: 'success' });
+                    await refresh();
+                  }}
+                >
+                  Mark visible read
+                </button>
+              ) : null}
+            </div>
+          </Toolbar>
+
+          <div className="mt-3 grid gap-2">
+            {visible.map((n) => (
               <div key={n.id} className="flex flex-wrap items-start justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -82,7 +181,7 @@ export default function InboxPage() {
                 ) : null}
               </div>
             ))}
-            {items.length === 0 ? (
+            {visible.length === 0 ? (
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200/70">
                 <div className="text-slate-50">No notifications yet.</div>
                 <div className="mt-1 text-xs text-slate-200/60">Start by opening a project, inviting an agent, and running a proposal/review loop.</div>

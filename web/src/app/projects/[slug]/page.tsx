@@ -7,6 +7,8 @@ import { Layout } from '@/components/Layout';
 import { Card } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 import { WorkspaceShell } from './WorkspaceShell';
+import { Toast } from '@/components/Toast';
+import { Toolbar, ToolbarGroup, ToolbarLabel } from '@/components/Toolbar';
 import { useWorkspace } from '@/lib/state';
 
 function splitDirs(paths: string[]) {
@@ -36,6 +38,35 @@ export default function ProjectDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
+  const [toast, setToast] = useState<{ message: string; variant?: 'info' | 'success' | 'error' } | null>(null);
+
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDesc, setTaskDesc] = useState('');
+  const [joinMsg, setJoinMsg] = useState<string | null>(null);
+
+  // Operational filters/sorts (client-side)
+  const [taskQuery, setTaskQuery] = useState('');
+  const [taskStatus, setTaskStatus] = useState<'all' | 'open' | 'claimed' | 'in_progress' | 'completed' | 'unclaimed'>('all');
+  const [taskMine, setTaskMine] = useState(false);
+  const [taskSort, setTaskSort] = useState<'updated_desc' | 'created_desc' | 'title_asc'>('updated_desc');
+
+  const [proposalQuery, setProposalQuery] = useState('');
+  const [proposalStatus, setProposalStatus] = useState<'all' | 'needs_review' | 'approved' | 'changes_requested' | 'rejected' | 'merged'>('all');
+  const [proposalMine, setProposalMine] = useState(false);
+  const [proposalSort, setProposalSort] = useState<'created_desc' | 'status_then_created' | 'title_asc'>('status_then_created');
+
+  const [peopleQuery, setPeopleQuery] = useState('');
+  const [showPendingOnly, setShowPendingOnly] = useState(false);
+
+  const [timelineQuery, setTimelineQuery] = useState('');
+  const [timelineKindFilter, setTimelineKindFilter] = useState<'all' | 'task' | 'proposal' | 'review' | 'merge' | 'invite' | 'member' | 'access' | 'event'>('all');
+
+  const [reqRoles, setReqRoles] = useState<Record<string, 'contributor' | 'maintainer'>>({});
+  const [inviteHandle, setInviteHandle] = useState('');
+  const [inviteType, setInviteType] = useState<'human' | 'agent'>('agent');
+  const [inviteRole, setInviteRole] = useState<'contributor' | 'maintainer'>('contributor');
+  const [peopleMsg, setPeopleMsg] = useState<string | null>(null);
+
   const files = project?.files || [];
   const filePaths = files.map((f) => f.path);
   const tree = splitDirs(filePaths);
@@ -44,6 +75,8 @@ export default function ProjectDetailPage() {
   const proposals = state.proposalsByProject[slug] || [];
   const tasks = state.tasksByProject[slug] || [];
 
+  const actor = state.actor;
+
   const tasksGrouped = {
     open: tasks.filter((t) => t.status === 'open'),
     claimed: tasks.filter((t) => t.status === 'claimed'),
@@ -51,10 +84,62 @@ export default function ProjectDetailPage() {
     completed: tasks.filter((t) => t.status === 'completed'),
   };
 
-  const actor = state.actor;
+  const taskMatches = (t: (typeof tasks)[number]) => {
+    const q = taskQuery.trim().toLowerCase();
+    if (q) {
+      const hay = `${t.title}\n${t.description || ''}\n${t.id}\n${t.filePath || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (taskMine && t.claimedByHandle !== actor.handle) return false;
+    if (taskStatus === 'all') return true;
+    if (taskStatus === 'unclaimed') return !t.claimedByHandle && t.status === 'open';
+    return t.status === taskStatus;
+  };
+
+  const sortedTasks = [...tasks].filter(taskMatches).sort((a, b) => {
+    if (taskSort === 'title_asc') return String(a.title).localeCompare(String(b.title));
+    if (taskSort === 'created_desc') return String(b.createdAt).localeCompare(String(a.createdAt));
+    return String(b.updatedAt).localeCompare(String(a.updatedAt));
+  });
+
+  const statusRank: Record<string, number> = {
+    needs_review: 0,
+    changes_requested: 1,
+    approved: 2,
+    merged: 3,
+    rejected: 4,
+  };
+
+  const proposalMatches = (p: (typeof proposals)[number]) => {
+    const q = proposalQuery.trim().toLowerCase();
+    if (q) {
+      const hay = `${p.title}\n${p.id}\n${p.filePath}\n${p.authorHandle}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (proposalMine && p.authorHandle !== actor.handle) return false;
+    if (proposalStatus === 'all') return true;
+    return p.status === proposalStatus;
+  };
+
+  const sortedProposals = [...proposals].filter(proposalMatches).sort((a, b) => {
+    if (proposalSort === 'title_asc') return String(a.title).localeCompare(String(b.title));
+    if (proposalSort === 'created_desc') return String(b.createdAt).localeCompare(String(a.createdAt));
+    const ra = statusRank[a.status] ?? 99;
+    const rb = statusRank[b.status] ?? 99;
+    if (ra !== rb) return ra - rb;
+    return String(b.createdAt).localeCompare(String(a.createdAt));
+  });
+
   const myMember = project?.members?.find((m) => m.handle === actor.handle) || null;
   const isOwnerOrMaintainer = myMember ? myMember.role === 'owner' || myMember.role === 'maintainer' : false;
   const identityByHandle = new Map(state.identities.map((i) => [i.handle, i] as const));
+
+  const peopleQ = peopleQuery.trim().toLowerCase();
+  const memberMatchesQ = (handle: string) => {
+    if (!peopleQ) return true;
+    const dn = identityByHandle.get(handle)?.displayName || '';
+    return `${handle}\n${dn}`.toLowerCase().includes(peopleQ);
+  };
 
   const activity = project?.activity || [];
   const kindOf = (text: string) => {
@@ -70,6 +155,7 @@ export default function ProjectDetailPage() {
     if (text.startsWith('Access ')) return 'access';
     return 'event';
   };
+
   const activityByDay = activity.reduce(
     (acc, a) => {
       const day = a.ts.slice(0, 10);
@@ -79,15 +165,6 @@ export default function ProjectDetailPage() {
     },
     {} as Record<string, Array<{ ts: string; text: string }>>
   );
-
-  const [taskTitle, setTaskTitle] = useState('');
-  const [taskDesc, setTaskDesc] = useState('');
-  const [joinMsg, setJoinMsg] = useState<string | null>(null);
-  const [reqRoles, setReqRoles] = useState<Record<string, 'contributor' | 'maintainer'>>({});
-  const [inviteHandle, setInviteHandle] = useState('');
-  const [inviteType, setInviteType] = useState<'human' | 'agent'>('agent');
-  const [inviteRole, setInviteRole] = useState<'contributor' | 'maintainer'>('contributor');
-  const [peopleMsg, setPeopleMsg] = useState<string | null>(null);
 
   return (
     <Layout>
@@ -132,6 +209,13 @@ export default function ProjectDetailPage() {
               </div>
             ) : null
           }
+        />
+
+        <Toast
+          message={toast?.message || null}
+          variant={toast?.variant || 'info'}
+          onClose={() => setToast(null)}
+          autoHideMs={4500}
         />
 
         {project ? (
@@ -235,7 +319,63 @@ export default function ProjectDetailPage() {
             {/* TASKS */}
             <section id="tasks" className="scroll-mt-24">
               <Card title="Tasks">
-                <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                <Toolbar>
+                  <ToolbarGroup>
+                    <ToolbarLabel label="Search">
+                      <input
+                        className="w-[220px] rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                        value={taskQuery}
+                        onChange={(e) => setTaskQuery(e.target.value)}
+                        placeholder="title, id, file"
+                      />
+                    </ToolbarLabel>
+                    <ToolbarLabel label="Status">
+                      <select
+                        className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                        value={taskStatus}
+                        onChange={(e) =>
+                          setTaskStatus(
+                            e.target.value === 'open' ||
+                              e.target.value === 'claimed' ||
+                              e.target.value === 'in_progress' ||
+                              e.target.value === 'completed' ||
+                              e.target.value === 'unclaimed'
+                              ? (e.target.value as any)
+                              : 'all'
+                          )
+                        }
+                      >
+                        <option value="all">all</option>
+                        <option value="open">open</option>
+                        <option value="unclaimed">unclaimed</option>
+                        <option value="claimed">claimed</option>
+                        <option value="in_progress">in progress</option>
+                        <option value="completed">completed</option>
+                      </select>
+                    </ToolbarLabel>
+                    <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">
+                      <input type="checkbox" checked={taskMine} onChange={(e) => setTaskMine(e.target.checked)} />
+                      Mine
+                    </label>
+                    <ToolbarLabel label="Sort">
+                      <select
+                        className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                        value={taskSort}
+                        onChange={(e) =>
+                          setTaskSort(e.target.value === 'created_desc' ? 'created_desc' : e.target.value === 'title_asc' ? 'title_asc' : 'updated_desc')
+                        }
+                      >
+                        <option value="updated_desc">updated ↓</option>
+                        <option value="created_desc">created ↓</option>
+                        <option value="title_asc">title A→Z</option>
+                      </select>
+                    </ToolbarLabel>
+                  </ToolbarGroup>
+
+                  <div className="text-xs text-slate-200/60">{sortedTasks.length} shown</div>
+                </Toolbar>
+
+                <div className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
                   <div className="text-xs font-semibold text-slate-200/70">Create task</div>
                   <input
                     className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
@@ -265,93 +405,85 @@ export default function ProjectDetailPage() {
                   </button>
                 </div>
 
-                <div className="mt-4 grid gap-4">
-                  {([
-                    ['open', tasksGrouped.open],
-                    ['claimed', tasksGrouped.claimed],
-                    ['in_progress', tasksGrouped.in_progress],
-                    ['completed', tasksGrouped.completed],
-                  ] as const).map(([label, list]) => (
-                    <div key={label}>
-                      <div className="mb-2 text-xs font-semibold text-slate-200/70">
-                        {label} <span className="text-slate-200/30">({list.length})</span>
+                <div className="mt-4 flex flex-col gap-2">
+                  {sortedTasks.map((t) => (
+                    <div key={t.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-sm font-medium text-slate-50">
+                          <Link className="underline decoration-white/30 hover:decoration-white/60" href={`/tasks/${t.id}`}>
+                            {t.title}
+                          </Link>{' '}
+                          <span className="ml-2 font-mono text-xs text-slate-200/40">{t.id}</span>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">{t.status}</div>
                       </div>
-                      <div className="flex flex-col gap-2">
-                        {list.map((t) => (
-                          <div key={t.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div className="text-sm font-medium text-slate-50">
-                                <Link className="underline decoration-white/30 hover:decoration-white/60" href={`/tasks/${t.id}`}>
-                                  {t.title}
-                                </Link>{' '}
-                                <span className="ml-2 font-mono text-xs text-slate-200/40">{t.id}</span>
-                              </div>
-                              <div className="text-xs text-slate-200/60">{t.status}</div>
-                            </div>
-                            {t.description ? <div className="mt-1 text-sm text-slate-200/80">{t.description}</div> : null}
-                            <div className="mt-2 text-xs text-slate-200/60">
-                              {t.claimedByHandle ? (
-                                <span>
-                                  Claimed by @{t.claimedByHandle} ({t.claimedByType || '—'})
-                                </span>
-                              ) : (
-                                <span>Unclaimed</span>
-                              )}
-                              {t.filePath ? (
-                                <span className="ml-2">
-                                  · file{' '}
-                                  <Link className="font-mono underline decoration-white/30 hover:decoration-white/60" href={`/projects/${slug}?file=${encodeURIComponent(t.filePath)}`}>
-                                    {t.filePath}
-                                  </Link>
-                                </span>
-                              ) : null}
-                            </div>
 
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              <button
-                                className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-                                type="button"
-                                onClick={async () => {
-                                  await actions.taskAction(t.id, t.claimedByHandle ? 'unclaim' : 'claim');
-                                  await actions.loadProject(slug);
-                                }}
-                              >
-                                {t.claimedByHandle ? 'Unclaim' : 'Claim'}
-                              </button>
-                              <button
-                                className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-                                type="button"
-                                onClick={async () => {
-                                  await actions.taskAction(t.id, 'start');
-                                  await actions.loadProject(slug);
-                                }}
-                              >
-                                Start
-                              </button>
-                              <button
-                                className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-                                type="button"
-                                onClick={async () => {
-                                  await actions.taskAction(t.id, 'complete');
-                                  await actions.loadProject(slug);
-                                }}
-                              >
-                                Complete
-                              </button>
+                      {t.description ? <div className="mt-1 text-sm text-slate-200/80">{t.description}</div> : null}
 
-                              <Link
-                                className="rounded-xl bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
-                                href={`/projects/${slug}/proposals/new?file=${encodeURIComponent(t.filePath || selectedFile?.path || 'README.md')}&taskId=${encodeURIComponent(t.id)}`}
-                              >
-                                Propose
-                              </Link>
-                            </div>
-                          </div>
-                        ))}
-                        {list.length === 0 ? <div className="text-sm text-slate-200/60">None</div> : null}
+                      <div className="mt-2 text-xs text-slate-200/60">
+                        {t.claimedByHandle ? (
+                          <span>
+                            Claimed by @{t.claimedByHandle} ({t.claimedByType || '—'})
+                          </span>
+                        ) : (
+                          <span>Unclaimed</span>
+                        )}
+                        {t.filePath ? (
+                          <span className="ml-2">
+                            · file{' '}
+                            <Link className="font-mono underline decoration-white/30 hover:decoration-white/60" href={`/projects/${slug}?file=${encodeURIComponent(t.filePath)}`}>
+                              {t.filePath}
+                            </Link>
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                          type="button"
+                          onClick={async () => {
+                            const ok = await actions.taskAction(t.id, t.claimedByHandle ? 'unclaim' : 'claim');
+                            setToast(ok ? { message: t.claimedByHandle ? 'Task unclaimed.' : 'Task claimed.', variant: 'success' } : { message: 'Task action failed.', variant: 'error' });
+                            await actions.loadProject(slug);
+                          }}
+                        >
+                          {t.claimedByHandle ? 'Unclaim' : 'Claim'}
+                        </button>
+                        <button
+                          className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                          type="button"
+                          onClick={async () => {
+                            const ok = await actions.taskAction(t.id, 'start');
+                            setToast(ok ? { message: 'Task started.', variant: 'success' } : { message: 'Task start failed.', variant: 'error' });
+                            await actions.loadProject(slug);
+                          }}
+                        >
+                          Start
+                        </button>
+                        <button
+                          className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                          type="button"
+                          onClick={async () => {
+                            if (!window.confirm('Mark this task as completed?')) return;
+                            const ok = await actions.taskAction(t.id, 'complete');
+                            setToast(ok ? { message: 'Task completed.', variant: 'success' } : { message: 'Task complete failed.', variant: 'error' });
+                            await actions.loadProject(slug);
+                          }}
+                        >
+                          Complete
+                        </button>
+
+                        <Link
+                          className="rounded-xl bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
+                          href={`/projects/${slug}/proposals/new?file=${encodeURIComponent(t.filePath || selectedFile?.path || 'README.md')}&taskId=${encodeURIComponent(t.id)}`}
+                        >
+                          Propose
+                        </Link>
                       </div>
                     </div>
                   ))}
+                  {sortedTasks.length === 0 ? <div className="text-sm text-slate-200/60">No matching tasks.</div> : null}
                 </div>
               </Card>
             </section>
@@ -359,16 +491,129 @@ export default function ProjectDetailPage() {
             {/* PROPOSALS */}
             <section id="proposals" className="scroll-mt-24">
               <Card title="Proposals">
-                <div className="flex flex-col gap-3">
-                  {proposals.map((p) => (
+                <Toolbar>
+                  <ToolbarGroup>
+                    <ToolbarLabel label="Search">
+                      <input
+                        className="w-[240px] rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                        value={proposalQuery}
+                        onChange={(e) => setProposalQuery(e.target.value)}
+                        placeholder="title, id, file, author"
+                      />
+                    </ToolbarLabel>
+                    <ToolbarLabel label="Status">
+                      <select
+                        className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                        value={proposalStatus}
+                        onChange={(e) =>
+                          setProposalStatus(
+                            e.target.value === 'needs_review' ||
+                              e.target.value === 'approved' ||
+                              e.target.value === 'changes_requested' ||
+                              e.target.value === 'rejected' ||
+                              e.target.value === 'merged'
+                              ? (e.target.value as any)
+                              : 'all'
+                          )
+                        }
+                      >
+                        <option value="all">all</option>
+                        <option value="needs_review">needs review</option>
+                        <option value="changes_requested">changes requested</option>
+                        <option value="approved">approved</option>
+                        <option value="merged">merged</option>
+                        <option value="rejected">rejected</option>
+                      </select>
+                    </ToolbarLabel>
+                    <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">
+                      <input type="checkbox" checked={proposalMine} onChange={(e) => setProposalMine(e.target.checked)} />
+                      Mine
+                    </label>
+                    <ToolbarLabel label="Sort">
+                      <select
+                        className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                        value={proposalSort}
+                        onChange={(e) =>
+                          setProposalSort(e.target.value === 'created_desc' ? 'created_desc' : e.target.value === 'title_asc' ? 'title_asc' : 'status_then_created')
+                        }
+                      >
+                        <option value="status_then_created">status → created</option>
+                        <option value="created_desc">created ↓</option>
+                        <option value="title_asc">title A→Z</option>
+                      </select>
+                    </ToolbarLabel>
+                  </ToolbarGroup>
+
+                  <div className="text-xs text-slate-200/60">{sortedProposals.length} shown</div>
+                </Toolbar>
+
+                <div className="mt-3 flex flex-col gap-3">
+                  {sortedProposals.map((p) => (
                     <div key={p.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <Link className="text-sm font-medium underline decoration-white/30 hover:decoration-white/60" href={`/proposals/${p.id}/review`}>
                           {p.title}
                         </Link>
-                        <span className="text-xs text-slate-200/60">
-                          {p.createdAt} · {p.status}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs text-slate-200/60">
+                            {p.createdAt} · {p.status}
+                          </span>
+
+                          {isOwnerOrMaintainer ? (
+                            <div className="flex flex-wrap gap-2">
+                              {p.status === 'needs_review' ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="rounded-xl bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
+                                    onClick={async () => {
+                                      const pr = await actions.proposalAction(p.id, 'approve');
+                                      setToast(pr ? { message: 'Proposal approved.', variant: 'success' } : { message: 'Approve failed.', variant: 'error' });
+                                    }}
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="rounded-xl bg-amber-700 px-2 py-1 text-xs text-white hover:bg-amber-600"
+                                    onClick={async () => {
+                                      const note = window.prompt('Request changes note (optional):', '') || '';
+                                      const pr = await actions.proposalAction(p.id, 'request_changes', note || undefined);
+                                      setToast(pr ? { message: 'Changes requested.', variant: 'success' } : { message: 'Request changes failed.', variant: 'error' });
+                                    }}
+                                  >
+                                    Request changes
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="rounded-xl bg-rose-700 px-2 py-1 text-xs text-white hover:bg-rose-600"
+                                    onClick={async () => {
+                                      if (!window.confirm('Reject this proposal?')) return;
+                                      const pr = await actions.proposalAction(p.id, 'reject');
+                                      setToast(pr ? { message: 'Proposal rejected.', variant: 'success' } : { message: 'Reject failed.', variant: 'error' });
+                                    }}
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              ) : null}
+
+                              {p.status === 'approved' ? (
+                                <button
+                                  type="button"
+                                  className="rounded-xl bg-sky-400/20 px-2 py-1 text-xs text-sky-100 hover:bg-sky-400/25"
+                                  onClick={async () => {
+                                    if (!window.confirm('Merge this proposal? This updates the file in the workspace.')) return;
+                                    const pr = await actions.proposalAction(p.id, 'merge');
+                                    setToast(pr ? { message: 'Proposal merged.', variant: 'success' } : { message: 'Merge failed.', variant: 'error' });
+                                  }}
+                                >
+                                  Merge
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="mt-1 text-xs text-slate-200/60">
                         @{p.authorHandle} ({p.authorType})
@@ -395,7 +640,7 @@ export default function ProjectDetailPage() {
                       )}
                     </div>
                   ))}
-                  {proposals.length === 0 ? <div className="text-sm text-slate-200/60">No proposals</div> : null}
+                  {sortedProposals.length === 0 ? <div className="text-sm text-slate-200/60">No matching proposals.</div> : null}
                 </div>
               </Card>
             </section>
@@ -563,12 +808,35 @@ export default function ProjectDetailPage() {
               <Card title="People">
                 <div className="text-xs text-slate-200/60">Join mode: {project.visibility}</div>
 
+                <div className="mt-3">
+                  <Toolbar>
+                    <ToolbarGroup>
+                      <ToolbarLabel label="Search">
+                        <input
+                          className="w-[240px] rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                          value={peopleQuery}
+                          onChange={(e) => setPeopleQuery(e.target.value)}
+                          placeholder="handle / display name"
+                        />
+                      </ToolbarLabel>
+                      <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">
+                        <input type="checkbox" checked={showPendingOnly} onChange={(e) => setShowPendingOnly(e.target.checked)} />
+                        Pending only
+                      </label>
+                    </ToolbarGroup>
+                    <div className="text-xs text-slate-200/60">
+                      {(project.members || []).length} members · {(project.joinRequests || []).filter((r) => r.status === 'pending').length} join req ·{' '}
+                      {(project.invitations || []).filter((i) => i.status === 'pending').length} invites
+                    </div>
+                  </Toolbar>
+                </div>
+
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <div>
                     <div className="text-xs font-semibold text-slate-200/70">Humans</div>
                     <ul className="mt-2 list-disc pl-5 text-sm text-slate-200/80">
                       {(project.members || [])
-                        .filter((m) => m.memberType === 'human')
+                        .filter((m) => m.memberType === 'human' && memberMatchesQ(m.handle))
                         .map((m) => (
                           <li key={m.handle}>
                             @{m.handle}
@@ -578,7 +846,7 @@ export default function ProjectDetailPage() {
                             <span className="text-slate-200/40"> · {m.role}</span>
                           </li>
                         ))}
-                      {(project.members || []).filter((m) => m.memberType === 'human').length === 0 ? <li>None</li> : null}
+                      {(project.members || []).filter((m) => m.memberType === 'human' && memberMatchesQ(m.handle)).length === 0 ? <li>None</li> : null}
                     </ul>
                   </div>
 
@@ -586,7 +854,7 @@ export default function ProjectDetailPage() {
                     <div className="text-xs font-semibold text-slate-200/70">Agents</div>
                     <div className="mt-2 flex flex-col gap-2">
                       {(project.members || [])
-                        .filter((m) => m.memberType === 'agent')
+                        .filter((m) => m.memberType === 'agent' && memberMatchesQ(m.handle))
                         .map((m) => (
                           <div key={m.handle} className="rounded-2xl border border-white/10 bg-white/5 p-3">
                             <div className="flex items-center justify-between">
@@ -604,7 +872,7 @@ export default function ProjectDetailPage() {
                             </div>
                           </div>
                         ))}
-                      {(project.members || []).filter((m) => m.memberType === 'agent').length === 0 ? (
+                      {(project.members || []).filter((m) => m.memberType === 'agent' && memberMatchesQ(m.handle)).length === 0 ? (
                         <div className="text-sm text-slate-200/60">None</div>
                       ) : null}
                     </div>
@@ -616,7 +884,9 @@ export default function ProjectDetailPage() {
                     <div className="mt-6">
                     <div className="text-xs font-semibold text-slate-200/70">Join requests</div>
                     <ul className="mt-2 list-disc pl-5 text-sm text-slate-200/80">
-                      {(project.joinRequests || []).map((r) => (
+                      {(project.joinRequests || [])
+                        .filter((r) => (!showPendingOnly || r.status === 'pending') && memberMatchesQ(r.handle))
+                        .map((r) => (
                         <li key={r.id}>
                           @{r.handle} ({r.memberType}) — {r.status}
                           {r.status === 'pending' ? (
@@ -637,16 +907,24 @@ export default function ProjectDetailPage() {
                               <button
                                 className="rounded-xl bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-600"
                                 type="button"
-                                onClick={() =>
-                                  actions.reviewJoinRequest(r.id, 'approve', reqRoles[r.id] || 'contributor').then(() => actions.loadProject(slug))
-                                }
+                                onClick={async () => {
+                                  const role = reqRoles[r.id] || 'contributor';
+                                  const ok = await actions.reviewJoinRequest(r.id, 'approve', role);
+                                  setToast(ok ? { message: `Join request approved (${role}).`, variant: 'success' } : { message: 'Approve failed.', variant: 'error' });
+                                  await actions.loadProject(slug);
+                                }}
                               >
                                 Approve
                               </button>
                               <button
                                 className="rounded-xl bg-rose-700 px-2 py-1 text-xs text-white hover:bg-rose-600"
                                 type="button"
-                                onClick={() => actions.reviewJoinRequest(r.id, 'reject').then(() => actions.loadProject(slug))}
+                                onClick={async () => {
+                                  if (!window.confirm(`Reject join request from @${r.handle}?`)) return;
+                                  const ok = await actions.reviewJoinRequest(r.id, 'reject');
+                                  setToast(ok ? { message: 'Join request rejected.', variant: 'success' } : { message: 'Reject failed.', variant: 'error' });
+                                  await actions.loadProject(slug);
+                                }}
                               >
                                 Reject
                               </button>
@@ -726,7 +1004,9 @@ export default function ProjectDetailPage() {
                       {peopleMsg ? <div className="text-xs text-slate-200/70">{peopleMsg}</div> : null}
 
                       <div className="grid gap-2">
-                        {(project.invitations || []).map((inv) => (
+                        {(project.invitations || [])
+                          .filter((inv) => (!showPendingOnly || inv.status === 'pending') && memberMatchesQ(inv.handle))
+                          .map((inv) => (
                           <div key={inv.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs">
                             <div>
                               <span className="font-mono">@{inv.handle}</span> ({inv.memberType}) · {inv.role} · {inv.status}
@@ -737,6 +1017,7 @@ export default function ProjectDetailPage() {
                                 type="button"
                                 className="rounded-xl bg-rose-700 px-2 py-1 text-xs text-white hover:bg-rose-600"
                                 onClick={async () => {
+                                  if (!window.confirm(`Revoke invite for @${inv.handle}?`)) return;
                                   const res = await fetch(`/api/invites/${encodeURIComponent(inv.id)}/action`, {
                                     method: 'POST',
                                     headers: { 'content-type': 'application/json' },
@@ -745,9 +1026,11 @@ export default function ProjectDetailPage() {
                                   const j = await res.json().catch(() => null);
                                   if (!res.ok || !j?.ok) {
                                     setPeopleMsg(j?.error || 'revoke_failed');
+                                    setToast({ message: j?.error || 'Revoke failed.', variant: 'error' });
                                     return;
                                   }
                                   setPeopleMsg('Invite revoked.');
+                                  setToast({ message: 'Invite revoked.', variant: 'success' });
                                   await actions.loadProject(slug);
                                 }}
                               >
@@ -762,7 +1045,7 @@ export default function ProjectDetailPage() {
                       <div className="mt-4">
                         <div className="text-xs font-semibold text-slate-200/70">Member operations</div>
                         <div className="mt-2 grid gap-2">
-                          {(project.members || []).map((m) => (
+                          {(project.members || []).filter((m) => memberMatchesQ(m.handle)).map((m) => (
                             <div key={`${m.memberType}:${m.handle}`} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs">
                               <div>
                                 <span className="font-mono">@{m.handle}</span> ({m.memberType})
@@ -773,6 +1056,7 @@ export default function ProjectDetailPage() {
                                   value={m.role}
                                   onChange={async (e) => {
                                     const role = e.target.value === 'maintainer' ? 'maintainer' : e.target.value === 'owner' ? 'owner' : 'contributor';
+                                    if (!window.confirm(`Update @${m.handle} role to ${role}?`)) return;
                                     const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/members/action`, {
                                       method: 'POST',
                                       headers: { 'content-type': 'application/json' },
@@ -785,7 +1069,13 @@ export default function ProjectDetailPage() {
                                       }),
                                     });
                                     const j = await res.json().catch(() => null);
-                                    if (!res.ok || !j?.ok) setPeopleMsg(j?.error || 'role_update_failed');
+                                    if (!res.ok || !j?.ok) {
+                                      setPeopleMsg(j?.error || 'role_update_failed');
+                                      setToast({ message: j?.error || 'Role update failed.', variant: 'error' });
+                                    } else {
+                                      setPeopleMsg('Role updated.');
+                                      setToast({ message: 'Role updated.', variant: 'success' });
+                                    }
                                     await actions.loadProject(slug);
                                   }}
                                 >
@@ -797,6 +1087,7 @@ export default function ProjectDetailPage() {
                                   type="button"
                                   className="rounded-xl bg-rose-700 px-2 py-1 text-xs text-white hover:bg-rose-600"
                                   onClick={async () => {
+                                    if (!window.confirm(`Remove @${m.handle} from this project?`)) return;
                                     const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/members/action`, {
                                       method: 'POST',
                                       headers: { 'content-type': 'application/json' },
@@ -808,7 +1099,13 @@ export default function ProjectDetailPage() {
                                       }),
                                     });
                                     const j = await res.json().catch(() => null);
-                                    if (!res.ok || !j?.ok) setPeopleMsg(j?.error || 'remove_failed');
+                                    if (!res.ok || !j?.ok) {
+                                      setPeopleMsg(j?.error || 'remove_failed');
+                                      setToast({ message: j?.error || 'Remove failed.', variant: 'error' });
+                                    } else {
+                                      setPeopleMsg('Member removed.');
+                                      setToast({ message: 'Member removed.', variant: 'success' });
+                                    }
                                     await actions.loadProject(slug);
                                   }}
                                 >
@@ -854,7 +1151,51 @@ export default function ProjectDetailPage() {
             {/* TIMELINE */}
             <section id="timeline" className="scroll-mt-24">
               <Card title="Timeline">
-                <div className="grid gap-4">
+                <Toolbar>
+                  <ToolbarGroup>
+                    <ToolbarLabel label="Filter">
+                      <select
+                        className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                        value={timelineKindFilter}
+                        onChange={(e) =>
+                          setTimelineKindFilter(
+                            e.target.value === 'task' ||
+                              e.target.value === 'proposal' ||
+                              e.target.value === 'review' ||
+                              e.target.value === 'merge' ||
+                              e.target.value === 'invite' ||
+                              e.target.value === 'member' ||
+                              e.target.value === 'access' ||
+                              e.target.value === 'event'
+                              ? (e.target.value as any)
+                              : 'all'
+                          )
+                        }
+                      >
+                        <option value="all">all</option>
+                        <option value="task">task</option>
+                        <option value="proposal">proposal</option>
+                        <option value="review">review</option>
+                        <option value="merge">merge</option>
+                        <option value="invite">invite</option>
+                        <option value="member">member</option>
+                        <option value="access">access</option>
+                        <option value="event">event</option>
+                      </select>
+                    </ToolbarLabel>
+                    <ToolbarLabel label="Search">
+                      <input
+                        className="w-[240px] rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                        value={timelineQuery}
+                        onChange={(e) => setTimelineQuery(e.target.value)}
+                        placeholder="text / @handle"
+                      />
+                    </ToolbarLabel>
+                  </ToolbarGroup>
+                  <div className="text-xs text-slate-200/60">{activity.length} events</div>
+                </Toolbar>
+
+                <div className="mt-3 grid gap-4">
                   {Object.keys(activityByDay)
                     .sort()
                     .reverse()
@@ -863,9 +1204,18 @@ export default function ProjectDetailPage() {
                       <div key={day} className="rounded-2xl border border-white/10 bg-white/5 p-3">
                         <div className="text-xs font-semibold text-slate-200/70">{day}</div>
                         <div className="mt-2 grid gap-2">
-                          {activityByDay[day].slice(0, 12).map((a, idx) => {
-                            const k = kindOf(a.text);
-                            return (
+                          {activityByDay[day]
+                            .filter((a) => {
+                              const k = kindOf(a.text) as any;
+                              if (timelineKindFilter !== 'all' && k !== timelineKindFilter) return false;
+                              const q = timelineQuery.trim().toLowerCase();
+                              if (!q) return true;
+                              return `${a.text}\n${a.ts}`.toLowerCase().includes(q);
+                            })
+                            .slice(0, 12)
+                            .map((a, idx) => {
+                              const k = kindOf(a.text);
+                              return (
                               <div key={idx} className="flex flex-wrap items-start justify-between gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
                                 <div className="min-w-0">
                                   <div className="text-xs text-slate-200/50">{a.ts.slice(11, 19)}</div>
