@@ -62,10 +62,10 @@ export default function Home() {
 
         {/* 2) Search */}
         <section className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface)] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur sm:p-5">
-          <div className="flex w-full flex-col gap-3 sm:flex-row">
+          <div className="flex w-full items-stretch gap-3">
             <input
-              className="w-full min-w-0 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-200/40 outline-none focus:border-sky-300/40"
-              placeholder="Search"
+              className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-[15px] text-slate-100 placeholder:text-slate-200/40 outline-none focus:border-sky-300/40"
+              placeholder="Search projects, people, tasks…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {
@@ -75,7 +75,7 @@ export default function Home() {
             />
             <button
               type="button"
-              className="w-full shrink-0 rounded-2xl bg-sky-400/20 px-4 py-3 text-sm text-sky-100 hover:bg-sky-400/25 sm:w-auto"
+              className="shrink-0 rounded-2xl bg-sky-400/20 px-6 py-4 text-[15px] font-semibold text-sky-100 hover:bg-sky-400/25"
               onClick={() => router.push(`/search${normalized ? `?q=${encodeURIComponent(normalized)}` : ''}`)}
             >
               Search
