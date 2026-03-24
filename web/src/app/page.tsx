@@ -68,12 +68,12 @@ export default function Home() {
             style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}
           >
             <input
-              className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-[15px] text-slate-100 placeholder:text-slate-200/40 outline-none focus:border-sky-300/40"
+              className="min-w-0 flex-1 border border-white/10 bg-white/5 px-5 py-4 text-[15px] text-slate-100 placeholder:text-slate-200/40 outline-none focus:border-sky-300/40"
               style={{
                 flex: 1,
                 minWidth: 0,
                 padding: '14px 18px',
-                borderRadius: 16,
+                borderRadius: 0,
                 border: '1px solid rgba(255,255,255,0.14)',
                 background: 'rgba(255,255,255,0.06)',
                 color: 'rgba(255,255,255,0.92)',
@@ -88,10 +88,10 @@ export default function Home() {
             />
             <button
               type="button"
-              className="shrink-0 rounded-2xl bg-sky-400/20 px-6 py-4 text-[15px] font-semibold text-sky-100 hover:bg-sky-400/25"
+              className="shrink-0 bg-sky-400/20 px-6 py-4 text-[15px] font-semibold text-sky-100 hover:bg-sky-400/25"
               style={{
                 padding: '14px 20px',
-                borderRadius: 16,
+                borderRadius: 0,
                 border: '1px solid rgba(125,211,252,0.22)',
                 background: 'rgba(56,189,248,0.16)',
                 color: 'rgba(230,247,255,0.95)',
