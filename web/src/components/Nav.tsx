@@ -103,39 +103,58 @@ export function Nav() {
       </div>
 
       {open ? (
-        <div className="border-t border-white/10 bg-black/20 md:hidden">
-          <div className="mx-auto max-w-6xl px-4 py-4">
-            <div className="rounded-xl border border-white/10 bg-[color:var(--a2a-surface)]">
-              <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2 text-xs text-slate-200/70">
-                <span>
-                  Acting as <span className="font-mono">@{actor.handle}</span> ({actor.actorType})
-                </span>
-                <div className="flex gap-2">
-                  <Button type="button" size="sm" variant={actor.actorType === 'human' ? 'primary' : 'default'} onClick={() => actions.setActor({ handle: 'local-human', actorType: 'human' })}>
-                    Human
-                  </Button>
-                  <Button type="button" size="sm" variant={actor.actorType === 'agent' ? 'primary' : 'default'} onClick={() => actions.setActor({ handle: 'local-agent', actorType: 'agent' })}>
-                    Agent
-                  </Button>
-                </div>
+        <div className="fixed inset-0 z-[60] md:hidden">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
+
+          {/* Drawer */}
+          <div className="absolute inset-y-0 left-0 w-[320px] max-w-[88vw] border-r border-white/10 bg-[#050816] shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
+              <Link href="/" className="inline-flex items-center gap-3" onClick={() => setOpen(false)}>
+                <Image src="/brand/logo-20260324.jpg" alt="a2a.fun" width={28} height={28} className="rounded-lg" />
+                <span className="text-sm font-semibold text-slate-100">a2a.fun</span>
+              </Link>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)} aria-label="Close">
+                ×
+              </Button>
+            </div>
+
+            <div className="px-4 pb-4">
+              <div className="mb-3 text-xs text-slate-200/60">
+                Acting as <span className="font-mono">@{actor.handle}</span> ({actor.actorType})
               </div>
 
-              <div className="divide-y divide-white/10">
-                {nav.map((n) => (
-                  <Link
-                    key={n.href}
-                    href={n.href}
-                    className="flex items-center justify-between px-3 py-2 text-sm text-slate-100 hover:bg-white/5"
-                    onClick={() => setOpen(false)}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      {n.label}
-                      {n.href === '/inbox' && unread > 0 ? <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-100">{unread}</span> : null}
-                    </span>
-                    <span className="text-slate-200/30">›</span>
-                  </Link>
-                ))}
+              <div className="mb-4 flex gap-2">
+                <Button type="button" size="sm" variant={actor.actorType === 'human' ? 'primary' : 'default'} onClick={() => actions.setActor({ handle: 'local-human', actorType: 'human' })}>
+                  Human
+                </Button>
+                <Button type="button" size="sm" variant={actor.actorType === 'agent' ? 'primary' : 'default'} onClick={() => actions.setActor({ handle: 'local-agent', actorType: 'agent' })}>
+                  Agent
+                </Button>
               </div>
+
+              <div className="grid gap-1">
+                {nav.map((n) => {
+                  const active = pathname === n.href || (n.href !== '/' && pathname?.startsWith(n.href));
+                  return (
+                    <Link
+                      key={n.href}
+                      href={n.href}
+                      onClick={() => setOpen(false)}
+                      className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${active ? 'bg-white/5 text-slate-50' : 'text-slate-200/80 hover:bg-white/5 hover:text-slate-50'}`}
+                    >
+                      {active ? <span className="absolute left-0 top-2 h-6 w-1 rounded-r bg-sky-300" /> : null}
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-white/10 bg-white/5 text-[11px] text-slate-100">
+                        {n.label.slice(0, 1)}
+                      </span>
+                      <span className="flex-1">{n.label}</span>
+                      {n.href === '/inbox' && unread > 0 ? <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-100">{unread}</span> : null}
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 border-t border-white/10 pt-4 text-xs text-slate-200/60">More sections coming (GitHub-style grouping).</div>
             </div>
           </div>
         </div>
