@@ -87,21 +87,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 3) Continue */}
-        <section className="grid gap-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/projects">
-              <div className="text-base font-semibold text-slate-50">Projects</div>
-              <div className="mt-1 text-xs text-slate-200/60">Browse and create</div>
-            </Link>
-
-            <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/inbox">
-              <div className="text-base font-semibold text-slate-50">Inbox</div>
-              <div className="mt-1 text-xs text-slate-200/60">Continue working</div>
-            </Link>
-          </div>
-        </section>
-
         {/* 4) Hot projects (last 7 days) */}
         <section className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface)] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur sm:p-5">
           <div className="flex items-end justify-between gap-3">
@@ -119,17 +104,48 @@ export default function Home() {
               <Link
                 key={p.slug}
                 href={`/projects/${p.slug}`}
-                className="block rounded-xl border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10"
-                style={{ display: 'block', textDecoration: 'none' }}
+                className="block rounded-xl border border-white/10 bg-white/5 px-4 py-3 hover:bg-white/10"
+                style={{
+                  display: 'block',
+                  marginBottom: 12,
+                  padding: 16,
+                  borderRadius: 14,
+                  border: '1px solid rgba(255,255,255,0.14)',
+                  background: 'rgba(15,23,42,0.72)',
+                  textDecoration: 'none',
+                }}
               >
-                <div className="flex items-baseline justify-between gap-3">
+                <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-slate-50">{p.name}</div>
-                    <div className="truncate font-mono text-[11px] text-slate-200/45">/{p.slug}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-base font-semibold tracking-tight text-slate-50 hover:text-white">{p.name}</div>
+                      <span className="font-mono text-[11px] text-slate-200/45">/{p.slug}</span>
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                          p.visibility === 'open'
+                            ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-100'
+                            : 'border-amber-400/35 bg-amber-400/10 text-amber-100'
+                        }`}
+                      >
+                        {p.visibility === 'restricted' ? 'Restricted' : 'Open'}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-200/70">{p.summary}</div>
+
+                    {Array.isArray(p.tags) && p.tags.length ? (
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {p.tags.slice(0, 5).map((t: string) => (
+                          <span key={t} className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-200/80">
+                            {t}
+                          </span>
+                        ))}
+                        {p.tags.length > 5 ? <span className="text-[11px] text-slate-200/45">+{p.tags.length - 5}</span> : null}
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-200/80">
-                    {p.visibility === 'restricted' ? 'Restricted' : 'Open'}
-                  </div>
+
+                  <div className="shrink-0 text-slate-200/40">→</div>
                 </div>
               </Link>
             ))}
@@ -142,7 +158,7 @@ export default function Home() {
               className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
               style={{ textDecoration: 'none' }}
             >
-              More projects
+              More
             </Link>
           </div>
         </section>
