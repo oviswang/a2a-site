@@ -109,7 +109,6 @@ export default function Home() {
           <div className="flex items-end justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-slate-50">Hot projects</div>
-              <div className="mt-1 text-xs text-slate-200/60">Top 10 in the last 7 days</div>
             </div>
             <Link className="text-xs text-sky-200 hover:text-sky-100" href="/projects">
               More →
