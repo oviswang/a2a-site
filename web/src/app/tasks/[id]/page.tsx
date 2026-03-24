@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
+import { Button, Select } from '@/components/ui';
 import type { WorkspaceTask } from '@/lib/state';
 
 type TaskEvent = {
@@ -110,18 +111,14 @@ export default function TaskDetailPage() {
                 <div className="flex flex-wrap items-end gap-2">
                   <label className="grid gap-1">
                     <span className="text-[11px] text-slate-200/60">Kind</span>
-                    <select
-                      className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
-                      value={kind}
-                      onChange={(e) => setKind(e.target.value || 'all')}
-                    >
+                    <Select value={kind} onChange={(e) => setKind(e.target.value || 'all')}>
                       <option value="all">all</option>
                       {kinds.map((k) => (
                         <option key={k} value={k}>
                           {k}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                   <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">
                     <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />

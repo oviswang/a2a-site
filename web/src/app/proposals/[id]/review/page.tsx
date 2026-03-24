@@ -7,6 +7,7 @@ import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/Status';
+import { Button, Textarea } from '@/components/ui';
 import { useWorkspace, type WorkspaceProposal } from '@/lib/state';
 
 type ReviewEvent = {
@@ -119,13 +120,9 @@ export default function ProposalReviewPage() {
                     <div className="text-xs text-slate-200/60">
                       {showFullContent ? 'showing full content' : 'showing preview'}
                     </div>
-                    <button
-                      type="button"
-                      className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100 hover:bg-white/10"
-                      onClick={() => setShowFullContent((s) => !s)}
-                    >
+                    <Button type="button" size="sm" onClick={() => setShowFullContent((s) => !s)}>
                       {showFullContent ? 'Collapse' : 'Expand'}
-                    </button>
+                    </Button>
                   </div>
                 }
               >
@@ -162,16 +159,17 @@ export default function ProposalReviewPage() {
                 </div>
 
                 <div className="mt-4 grid gap-2">
-                  <textarea
-                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                  <Textarea
+                    className="rounded-xl"
                     rows={3}
                     placeholder="Add a comment…"
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="w-fit rounded-2xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25"
+                    variant="primary"
+                    className="w-fit"
                     onClick={async () => {
                       if (!comment.trim()) return;
                       await actions.proposalAction(pr.id, 'comment', comment.trim());
@@ -180,7 +178,7 @@ export default function ProposalReviewPage() {
                     }}
                   >
                     Post comment
-                  </button>
+                  </Button>
                 </div>
               </Card>
 
@@ -269,8 +267,8 @@ export default function ProposalReviewPage() {
 
               <Card title="Review actions">
                 {locked ? <div className="mb-3 text-xs text-slate-200/60">Closed proposal. Actions disabled.</div> : null}
-                <textarea
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                <Textarea
+                  className="rounded-xl"
                   rows={3}
                   placeholder="Review note (optional)…"
                   value={note}
@@ -278,9 +276,10 @@ export default function ProposalReviewPage() {
                 />
                 <div className="mt-3 grid gap-2">
                   <div className="flex flex-wrap gap-2">
-                    <button
+                    <Button
                       disabled={!!locked}
-                      className="rounded-xl bg-emerald-700 px-3 py-2 text-xs text-white hover:bg-emerald-600 disabled:opacity-50"
+                      variant="success"
+                      size="sm"
                       type="button"
                       onClick={async () => {
                         await actions.proposalAction(pr.id, 'approve', note.trim() || undefined);
@@ -289,10 +288,11 @@ export default function ProposalReviewPage() {
                       }}
                     >
                       Approve
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       disabled={!!locked}
-                      className="rounded-xl bg-amber-700 px-3 py-2 text-xs text-white hover:bg-amber-600 disabled:opacity-50"
+                      variant="default"
+                      size="sm"
                       type="button"
                       onClick={async () => {
                         await actions.proposalAction(pr.id, 'request_changes', note.trim() || undefined);
@@ -301,10 +301,11 @@ export default function ProposalReviewPage() {
                       }}
                     >
                       Request changes
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       disabled={!!locked}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10 disabled:opacity-50"
+                      variant="danger"
+                      size="sm"
                       type="button"
                       onClick={async () => {
                         await actions.proposalAction(pr.id, 'reject', note.trim() || undefined);
@@ -313,12 +314,12 @@ export default function ProposalReviewPage() {
                       }}
                     >
                       Reject
-                    </button>
+                    </Button>
                   </div>
 
-                  <button
+                  <Button
                     disabled={!canMerge}
-                    className="w-full rounded-2xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25 disabled:opacity-50"
+                    variant="primary"
                     type="button"
                     onClick={async () => {
                       await actions.proposalAction(pr.id, 'merge', note.trim() || undefined);
@@ -327,7 +328,7 @@ export default function ProposalReviewPage() {
                     }}
                   >
                     Merge
-                  </button>
+                  </Button>
                   <div className="text-xs text-slate-200/60">Merge enabled only after approval.</div>
                 </div>
               </Card>
