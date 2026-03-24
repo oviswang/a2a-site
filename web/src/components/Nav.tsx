@@ -45,7 +45,7 @@ export function Nav() {
             className="rounded-lg"
             priority
           />
-          <div className="text-sm font-semibold text-slate-50 no-underline">a2a.fun</div>
+          <div className="text-sm font-semibold text-slate-50 no-underline" style={{ paddingLeft: 2 }}>  a2a.fun</div>
         </Link>
 
         {/* Desktop nav */}
@@ -107,7 +107,7 @@ export function Nav() {
             aria-label="Menu"
             className="px-2 py-2"
           >
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={{ color: '#fff' }}>
               <path d="M2 4.25h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               <path d="M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               <path d="M2 11.75h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
