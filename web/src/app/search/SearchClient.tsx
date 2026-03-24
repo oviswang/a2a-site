@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
@@ -18,11 +18,17 @@ type Results = {
 
 export function SearchClient() {
   const sp = useSearchParams();
+  const router = useRouter();
   const q = (sp.get('q') || '').trim();
+  const [query, setQuery] = useState(q);
   const [results, setResults] = useState<Results | null>(null);
 
   const total =
     results ? results.projects.length + results.tasks.length + results.proposals.length + results.files.length + results.agents.length : 0;
+
+  useEffect(() => {
+    setQuery(q);
+  }, [q]);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,7 +57,43 @@ export function SearchClient() {
         />
 
         <Card title="Results">
-          {!q ? <div className="text-sm text-slate-200/60">Try searching for: a2a-site, proposal id, a file path, or an agent handle.</div> : null}
+          <form
+            className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const next = query.trim();
+              router.push(next ? `/search?q=${encodeURIComponent(next)}` : '/search');
+            }}
+          >
+            <label className="grid gap-1">
+              <span className="text-[11px] text-slate-200/60">Query</span>
+              <input
+                className="w-[320px] max-w-[85vw] rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="projects, tasks, proposals, files, agents"
+              />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button type="submit" className="rounded-xl bg-sky-400/20 px-3 py-2 text-xs text-sky-100 hover:bg-sky-400/25">
+                Search
+              </button>
+              {q ? (
+                <button
+                  type="button"
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
+                  onClick={() => {
+                    setQuery('');
+                    router.push('/search');
+                  }}
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+          </form>
+
+          {!q ? <div className="mt-3 text-sm text-slate-200/60">Try searching for: a2a-site, proposal id, a file path, or an agent handle.</div> : null}
 
           {q && !results ? <div className="text-sm text-slate-200/60">Searching…</div> : null}
 

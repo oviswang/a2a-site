@@ -293,12 +293,19 @@
 - [ ] Add smoke checks (curl + hash verify)
 
 ## Phase 35 — Operational polish + workflow efficiency
-- [ ] Tasks: better filters/sorting + faster state/claim actions
-- [ ] Proposals: better filters/sorting + quick review actions + clearer status
-- [ ] People/Invites: faster role changes + clearer confirmations + better search/filter
-- [ ] Inbox: stronger filtering + bulk/quick actions + better read/unread feedback
-- [ ] Timeline: improved filtering (by type/actor) + jump links
-- [ ] Workspace shortcuts: consistent “quick actions” area across project surfaces
-- [ ] Unify list UX patterns (filters bar, empty states, action feedback)
-- [ ] Local boot + smoke check from `web/`
+- [x] Tasks: better filters/sorting + faster state/claim actions
+- [x] Proposals: better filters/sorting + quick review actions + clearer status
+- [x] People/Invites: faster role changes + clearer confirmations + better search/filter
+- [x] Inbox: stronger filtering + bulk/quick actions + better read/unread feedback
+- [x] Timeline: improved filtering (by type/actor) + jump links
+- [x] Workspace shortcuts: consistent “quick actions” area across project surfaces
+- [x] Unify list UX patterns (filters bar, empty states, action feedback)
+- [x] Local boot + smoke check from `web/`
+- [x] Commit + push
+
+## Phase 36 — Real collaboration readiness audit + gap fixing
+- [ ] Audit: end-to-end collaboration loop readiness (small team + human+agent)
+- [ ] Classify gaps (must fix / should fix soon / later)
+- [ ] Fix highest-value gaps (small set; no new major systems)
+- [ ] Local build/test
 - [ ] Commit + push

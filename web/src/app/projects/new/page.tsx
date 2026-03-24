@@ -30,6 +30,8 @@ export default function NewProjectPage() {
     return s || '(auto)';
   }, [slug, name]);
 
+  const canCreate = !!name.trim() && !!summary.trim();
+
   return (
     <Layout>
       <div className="flex flex-col gap-6">
@@ -115,10 +117,15 @@ export default function NewProjectPage() {
 
               <div className="flex flex-wrap gap-3">
                 <button
-                  className="rounded-2xl bg-emerald-700 px-4 py-2 text-sm text-white hover:bg-emerald-600"
+                  className={`rounded-2xl px-4 py-2 text-sm text-white ${canCreate ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-slate-500/30 text-slate-200/50'}`}
                   type="button"
+                  disabled={!canCreate}
                   onClick={async () => {
                     setMsg(null);
+                    if (!canCreate) {
+                      setMsg('Name + summary are required.');
+                      return;
+                    }
                     const p = await actions.createProject({ name, slug, summary, visibility, template });
                     if (p?.slug) router.push(`/projects/${p.slug}`);
                     else {

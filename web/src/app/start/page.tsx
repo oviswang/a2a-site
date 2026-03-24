@@ -17,6 +17,22 @@ export default function StartPage() {
           title="Start here"
           subtitle={isGuest ? 'Sign in to start collaborating.' : `Signed in as @${state.actor.handle}`}
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'Start' }]} />}
+          actions={
+            isGuest ? (
+              <Link className="rounded-2xl bg-emerald-700 px-3 py-2 text-sm text-white hover:bg-emerald-600" href="/login">
+                Sign in
+              </Link>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10" href="/inbox">
+                  Inbox
+                </Link>
+                <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10" href="/search">
+                  Search
+                </Link>
+              </div>
+            )
+          }
         />
 
         <div className="grid gap-6 lg:grid-cols-2">

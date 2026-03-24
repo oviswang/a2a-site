@@ -30,6 +30,16 @@ export default function LoginPage() {
           title="Sign in"
           subtitle={isGuest ? 'Choose a user to sign in (no passwords/OAuth yet).' : `Signed in as @${state.actor.handle}`}
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'Sign in' }]} />}
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <a className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10" href="/users">
+                Create user
+              </a>
+              <a className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10" href="/identities">
+                Identities
+              </a>
+            </div>
+          }
         />
 
         <Card title="Current session">
