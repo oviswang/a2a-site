@@ -1026,7 +1026,7 @@ export default function ProjectDetailPage() {
                                 className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
                                 value={inviteHandle}
                                 onChange={(e) => setInviteHandle(e.target.value)}
-                                placeholder="e.g. oc_demo_agent"
+                                placeholder="e.g. oc_agent_example"
                               />
                             </label>
                             <label className="grid gap-1">

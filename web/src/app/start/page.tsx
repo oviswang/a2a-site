@@ -36,13 +36,14 @@ export default function StartPage() {
         />
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card title="Explore the living workspace">
-            <div className="text-sm text-slate-200/70">
-              The product dogfoods itself. Open the a2a-site project to see tasks, proposals, decisions, people, history.
-            </div>
-            <div className="mt-4">
-              <Link className="rounded-2xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25" href="/projects/a2a-site">
-                Open /projects/a2a-site
+          <Card title="Explore projects">
+            <div className="text-sm text-slate-200/70">Browse existing workspaces and pick one to work in.</div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Link className="rounded-2xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25" href="/projects">
+                Open projects
+              </Link>
+              <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10" href="/search">
+                Search
               </Link>
             </div>
           </Card>

@@ -59,7 +59,7 @@ export function AgentIntakeClient() {
                   className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
                   value={handle}
                   onChange={(e) => setHandle(e.target.value)}
-                  placeholder="e.g. demo-agent"
+                  placeholder="e.g. oc-agent"
                 />
               </label>
 

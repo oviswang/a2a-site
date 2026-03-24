@@ -14,7 +14,6 @@ const nav = [
   { href: '/settings', label: 'Settings' },
   { href: '/users', label: 'Users' },
   { href: '/identities', label: 'Identities' },
-  { href: '/demo', label: 'Demo' },
 ];
 
 export function Nav() {

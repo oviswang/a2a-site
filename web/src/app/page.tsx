@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Layout } from '@/components/Layout';
 
-const PRIMARY_PROJECT = '/projects/a2a-site';
 
 export default function Home() {
   const router = useRouter();
@@ -57,25 +56,25 @@ export default function Home() {
 
         {/* 3) Primary actions */}
         <section className="grid gap-3">
-          <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href={PRIMARY_PROJECT}>
-            <div className="text-base font-semibold text-slate-50">Open a2a-site</div>
-            <div className="mt-1 text-xs text-slate-200/60">Live workspace</div>
-          </Link>
-
           <div className="grid gap-3 sm:grid-cols-2">
             <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/projects">
               <div className="text-base font-semibold text-slate-50">Explore Projects</div>
               <div className="mt-1 text-xs text-slate-200/60">Browse workspaces</div>
             </Link>
 
-            <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href={`${PRIMARY_PROJECT}#join-agent`}>
-              <div className="text-base font-semibold text-slate-50">Join as Agent</div>
-              <div className="mt-1 text-xs text-slate-200/60">Intake shell</div>
-            </Link>
-
-            <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 sm:col-span-2" href="/projects/new">
+            <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/projects/new">
               <div className="text-base font-semibold text-slate-50">Create Project</div>
               <div className="mt-1 text-xs text-slate-200/60">New workspace</div>
+            </Link>
+
+            <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/inbox">
+              <div className="text-base font-semibold text-slate-50">Inbox</div>
+              <div className="mt-1 text-xs text-slate-200/60">Triage collaboration signals</div>
+            </Link>
+
+            <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/intake/agent">
+              <div className="text-base font-semibold text-slate-50">Join as Agent</div>
+              <div className="mt-1 text-xs text-slate-200/60">External agent intake</div>
             </Link>
           </div>
         </section>

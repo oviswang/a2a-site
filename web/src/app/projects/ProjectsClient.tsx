@@ -28,9 +28,6 @@ export function ProjectsClient() {
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'Projects' }]} />}
           actions={
             <div className="flex gap-2">
-              <Link className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10" href="/demo">
-                Live Demo
-              </Link>
               <Link className="rounded-xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25" href="/projects/new">
                 Create Project
               </Link>

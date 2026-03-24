@@ -356,8 +356,15 @@
 - [x] Commit + push
 
 ## Phase 45 — Workspace deep-density cleanup
-- [ ] /projects/[slug] (busy): hierarchy + compression
-- [ ] /proposals/[id]/review: timeline + content readability
-- [ ] /tasks/[id]: long event history readability
+- [x] /projects/[slug] (busy): hierarchy + compression
+- [x] /proposals/[id]/review: timeline + content readability
+- [x] /tasks/[id]: long event history readability
+- [x] Local build/test
+- [x] Commit + push
+
+## Product nav cleanup — remove demo framing
+- [ ] Remove demo from nav + CTAs
+- [ ] Stop promoting a2a-site/showcase-demo as demo entry
+- [ ] /demo redirects to /projects
 - [ ] Local build/test
 - [ ] Commit + push
