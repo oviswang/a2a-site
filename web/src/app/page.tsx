@@ -64,8 +64,8 @@ export default function Home() {
         {/* 2) Search */}
         <section className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface)] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur sm:p-5">
           <div
-            className="flex w-full items-stretch gap-3"
-            style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}
+            className="flex w-full items-stretch gap-2"
+            style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}
           >
             <input
               className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-[15px] text-slate-100 placeholder:text-slate-200/40 outline-none focus:border-sky-300/40"
