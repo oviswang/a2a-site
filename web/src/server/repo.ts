@@ -375,6 +375,7 @@ export function listProjects() {
   ensureDogfoodA2aSiteProject();
   ensureShowcaseDemoProject();
   ensureScenarioSeedProjects();
+  ensurePhase43Enrichment();
   const db = getDb();
   const rows = db
     .prepare('SELECT id, slug, name, summary, visibility, tags_json, created_at FROM projects ORDER BY created_at DESC')
@@ -2693,4 +2694,291 @@ function ensureScenarioSeedProjects() {
       }
     }
   }
+}
+
+function ensurePhase43Enrichment() {
+  const db = getDb();
+  const now = nowIso();
+
+  // One-time marker (idempotent).
+  db.exec(
+    `CREATE TABLE IF NOT EXISTS seed_markers (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      created_at TEXT NOT NULL
+    );`
+  );
+  const done = db.prepare('SELECT value FROM seed_markers WHERE key=?').get('phase43') as { value: string } | undefined;
+  if (done?.value === 'done') return;
+
+  const projects = db.prepare('SELECT id, slug, name, summary, visibility FROM projects ORDER BY created_at ASC').all() as Array<{
+    id: number;
+    slug: string;
+    name: string;
+    summary: string;
+    visibility: string;
+  }>;
+
+  // Uneven density tiers (required).
+  const overloaded = new Set<string>([
+    'a2a-site',
+    'product-alpha',
+    'agent-lab',
+    'community-ops',
+    'cn-product-build',
+    'cn-client-secure',
+    'cn-community-restricted',
+    'cn-agent-heavy',
+  ]);
+  const early = new Set<string>(['demo']);
+  const tierOf = (slug: string) => (early.has(slug) ? 'early' : overloaded.has(slug) ? 'overloaded' : slug.startsWith('cn-') ? 'medium' : 'light');
+
+  // Ensure helper: insert file if missing.
+  const ensureProjectFile = (pid: number, path: string, content: string, actorHandle = 'seed_owner', actorType: MemberType = 'human') => {
+    db.prepare(
+      `INSERT INTO project_files (project_id, path, content, updated_at, last_actor_handle, last_actor_type, last_proposal_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(project_id, path) DO NOTHING`
+    ).run(pid, path, content.endsWith('\n') ? content : content + '\n', now, actorHandle, actorType, null);
+  };
+
+  const ensureDecisionBullets = (pid: number, bullets: string[]) => {
+    const r = db.prepare('SELECT content FROM project_files WHERE project_id=? AND path=?').get(pid, 'DECISIONS.md') as { content: string } | undefined;
+    if (!r) return;
+    const existing = r.content.split('\n').filter((l) => l.trim().startsWith('- '));
+    const need = bullets.filter((b) => !existing.some((l) => l.includes(b)));
+    if (!need.length) return;
+    const next = r.content.replace(/\n?$/g, '') + '\n' + need.map((b) => `- ${b}`).join('\n') + '\n';
+    db.prepare(
+      'UPDATE project_files SET content=?, updated_at=?, last_actor_handle=?, last_actor_type=?, last_proposal_id=? WHERE project_id=? AND path=?'
+    ).run(next, now, 'seed_owner', 'human', null, pid, 'DECISIONS.md');
+  };
+
+  const upsertRuntime = (handle: string, runtime: Record<string, unknown>, lastSeenIso: string) => {
+    ensureIdentity(handle, 'agent');
+    db.prepare(
+      `INSERT INTO agent_runtime (agent_handle, runtime_json, last_seen)
+       VALUES (?, ?, ?)
+       ON CONFLICT(agent_handle) DO UPDATE SET runtime_json=excluded.runtime_json, last_seen=excluded.last_seen`
+    ).run(handle, JSON.stringify(runtime || {}), lastSeenIso);
+  };
+
+  const humanPool = ['seed_owner', 'seed_alex', 'seed_bella', 'seed_chris', 'seed_dana'];
+  const agentPool = ['seed_agent_builder', 'seed_agent_reviewer', 'seed_agent_research', 'seed_agent_ops', 'oc_agent_checkout', 'oc_agent_client', 'oc_agent_notes', 'oc_agent_lab'];
+
+  for (const p of projects) {
+    const tier = tierOf(p.slug);
+    const isCn = p.slug.startsWith('cn-');
+
+    // Members: uneven targets.
+    const targetMembers = tier === 'overloaded' ? 5 : tier === 'medium' ? 4 : tier === 'light' ? 3 : 2;
+    const current = db.prepare('SELECT member_handle, member_type, role FROM project_members WHERE project_id=?').all(p.id) as Array<{
+      member_handle: string;
+      member_type: string;
+      role: string;
+    }>;
+    const memberKey = new Set(current.map((m) => `${m.member_handle}:${m.member_type}`));
+    const addMember = (handle: string, type: MemberType, role: MemberRole) => {
+      if (memberKey.has(`${handle}:${type}`)) return;
+      ensureIdentity(handle, type);
+      db.prepare('INSERT OR IGNORE INTO project_members (project_id, member_handle, member_type, role, joined_at) VALUES (?, ?, ?, ?, ?)').run(
+        p.id,
+        handle,
+        type,
+        role,
+        now
+      );
+      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `Member added: @${handle} (${type}) as ${role}`);
+      memberKey.add(`${handle}:${type}`);
+    };
+
+    if (!current.some((m) => m.role === 'owner')) addMember('seed_owner', 'human', 'owner');
+    for (const h of humanPool) {
+      if (memberKey.size >= targetMembers) break;
+      addMember(h, 'human', h === 'seed_owner' ? 'owner' : 'contributor');
+    }
+    if (tier !== 'early') {
+      for (const a of agentPool) {
+        if (memberKey.size >= targetMembers) break;
+        addMember(a, 'agent', 'contributor');
+      }
+    }
+
+    // Files: uneven targets.
+    const fileTarget = tier === 'overloaded' ? 15 : tier === 'medium' ? 12 : tier === 'light' ? 9 : 6;
+    const existingPaths = new Set(
+      (db.prepare('SELECT path FROM project_files WHERE project_id=?').all(p.id) as Array<{ path: string }>).map((r) => r.path)
+    );
+    const fileSeedsZh = [
+      { path: '周报.md', content: '# 周报\n\n## 本周进展\n- \n\n## 下周计划\n- \n' },
+      { path: '风险清单.md', content: '# 风险清单\n\n- \n' },
+      { path: '会议纪要.md', content: '# 会议纪要\n\n- \n' },
+      { path: '对外口径.md', content: '# 对外口径\n\n- 现状\n- 下一步\n- 预计时间\n' },
+      { path: '复盘.md', content: '# 复盘\n\n## 现象\n\n## 根因\n\n## 行动项\n' },
+    ];
+    const fileSeedsEn = [
+      { path: 'NOTES.md', content: '# Notes\n\n- Key updates\n- Open questions\n' },
+      { path: 'RISKS.md', content: '# Risks\n\n- (empty)\n' },
+      { path: 'STATUS.md', content: '# Status\n\n- Now\n- Next\n- Blockers\n' },
+      { path: 'RUNBOOK.md', content: '# Runbook\n\n- (empty)\n' },
+      { path: 'RETRO.md', content: '# Retro\n\n- (empty)\n' },
+    ];
+    const seeds = isCn ? fileSeedsZh : fileSeedsEn;
+    for (const f of seeds) {
+      if (existingPaths.size >= fileTarget) break;
+      if (existingPaths.has(f.path)) continue;
+      ensureProjectFile(p.id, f.path, f.content);
+      existingPaths.add(f.path);
+      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `File added: ${f.path} (enrich)`);
+    }
+    for (let i = 1; existingPaths.size < fileTarget; i++) {
+      const pp = isCn ? `docs/说明-${String(i).padStart(2, '0')}.md` : `docs/note-${String(i).padStart(2, '0')}.md`;
+      if (existingPaths.has(pp)) continue;
+      const content = isCn
+        ? `# 说明 ${i}\n\n- 背景：${p.name}\n- 目标：${p.summary}\n- 备注：按需补充\n`
+        : `# Note ${i}\n\n- Context: ${p.name}\n- Goal: ${p.summary}\n- Notes: add details as needed\n`;
+      ensureProjectFile(p.id, pp, content);
+      existingPaths.add(pp);
+      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `File added: ${pp} (enrich)`);
+    }
+
+    // Decisions: uneven targets.
+    const decisionTarget = tier === 'overloaded' ? 5 : tier === 'medium' ? 4 : tier === 'light' ? 3 : 2;
+    const decisions = isCn
+      ? ['先把关键路径跑通，再做体验细节。', '提案优先小改动（单文件）。', '所有关键改动必须可回滚。', '通知要“可行动”。', '移动端优先保证可读与可点击。']
+      : ['Prefer small, reviewable proposals.', 'Keep operational wording consistent.', 'Make changes measurable.', 'Notifications should be actionable.', 'Mobile readability is first-class.'];
+    ensureDecisionBullets(p.id, decisions.slice(0, decisionTarget));
+
+    // Tasks: uneven targets + mixed states.
+    const taskTarget = tier === 'overloaded' ? 12 : tier === 'medium' ? 10 : tier === 'light' ? 8 : 4;
+    const tasks = db.prepare('SELECT id, title FROM tasks WHERE project_id=?').all(p.id) as Array<{ id: string; title: string }>;
+    const titles = new Set(tasks.map((t) => t.title));
+    const seedTasksZh = ['梳理当前问题清单', '补齐文档目录结构', '做一次端到端回归', '整理通知规则'];
+    const seedTasksEn = ['Triage open questions', 'Improve workspace structure', 'Run an end-to-end check', 'Clarify notification rules'];
+    const baseTasks = isCn ? seedTasksZh : seedTasksEn;
+    for (const t of baseTasks) {
+      if (titles.size >= taskTarget) break;
+      const tt = `${tier === 'overloaded' ? 'E43' : 'E43-lite'}: ${t}`;
+      if (titles.has(tt)) continue;
+      const created = createTask({
+        projectSlug: p.slug,
+        title: tt,
+        description: isCn ? '用于增加真实密度与状态混合。' : 'Used to increase realistic density and state mix.',
+        filePath: 'README.md',
+        actorHandle: 'seed_owner',
+        actorType: 'human',
+      });
+      titles.add(tt);
+      const idx = titles.size;
+      if (idx % 4 === 0) taskAction({ taskId: created.id, action: 'claim', actorHandle: 'seed_agent_builder', actorType: 'agent' });
+      if (idx % 4 === 1) taskAction({ taskId: created.id, action: 'start', actorHandle: 'seed_agent_builder', actorType: 'agent' });
+      if (idx % 4 === 2) {
+        taskAction({ taskId: created.id, action: 'start', actorHandle: 'seed_owner', actorType: 'human' });
+        taskAction({ taskId: created.id, action: 'complete', actorHandle: 'seed_owner', actorType: 'human' });
+      }
+    }
+    for (let i = 1; titles.size < taskTarget; i++) {
+      const tt = isCn ? `E43: 额外任务 ${i}` : `E43: Extra task ${i}`;
+      if (titles.has(tt)) continue;
+      createTask({
+        projectSlug: p.slug,
+        title: tt,
+        description: isCn ? '用于制造真实密度与状态分布。' : 'Used to create realistic density and state mix.',
+        filePath: null,
+        actorHandle: 'seed_owner',
+        actorType: 'human',
+      });
+      titles.add(tt);
+    }
+
+    // Proposals: uneven targets + mixed statuses + multiple request-changes loops.
+    const proposalTarget = tier === 'overloaded' ? 8 : tier === 'medium' ? 6 : tier === 'light' ? 4 : 2;
+    const proposalTitles = new Set(
+      (db.prepare('SELECT title FROM proposals WHERE project_id=?').all(p.id) as Array<{ title: string }>).map((r) => r.title)
+    );
+    const baseTitle = isCn ? 'E43 提案' : 'E43 Proposal';
+    for (let i = 1; proposalTitles.size < proposalTarget; i++) {
+      const title = `${baseTitle} ${i}`;
+      if (proposalTitles.has(title)) continue;
+      const author = i % 2 === 0 ? { handle: 'seed_owner', type: 'human' as const } : { handle: 'seed_agent_reviewer', type: 'agent' as const };
+      const fp = isCn ? '周报.md' : 'NOTES.md';
+      const pr = createProposal({
+        projectSlug: p.slug,
+        title,
+        summary: isCn ? '用于制造评审/合并/拒绝等混合状态。' : 'Used to generate mixed review/merge/reject states.',
+        authorHandle: author.handle,
+        authorType: author.type,
+        filePath: fp,
+        newContent: isCn
+          ? `# ${p.name}\n\n## 更新\n- 提案 ${i}\n\n## 备注\n- ${p.summary}\n`
+          : `# ${p.name}\n\n## Update\n- Proposal ${i}\n\n## Notes\n- ${p.summary}\n`,
+        taskId: null,
+      });
+      if (!pr) continue;
+      proposalTitles.add(title);
+
+      if (i % 5 === 0) {
+        proposalAction({ id: pr.id, action: 'reject', actorHandle: 'seed_owner', actorType: 'human' });
+      } else if (i % 5 === 1) {
+        proposalAction({ id: pr.id, action: 'request_changes', actorHandle: 'seed_owner', actorType: 'human', note: isCn ? '请补充可验证标准。' : 'Please add verifiable criteria.' });
+        updateProposal({
+          id: pr.id,
+          actorHandle: author.handle,
+          actorType: author.type,
+          summary: (isCn ? '已按要求补充' : 'Updated per request') + ` (${i})`,
+          newContent: isCn
+            ? `# ${p.name}\n\n- 提案 ${i}\n- 已补充：可验证标准\n`
+            : `# ${p.name}\n\n- Proposal ${i}\n- Added: verifiable criteria\n`,
+          note: isCn ? '根据 request changes 更新。' : 'Updated per request changes.',
+        });
+        proposalAction({ id: pr.id, action: 'approve', actorHandle: 'seed_owner', actorType: 'human' });
+        proposalAction({ id: pr.id, action: 'merge', actorHandle: 'seed_owner', actorType: 'human' });
+      } else if (i % 5 === 2) {
+        proposalAction({ id: pr.id, action: 'approve', actorHandle: 'seed_owner', actorType: 'human' });
+      } else if (i % 5 === 3) {
+        // leave needs_review
+      } else {
+        proposalAction({ id: pr.id, action: 'approve', actorHandle: 'seed_owner', actorType: 'human' });
+        proposalAction({ id: pr.id, action: 'merge', actorHandle: 'seed_owner', actorType: 'human' });
+      }
+    }
+
+    // Invites: pending/accepted/revoked for restricted.
+    if ((p.visibility === 'restricted' ? 'restricted' : 'open') === 'restricted') {
+      const invCount = (db.prepare('SELECT COUNT(*) as c FROM invitations WHERE project_id=?').get(p.id) as { c: number }).c;
+      const invTarget = tier === 'overloaded' ? 6 : 3;
+      if (invCount < invTarget) {
+        const invTargets = [
+          { h: 'seed_chris', t: 'human' as const, role: 'contributor' as const },
+          { h: 'seed_agent_ops', t: 'agent' as const, role: 'contributor' as const },
+          { h: 'seed_dana', t: 'human' as const, role: 'maintainer' as const },
+        ];
+        for (const it of invTargets) {
+          try {
+            createInvitation({ projectSlug: p.slug, inviteeHandle: it.h, inviteeType: it.t, role: it.role, actorHandle: 'seed_owner', actorType: 'human' });
+          } catch {}
+        }
+        const invRow = db.prepare("SELECT id FROM invitations WHERE project_id=? AND status='pending' ORDER BY created_at ASC LIMIT 1").get(p.id) as
+          | { id: string }
+          | undefined;
+        if (invRow) {
+          try { invitationAction({ id: invRow.id, action: 'revoke', actorHandle: 'seed_owner' }); } catch {}
+        }
+      }
+    }
+
+    // Agent runtime: active + stale.
+    if (tier !== 'early') {
+      const staleTs = new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString();
+      upsertRuntime('seed_agent_builder', { capabilities: ['tasks', 'proposals', 'review'], project: p.slug }, now);
+      upsertRuntime('seed_agent_research', { capabilities: ['research', 'notes'], project: p.slug }, staleTs);
+    }
+
+    // Notifications: global top-up (organic-ish).
+    if (unreadNotificationCount('seed_owner') < 120) {
+      notifyHuman('seed_owner', 'seed.info', isCn ? `项目更新：/${p.slug}（用于密度测试）` : `Update: /${p.slug} (density seed)`, `/projects/${p.slug}`);
+    }
+  }
+
+  db.prepare('INSERT OR REPLACE INTO seed_markers (key, value, created_at) VALUES (?, ?, ?)').run('phase43', 'done', now);
 }
