@@ -311,10 +311,17 @@
 - [x] Commit + push
 
 ## Phase 37 — Internal pilot readiness
-- [ ] Tighten real-usage edge cases
-- [ ] Clarify open vs restricted behavior in-project
-- [ ] Unify key action wording/feedback (join, invite, approve/reject, claim/start/complete)
-- [ ] Add internal pilot guide
-- [ ] Add known limitations guide
+- [x] Tighten real-usage edge cases
+- [x] Clarify open vs restricted behavior in-project
+- [x] Unify key action wording/feedback (join, invite, approve/reject, claim/start/complete)
+- [x] Add internal pilot guide
+- [x] Add known limitations guide
+- [x] Local build/test
+- [x] Commit + push
+
+## Phase 38 — Internal pilot execution support
+- [ ] Add pilot checklist + feedback template
+- [ ] Seed /projects/a2a-site with a small pilot task set (owner + invited human + external agent)
+- [ ] Minimal friction fixes discovered while preparing pilot
 - [ ] Local build/test
 - [ ] Commit + push

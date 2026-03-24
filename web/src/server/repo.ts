@@ -1717,26 +1717,93 @@ function ensureDogfoodA2aSiteProject() {
     );
   }
 
-  const taskCount = (db.prepare('SELECT COUNT(*) as c FROM tasks WHERE project_id=?').get(pid) as { c: number }).c;
-  if (taskCount > 0) return;
+  // Ensure an in-product pilot guide file exists inside the living workspace.
+  // (This is separate from repo docs; this is what pilot participants see in the project file list.)
+  db.prepare(
+    `INSERT OR IGNORE INTO project_files (project_id, path, content, updated_at, last_actor_handle, last_actor_type, last_proposal_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    pid,
+    'PILOT.md',
+    [
+      '# Internal Pilot (living doc)',
+      '',
+      'This project (a2a-site) is the primary living workspace for the internal pilot.',
+      '',
+      'Suggested path:',
+      '- Owner/Maintainer: create/triage tasks, review proposals, merge.',
+      '- Invited human collaborator: join, pick a task, comment/review.',
+      '- External/OpenClaw-style agent: bind via /intake/agent and propose changes.',
+      '',
+      'Capture feedback in: docs/pilot-feedback-template.md (repo) or convert it into tasks here.',
+    ].join('\n') + '\n',
+    now,
+    'local-human',
+    'human',
+    null
+  );
 
-  // Seed a minimal real backlog for dogfooding.
-  createTask({
-    projectSlug: slug,
-    title: 'Tighten homepage entry experience',
-    description: 'Keep homepage minimal: logo + search + primary actions + open a2a-site.',
-    filePath: 'README.md',
-    actorHandle: 'local-human',
-    actorType: 'human',
-  });
-  createTask({
-    projectSlug: slug,
-    title: 'Improve workspace readability on mobile',
-    description: 'Ensure cards stack cleanly and tap targets are comfortable.',
-    filePath: 'README.md',
-    actorHandle: 'local-human',
-    actorType: 'human',
-  });
+  // Seed (or top up) a small pilot task set.
+  const existingTitles = new Set(
+    (db.prepare('SELECT title FROM tasks WHERE project_id=?').all(pid) as Array<{ title: string }>).map((r) => r.title)
+  );
+
+  const wanted: Array<{ title: string; description: string; filePath: string | null; actorHandle: string; actorType: MemberType }> = [
+    {
+      title: 'Pilot: owner/maintainer kickoff checklist',
+      description: 'Run the internal pilot checklist and confirm the loop works end-to-end.',
+      filePath: 'PILOT.md',
+      actorHandle: 'local-human',
+      actorType: 'human',
+    },
+    {
+      title: 'Pilot: invite a human collaborator (restricted project drill)',
+      description: 'Create a restricted project, send invite, approve join request, verify role updates.',
+      filePath: 'PILOT.md',
+      actorHandle: 'local-human',
+      actorType: 'human',
+    },
+    {
+      title: 'Pilot: bind an external agent via intake',
+      description: 'Use /intake/agent to bind an agent handle, then have it join and post runtime/presence.',
+      filePath: 'PILOT.md',
+      actorHandle: 'local-human',
+      actorType: 'human',
+    },
+    {
+      title: 'Pilot: run request-changes loop on a proposal',
+      description: 'Agent proposes → maintainer requests changes → agent updates → maintainer approves → merge.',
+      filePath: 'README.md',
+      actorHandle: 'local-human',
+      actorType: 'human',
+    },
+    {
+      title: 'Pilot: verify inbox usefulness (triage)',
+      description: 'Generate a few notifications (invite, join approval, proposal review) and triage them via /inbox.',
+      filePath: null,
+      actorHandle: 'local-human',
+      actorType: 'human',
+    },
+    {
+      title: 'Pilot: verify search usefulness',
+      description: 'Search for a task id, proposal id, file path, and agent handle; confirm results are navigable.',
+      filePath: null,
+      actorHandle: 'local-human',
+      actorType: 'human',
+    },
+  ];
+
+  for (const w of wanted) {
+    if (existingTitles.has(w.title)) continue;
+    createTask({
+      projectSlug: slug,
+      title: w.title,
+      description: w.description,
+      filePath: w.filePath,
+      actorHandle: w.actorHandle,
+      actorType: w.actorType,
+    });
+  }
 }
 
 function ensureShowcaseDemoProject() {
