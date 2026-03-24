@@ -51,10 +51,10 @@ export default function Home() {
             <Image
               src="/brand/hero.jpg"
               alt="a2a.fun"
-              width={300}
-              height={300}
-              className="relative rounded-[32px] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
-              style={{ maxWidth: '78vw', height: 'auto' }}
+              width={340}
+              height={340}
+              className="relative border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
+              style={{ maxWidth: '84vw', height: 'auto', borderRadius: 0 }}
               priority
             />
           </div>
