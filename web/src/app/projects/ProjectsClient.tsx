@@ -79,22 +79,29 @@ export function ProjectsClient() {
               href={`/projects/${p.slug}`}
               className={`block px-4 py-3 hover:bg-white/5 ${idx === 0 ? '' : 'border-t border-white/10'}`}
             >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-sm font-semibold text-slate-50">{p.name}</div>
-                    <span className="font-mono text-xs text-slate-200/50">/{p.slug}</span>
+              <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <div className="truncate text-sm font-semibold text-slate-50">{p.name}</div>
+                    <span className="shrink-0 font-mono text-[11px] text-slate-200/45">/{p.slug}</span>
+                    <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-200/80">
+                      {p.visibility === 'open' ? 'Open' : p.visibility === 'restricted' ? 'Restricted' : p.visibility}
+                    </span>
                   </div>
-                  <div className="mt-1 text-xs text-slate-200/60">{p.summary}</div>
+
+                  <div className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-200/60">{p.summary}</div>
+
+                  {p.tags.length ? (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {p.tags.slice(0, 4).map((t) => (
+                        <Tag key={t}>{t}</Tag>
+                      ))}
+                      {p.tags.length > 4 ? <span className="text-[11px] text-slate-200/45">+{p.tags.length - 4}</span> : null}
+                    </div>
+                  ) : null}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <Tag tone="brand">{p.visibility}</Tag>
-                  {p.tags.slice(0, 2).map((t) => (
-                    <Tag key={t}>{t}</Tag>
-                  ))}
-                  {p.tags.length > 2 ? <span className="text-[11px] text-slate-200/50">+{p.tags.length - 2}</span> : null}
-                </div>
+                <div className="shrink-0 text-[11px] text-slate-200/45">→</div>
               </div>
             </Link>
           ))}
