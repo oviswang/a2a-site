@@ -327,8 +327,16 @@
 - [x] Commit + push
 
 ## Phase 39 — First internal pilot follow-through
-- [ ] Run pilot pass (scripted via API)
-- [ ] Summarize feedback into must fix / should fix / later
-- [ ] Apply smallest obvious blockers (only if needed)
+- [x] Run pilot pass (scripted via API)
+- [x] Summarize feedback into must fix / should fix / later
+- [x] Apply smallest obvious blockers (only if needed)
+- [x] Local build/test
+- [x] Commit + push (only if fixes needed)
+
+## Phase 40 — Human-run pilot round support
+- [ ] Update pilot checklist for UI-driven steps
+- [ ] Add UX observation / notes capture template
+- [ ] Identify next must-fix UX gaps from human run
+- [ ] Minimal blockers only (if needed)
 - [ ] Local build/test
 - [ ] Commit + push (only if fixes needed)
