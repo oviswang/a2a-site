@@ -183,9 +183,16 @@ export default function ProjectDetailPage() {
                     onClick={async () => {
                       const r = await actions.joinProject(slug);
                       if (!r) return;
-                      if (r.mode === 'joined') setJoinMsg('Joined the project.');
-                      else if (r.mode === 'requested') setJoinMsg('Access requested. Waiting for owner/maintainer review.');
-                      else if (r.mode === 'already_member') setJoinMsg('You are already a member.');
+                      if (r.mode === 'joined') {
+                        setJoinMsg('Joined ✅ You now have access to tasks, proposals, and people ops.');
+                        setToast({ message: 'Joined project.', variant: 'success' });
+                      } else if (r.mode === 'requested') {
+                        setJoinMsg('Request sent ✅ Waiting for owner/maintainer approval (restricted project).');
+                        setToast({ message: 'Join request sent.', variant: 'success' });
+                      } else if (r.mode === 'already_member') {
+                        setJoinMsg('Already a member.');
+                        setToast({ message: 'Already a member.', variant: 'info' });
+                      }
                       await actions.loadProject(slug);
                     }}
                   >
@@ -253,6 +260,18 @@ export default function ProjectDetailPage() {
                     Join mode: <span className="font-semibold">{project.visibility}</span>
                   </span>
                   {joinMsg ? <span className="text-sky-200">{joinMsg}</span> : <span className="text-slate-200/50">—</span>}
+                </div>
+
+                <div className="mt-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/70">
+                  {project.visibility === 'open' ? (
+                    <>
+                      <span className="text-slate-50">Open project:</span> anyone can join instantly. Use this for internal pilots where trust is high.
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-slate-50">Restricted project:</span> join requires approval or an invite. Use this when you want a review gate for new humans/agents.
+                    </>
+                  )}
                 </div>
 
                 <div className="mt-4 grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">

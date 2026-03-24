@@ -304,8 +304,17 @@
 - [x] Commit + push
 
 ## Phase 36 — Real collaboration readiness audit + gap fixing
-- [ ] Audit: end-to-end collaboration loop readiness (small team + human+agent)
-- [ ] Classify gaps (must fix / should fix soon / later)
-- [ ] Fix highest-value gaps (small set; no new major systems)
+- [x] Audit: end-to-end collaboration loop readiness (small team + human+agent)
+- [x] Classify gaps (must fix / should fix soon / later)
+- [x] Fix highest-value gaps (small set; no new major systems)
+- [x] Local build/test
+- [x] Commit + push
+
+## Phase 37 — Internal pilot readiness
+- [ ] Tighten real-usage edge cases
+- [ ] Clarify open vs restricted behavior in-project
+- [ ] Unify key action wording/feedback (join, invite, approve/reject, claim/start/complete)
+- [ ] Add internal pilot guide
+- [ ] Add known limitations guide
 - [ ] Local build/test
 - [ ] Commit + push
