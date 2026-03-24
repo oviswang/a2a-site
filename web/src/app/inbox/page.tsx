@@ -153,32 +153,33 @@ export default function InboxPage() {
 
           <div className="mt-3 grid gap-2">
             {visible.map((n) => (
-              <div key={n.id} className="flex flex-wrap items-start justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div key={n.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-2">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    {n.readAt ? <Tag>read</Tag> : <Tag>unread</Tag>}
-                    <span className="text-xs text-slate-200/50">{String(n.createdAt).slice(0, 19).replace('T', ' ')}</span>
-                    <span className="text-xs text-slate-200/50">{n.kind}</span>
+                    {!n.readAt ? <span className="h-2 w-2 rounded-full bg-sky-300" /> : <span className="h-2 w-2 rounded-full bg-white/10" />}
+                    <Tag>{n.kind}</Tag>
+                    <span className="text-[11px] text-slate-200/50">{String(n.createdAt).slice(0, 16).replace('T', ' ')}</span>
+                    {n.readAt ? <span className="text-[11px] text-slate-200/40">read</span> : <span className="text-[11px] text-slate-200/60">unread</span>}
                   </div>
-                  <div className="mt-1 text-sm text-slate-50">{n.text}</div>
-                  {n.link ? (
-                    <div className="mt-2">
-                      <Link className="text-xs underline decoration-white/20 hover:decoration-white/50" href={n.link}>
-                        Open context
-                      </Link>
-                    </div>
-                  ) : null}
+                  <div className="mt-1 truncate text-sm text-slate-50">{n.text}</div>
                 </div>
 
-                {!n.readAt ? (
-                  <button
-                    type="button"
-                    className="rounded-2xl bg-slate-50/10 px-3 py-2 text-xs text-slate-50 hover:bg-slate-50/15"
-                    onClick={() => markRead(n.id).catch(() => void 0)}
-                  >
-                    Mark read
-                  </button>
-                ) : null}
+                <div className="flex items-center gap-2">
+                  {n.link ? (
+                    <Link className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100 hover:bg-white/10" href={n.link}>
+                      Open
+                    </Link>
+                  ) : null}
+                  {!n.readAt ? (
+                    <button
+                      type="button"
+                      className="rounded-xl bg-slate-50/10 px-2 py-1 text-xs text-slate-50 hover:bg-slate-50/15"
+                      onClick={() => markRead(n.id).catch(() => void 0)}
+                    >
+                      Read
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ))}
             {visible.length === 0 ? (

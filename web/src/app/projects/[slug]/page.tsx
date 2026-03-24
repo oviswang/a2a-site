@@ -426,7 +426,7 @@ export default function ProjectDetailPage() {
 
                 <div className="mt-4 flex flex-col gap-2">
                   {sortedTasks.map((t) => (
-                    <div key={t.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <div key={t.id} className="rounded-2xl border border-white/10 bg-white/5 p-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="text-sm font-medium text-slate-50">
                           <Link className="underline decoration-white/30 hover:decoration-white/60" href={`/tasks/${t.id}`}>

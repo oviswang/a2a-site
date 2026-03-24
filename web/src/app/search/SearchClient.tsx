@@ -185,7 +185,7 @@ function Section({ title, empty, children }: { title: string; empty: boolean; ch
 
 function ResultRow({ type, href, title, meta }: { type: string; href: string; title: string; meta?: string }) {
   return (
-    <Link href={href} className="rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+    <Link href={href} className="rounded-2xl border border-white/10 bg-white/5 p-2 hover:bg-white/10">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0 text-sm text-slate-50">{title}</div>
         <Tag>{type}</Tag>

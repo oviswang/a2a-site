@@ -345,4 +345,12 @@
 - [x] Seed 10+ realistic projects with varied scenarios
 - [x] Add scenario map doc
 - [x] Local build/test
+- [x] Commit + push
+
+## Phase 44 — Dense-data layout review + UI compression
+- [ ] /projects: compress list, improve scan
+- [ ] /inbox: compact rows, clearer unread
+- [ ] /search: tighter results list
+- [ ] /projects/[slug]: minor compression for busy sections
+- [ ] Local build/test
 - [ ] Commit + push
