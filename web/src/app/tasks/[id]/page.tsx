@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Layout } from '@/components/Layout';
@@ -24,6 +24,9 @@ export default function TaskDetailPage() {
   const [task, setTask] = useState<WorkspaceTask | null>(null);
   const [events, setEvents] = useState<TaskEvent[]>([]);
 
+  const [kind, setKind] = useState<'all' | string>('all');
+  const [showAll, setShowAll] = useState(false);
+
   useEffect(() => {
     fetch(`/api/tasks/${encodeURIComponent(id)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
@@ -34,12 +37,19 @@ export default function TaskDetailPage() {
       .catch(() => void 0);
   }, [id]);
 
+  const kinds = useMemo(() => Array.from(new Set(events.map((e) => e.kind))).sort(), [events]);
+
+  const visible = useMemo(() => {
+    const list = kind === 'all' ? events : events.filter((e) => e.kind === kind);
+    return showAll ? list : list.slice(Math.max(0, list.length - 25));
+  }, [events, kind, showAll]);
+
   return (
     <Layout>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={task ? task.title : `Task ${id}`}
-          subtitle={task ? `${task.status} · ${task.projectSlug}` : 'Loading…'}
+          subtitle={task ? `/${task.projectSlug} · ${task.status}` : 'Loading…'}
           breadcrumbs={
             <Breadcrumbs
               items={[
@@ -61,59 +71,89 @@ export default function TaskDetailPage() {
                   <div className="flex flex-wrap gap-2">
                     <Tag>{task.status}</Tag>
                     {task.filePath ? <Tag>{task.filePath}</Tag> : null}
+                    {task.claimedByHandle ? (
+                      <Tag>
+                        @{task.claimedByHandle}
+                        {task.claimedByType ? ` (${task.claimedByType})` : ''}
+                      </Tag>
+                    ) : (
+                      <Tag>unclaimed</Tag>
+                    )}
                   </div>
-                  <div className="text-xs text-slate-600">Updated {String(task.updatedAt).slice(0, 19).replace('T', ' ')}</div>
+                  <div className="text-[11px] text-slate-200/50">updated {String(task.updatedAt).slice(0, 16).replace('T', ' ')}</div>
                 </div>
               }
             >
-              {task.description ? <div className="text-sm text-slate-700">{task.description}</div> : <div className="text-sm text-slate-600">No description</div>}
-              <div className="mt-3 text-xs text-slate-600">
-                {task.claimedByHandle ? (
-                  <span>
-                    Claimed by @{task.claimedByHandle} ({task.claimedByType || '—'})
-                  </span>
-                ) : (
-                  <span>Unclaimed</span>
-                )}
-              </div>
+              {task.description ? <div className="text-sm text-slate-200/80">{task.description}</div> : <div className="text-sm text-slate-200/60">No description</div>}
+
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
-                  className="rounded bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800"
+                  className="rounded-xl bg-emerald-700 px-3 py-2 text-xs text-white hover:bg-emerald-600"
                   href={`/projects/${task.projectSlug}/proposals/new?file=${encodeURIComponent(task.filePath || 'README.md')}&taskId=${encodeURIComponent(task.id)}`}
                 >
-                  Create proposal from task
+                  Propose
                 </Link>
-                <Link className="rounded border px-3 py-2 text-sm hover:bg-slate-50" href={`/projects/${task.projectSlug}?file=${encodeURIComponent(task.filePath || 'README.md')}`}>
-                  Open related file
+                <Link
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
+                  href={`/projects/${task.projectSlug}?file=${encodeURIComponent(task.filePath || 'README.md')}`}
+                >
+                  Open file
+                </Link>
+                <Link className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10" href={`/projects/${task.projectSlug}#tasks`}>
+                  Back to tasks
                 </Link>
               </div>
             </Card>
 
             <Card title="Timeline">
-              <div className="flex flex-col gap-2">
-                {events.map((e, idx) => (
-                  <div key={idx} className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm">
+              <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="flex flex-wrap items-end gap-2">
+                  <label className="grid gap-1">
+                    <span className="text-[11px] text-slate-200/60">Kind</span>
+                    <select
+                      className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                      value={kind}
+                      onChange={(e) => setKind(e.target.value || 'all')}
+                    >
+                      <option value="all">all</option>
+                      {kinds.map((k) => (
+                        <option key={k} value={k}>
+                          {k}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">
+                    <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+                    show all
+                  </label>
+                </div>
+                <div className="text-xs text-slate-200/60">
+                  {visible.length} shown · {events.length} total
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-col gap-2">
+                {visible.map((e, idx) => (
+                  <div key={idx} className="rounded-2xl border border-white/10 bg-white/5 p-2 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <span className="font-mono text-xs text-slate-500">{String(e.ts).slice(0, 19).replace('T', ' ')}</span>
-                        <span className="ml-2 font-semibold">{e.kind}</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-[11px] text-slate-200/50">{String(e.ts).slice(0, 16).replace('T', ' ')}</span>
+                        <Tag>{e.kind}</Tag>
+                        <span className="text-[11px] text-slate-200/60">
+                          {e.actorHandle ? `@${e.actorHandle}` : 'system'} {e.actorType ? `(${e.actorType})` : ''}
+                        </span>
                       </div>
-                      <div className="text-xs text-slate-600">
-                        {e.actorHandle ? `@${e.actorHandle}` : 'system'} {e.actorType ? `(${e.actorType})` : ''}
-                      </div>
-                    </div>
-                    {e.note ? <div className="mt-2 text-xs text-slate-600">{e.note}</div> : null}
-                    {e.proposalId ? (
-                      <div className="mt-2 text-xs">
-                        Proposal:{' '}
-                        <Link className="underline" href={`/proposals/${e.proposalId}/review`}>
-                          {e.proposalId}
+                      {e.proposalId ? (
+                        <Link className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100 hover:bg-white/10" href={`/proposals/${e.proposalId}/review`}>
+                          Proposal
                         </Link>
-                      </div>
-                    ) : null}
+                      ) : null}
+                    </div>
+                    {e.note ? <div className="mt-1 text-xs text-slate-200/70">{e.note}</div> : null}
                   </div>
                 ))}
-                {events.length === 0 ? <div className="text-sm text-slate-600">No events yet</div> : null}
+                {events.length === 0 ? <div className="text-sm text-slate-200/60">No events yet</div> : null}
               </div>
             </Card>
           </>

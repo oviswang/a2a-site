@@ -33,6 +33,9 @@ export default function ProposalReviewPage() {
   const [editContent, setEditContent] = useState('');
   const [editNote, setEditNote] = useState('');
 
+  const [showAllTimeline, setShowAllTimeline] = useState(false);
+  const [showFullContent, setShowFullContent] = useState(false);
+
   async function refresh() {
     const res = await fetch(`/api/proposals/${encodeURIComponent(id)}`, { cache: 'no-store' });
     if (!res.ok) return;
@@ -40,7 +43,6 @@ export default function ProposalReviewPage() {
     setPr(j.proposal);
     setReviews(j.reviews || []);
 
-    // Initialize edit form once.
     if (!editContent) {
       setEditSummary(j.proposal.summary || '');
       setEditContent(j.proposal.newContent || '');
@@ -57,12 +59,24 @@ export default function ProposalReviewPage() {
   const locked = useMemo(() => pr && (pr.status === 'merged' || pr.status === 'rejected'), [pr]);
   const isAuthor = useMemo(() => pr && state.actor.handle === pr.authorHandle, [pr, state.actor.handle]);
 
+  const timeline = useMemo(() => {
+    const list = reviews;
+    return showAllTimeline ? list : list.slice(Math.max(0, list.length - 25));
+  }, [reviews, showAllTimeline]);
+
+  const contentPreview = useMemo(() => {
+    const raw = pr?.newContent || '';
+    const lines = raw.split(/\r?\n/);
+    if (showFullContent) return raw;
+    return lines.slice(0, 40).join('\n') + (lines.length > 40 ? '\n\n… (collapsed)' : '');
+  }, [pr?.newContent, showFullContent]);
+
   return (
     <Layout>
       <div className="flex flex-col gap-6">
         <PageHeader
           title={pr ? pr.title : 'Proposal'}
-          subtitle={pr && project ? `Project: ${project.name} • File: ${pr.filePath}` : `ID: ${id}`}
+          subtitle={pr && project ? `/${project.slug} · ${pr.status} · ${pr.filePath}` : `ID: ${id}`}
           breadcrumbs={
             <Breadcrumbs
               items={[
@@ -79,40 +93,69 @@ export default function ProposalReviewPage() {
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
             <div className="flex flex-col gap-6">
               <Card title="Proposed change">
-                <div className="flex flex-col gap-2 text-sm">
-                  <div className="text-slate-200/80">{pr.summary}</div>
-                  <div className="text-xs text-slate-200/60">
-                    Target file: <span className="font-mono">{pr.filePath}</span>
+                <div className="grid gap-2">
+                  <div className="text-sm text-slate-200/80">{pr.summary}</div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-200/60">
+                    <Tag>{pr.filePath}</Tag>
+                    <span>
+                      author <span className="font-mono">@{pr.authorHandle}</span> ({pr.authorType})
+                    </span>
                     {pr.taskId ? (
-                      <>
-                        {' '}· task{' '}
+                      <span>
+                        · task{' '}
                         <Link className="font-mono underline decoration-white/30 hover:decoration-white/60" href={`/tasks/${encodeURIComponent(pr.taskId)}`}>
                           {pr.taskId}
                         </Link>
-                      </>
+                      </span>
                     ) : null}
                   </div>
                 </div>
               </Card>
 
-              <Card title="New content">
-                <pre className="whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-4 font-mono text-xs leading-relaxed text-slate-100">
-                  {pr.newContent}
+              <Card
+                title="New content"
+                footer={
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs text-slate-200/60">
+                      {showFullContent ? 'showing full content' : 'showing preview'}
+                    </div>
+                    <button
+                      type="button"
+                      className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100 hover:bg-white/10"
+                      onClick={() => setShowFullContent((s) => !s)}
+                    >
+                      {showFullContent ? 'Collapse' : 'Expand'}
+                    </button>
+                  </div>
+                }
+              >
+                <pre className="whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-3 font-mono text-xs leading-relaxed text-slate-100">
+                  {contentPreview}
                 </pre>
               </Card>
 
               <Card title="Review timeline">
-                <div className="flex flex-col gap-2">
-                  {reviews.map((r, idx) => (
-                    <div key={idx} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs text-slate-200/60">{timeline.length} shown · {reviews.length} total</div>
+                  <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">
+                    <input type="checkbox" checked={showAllTimeline} onChange={(e) => setShowAllTimeline(e.target.checked)} />
+                    show all
+                  </label>
+                </div>
+
+                <div className="mt-3 flex flex-col gap-2">
+                  {timeline.map((r, idx) => (
+                    <div key={idx} className="rounded-2xl border border-white/10 bg-white/5 p-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-xs text-slate-200/70">{String(r.createdAt).slice(0, 19).replace('T', ' ')}</div>
-                        <div className="text-xs text-slate-200/60">
-                          {r.actorHandle ? `@${r.actorHandle}` : 'system'} {r.actorType ? `(${r.actorType})` : ''}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-[11px] text-slate-200/50">{String(r.createdAt).slice(0, 16).replace('T', ' ')}</span>
+                          <Tag>{r.action}</Tag>
+                          <span className="text-[11px] text-slate-200/60">
+                            {r.actorHandle ? `@${r.actorHandle}` : 'system'} {r.actorType ? `(${r.actorType})` : ''}
+                          </span>
                         </div>
                       </div>
-                      <div className="mt-1 text-sm text-slate-50">{r.action}</div>
-                      {r.note ? <div className="mt-2 text-sm text-slate-200/80">{r.note}</div> : null}
+                      {r.note ? <div className="mt-1 text-xs text-slate-200/80">{r.note}</div> : null}
                     </div>
                   ))}
                   {reviews.length === 0 ? <div className="text-sm text-slate-200/60">No review events yet</div> : null}
@@ -143,7 +186,7 @@ export default function ProposalReviewPage() {
 
               {isAuthor && pr.status === 'changes_requested' ? (
                 <Card title="Author response">
-                  <div className="text-xs text-slate-200/60">Edit and resubmit to move the proposal back to needs_review.</div>
+                  <div className="text-xs text-slate-200/60">Edit + resubmit to return to needs_review.</div>
                   <div className="mt-3 grid gap-2">
                     <label className="grid gap-1">
                       <span className="text-xs font-semibold text-slate-200/70">Summary</span>
@@ -164,12 +207,12 @@ export default function ProposalReviewPage() {
                       />
                     </label>
                     <label className="grid gap-1">
-                      <span className="text-xs font-semibold text-slate-200/70">Resubmission note (optional)</span>
+                      <span className="text-xs font-semibold text-slate-200/70">Note (optional)</span>
                       <input
                         className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
                         value={editNote}
                         onChange={(e) => setEditNote(e.target.value)}
-                        placeholder="e.g. addressed feedback and clarified steps"
+                        placeholder="what changed"
                       />
                     </label>
                     <button
@@ -192,7 +235,7 @@ export default function ProposalReviewPage() {
                         await refresh();
                       }}
                     >
-                      Resubmit for review
+                      Resubmit
                     </button>
                   </div>
                 </Card>
@@ -201,15 +244,18 @@ export default function ProposalReviewPage() {
 
             <aside className="flex flex-col gap-4">
               <Card title="Status">
-                <div className="flex flex-col gap-3 text-sm">
+                <div className="flex flex-col gap-2 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-200/60">Status</span>
                     <StatusBadge status={pr.status} />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-200/60">Author</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-200/70">
                     <span>
-                      @{pr.authorHandle} <span className="text-xs text-slate-200/60">({pr.authorType})</span>
+                      author <span className="font-mono">@{pr.authorHandle}</span> ({pr.authorType})
+                    </span>
+                    <span className="text-slate-200/50">
+                      {String(pr.createdAt).slice(0, 10)}
+                      {pr.updatedAt ? ` → ${String(pr.updatedAt).slice(0, 10)}` : ''}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -218,25 +264,11 @@ export default function ProposalReviewPage() {
                       @{state.actor.handle} <span className="text-slate-200/60">({state.actor.actorType})</span>
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-200/60">Created</span>
-                    <span>{pr.createdAt}</span>
-                  </div>
-                  {pr.updatedAt ? (
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-200/60">Updated</span>
-                      <span>{String(pr.updatedAt).slice(0, 10)}</span>
-                    </div>
-                  ) : null}
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-200/60">File</span>
-                    <Tag>{pr.filePath}</Tag>
-                  </div>
                 </div>
               </Card>
 
               <Card title="Review actions">
-                {locked ? <div className="mb-3 text-xs text-slate-200/60">This proposal is closed. Review actions are disabled.</div> : null}
+                {locked ? <div className="mb-3 text-xs text-slate-200/60">Closed proposal. Actions disabled.</div> : null}
                 <textarea
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
                   rows={3}
@@ -244,45 +276,46 @@ export default function ProposalReviewPage() {
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                 />
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    disabled={!!locked}
-                    className="rounded-2xl bg-emerald-700 px-3 py-2 text-sm text-white hover:bg-emerald-600 disabled:opacity-50"
-                    type="button"
-                    onClick={async () => {
-                      await actions.proposalAction(pr.id, 'approve', note.trim() || undefined);
-                      setNote('');
-                      await refresh();
-                    }}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    disabled={!!locked}
-                    className="rounded-2xl bg-amber-700 px-3 py-2 text-sm text-white hover:bg-amber-600 disabled:opacity-50"
-                    type="button"
-                    onClick={async () => {
-                      await actions.proposalAction(pr.id, 'request_changes', note.trim() || undefined);
-                      setNote('');
-                      await refresh();
-                    }}
-                  >
-                    Request changes
-                  </button>
-                  <button
-                    disabled={!!locked}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-50"
-                    type="button"
-                    onClick={async () => {
-                      await actions.proposalAction(pr.id, 'reject', note.trim() || undefined);
-                      setNote('');
-                      await refresh();
-                    }}
-                  >
-                    Reject
-                  </button>
-                </div>
-                <div className="mt-4">
+                <div className="mt-3 grid gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      disabled={!!locked}
+                      className="rounded-xl bg-emerald-700 px-3 py-2 text-xs text-white hover:bg-emerald-600 disabled:opacity-50"
+                      type="button"
+                      onClick={async () => {
+                        await actions.proposalAction(pr.id, 'approve', note.trim() || undefined);
+                        setNote('');
+                        await refresh();
+                      }}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      disabled={!!locked}
+                      className="rounded-xl bg-amber-700 px-3 py-2 text-xs text-white hover:bg-amber-600 disabled:opacity-50"
+                      type="button"
+                      onClick={async () => {
+                        await actions.proposalAction(pr.id, 'request_changes', note.trim() || undefined);
+                        setNote('');
+                        await refresh();
+                      }}
+                    >
+                      Request changes
+                    </button>
+                    <button
+                      disabled={!!locked}
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10 disabled:opacity-50"
+                      type="button"
+                      onClick={async () => {
+                        await actions.proposalAction(pr.id, 'reject', note.trim() || undefined);
+                        setNote('');
+                        await refresh();
+                      }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+
                   <button
                     disabled={!canMerge}
                     className="w-full rounded-2xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25 disabled:opacity-50"
@@ -293,9 +326,9 @@ export default function ProposalReviewPage() {
                       router.push(`/projects/${pr.projectSlug}?file=${encodeURIComponent(pr.filePath)}`);
                     }}
                   >
-                    Merge into workspace
+                    Merge
                   </button>
-                  <div className="mt-2 text-xs text-slate-200/60">Merge is enabled only after approval.</div>
+                  <div className="text-xs text-slate-200/60">Merge enabled only after approval.</div>
                 </div>
               </Card>
             </aside>

@@ -348,9 +348,16 @@
 - [x] Commit + push
 
 ## Phase 44 — Dense-data layout review + UI compression
-- [ ] /projects: compress list, improve scan
-- [ ] /inbox: compact rows, clearer unread
-- [ ] /search: tighter results list
-- [ ] /projects/[slug]: minor compression for busy sections
+- [x] /projects: compress list, improve scan
+- [x] /inbox: compact rows, clearer unread
+- [x] /search: tighter results list
+- [x] /projects/[slug]: minor compression for busy sections
+- [x] Local build/test
+- [x] Commit + push
+
+## Phase 45 — Workspace deep-density cleanup
+- [ ] /projects/[slug] (busy): hierarchy + compression
+- [ ] /proposals/[id]/review: timeline + content readability
+- [ ] /tasks/[id]: long event history readability
 - [ ] Local build/test
 - [ ] Commit + push
