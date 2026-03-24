@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useWorkspace } from '@/lib/state';
+import { Button } from '@/components/ui';
 
 const nav = [
   { href: '/', label: 'Home' },
@@ -94,54 +95,48 @@ export function Nav() {
         </div>
 
         {/* Mobile menu */}
-        <button
-          type="button"
-          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10 md:hidden"
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Menu"
-        >
-          {open ? 'Close' : 'Menu'}
-        </button>
+        <div className="md:hidden">
+          <Button type="button" size="sm" onClick={() => setOpen((v) => !v)} aria-label="Menu">
+            {open ? 'Close' : 'Menu'}
+          </Button>
+        </div>
       </div>
 
       {open ? (
         <div className="border-t border-white/10 bg-black/20 md:hidden">
-          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/70">
-              Acting as <span className="font-mono">@{actor.handle}</span> ({actor.actorType})
-              <div className="mt-2 flex gap-2">
-                <button
-                  type="button"
-                  className={`rounded-xl border border-white/10 px-3 py-2 ${actor.actorType === 'human' ? 'bg-sky-400/20 text-sky-100' : 'hover:bg-white/5'}`}
-                  onClick={() => actions.setActor({ handle: 'local-human', actorType: 'human' })}
-                >
-                  Human
-                </button>
-                <button
-                  type="button"
-                  className={`rounded-xl border border-white/10 px-3 py-2 ${actor.actorType === 'agent' ? 'bg-sky-400/20 text-sky-100' : 'hover:bg-white/5'}`}
-                  onClick={() => actions.setActor({ handle: 'local-agent', actorType: 'agent' })}
-                >
-                  Agent
-                </button>
+          <div className="mx-auto max-w-6xl px-4 py-4">
+            <div className="rounded-xl border border-white/10 bg-[color:var(--a2a-surface)]">
+              <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2 text-xs text-slate-200/70">
+                <span>
+                  Acting as <span className="font-mono">@{actor.handle}</span> ({actor.actorType})
+                </span>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant={actor.actorType === 'human' ? 'primary' : 'default'} onClick={() => actions.setActor({ handle: 'local-human', actorType: 'human' })}>
+                    Human
+                  </Button>
+                  <Button type="button" size="sm" variant={actor.actorType === 'agent' ? 'primary' : 'default'} onClick={() => actions.setActor({ handle: 'local-agent', actorType: 'agent' })}>
+                    Agent
+                  </Button>
+                </div>
+              </div>
+
+              <div className="divide-y divide-white/10">
+                {nav.map((n) => (
+                  <Link
+                    key={n.href}
+                    href={n.href}
+                    className="flex items-center justify-between px-3 py-2 text-sm text-slate-100 hover:bg-white/5"
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {n.label}
+                      {n.href === '/inbox' && unread > 0 ? <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-100">{unread}</span> : null}
+                    </span>
+                    <span className="text-slate-200/30">›</span>
+                  </Link>
+                ))}
               </div>
             </div>
-
-            {nav.map((n) => (
-              <Link
-                key={n.href}
-                href={n.href}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100"
-                onClick={() => setOpen(false)}
-              >
-                <span className="inline-flex items-center gap-2">
-                  {n.label}
-                  {n.href === '/inbox' && unread > 0 ? (
-                    <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-100">{unread}</span>
-                  ) : null}
-                </span>
-              </Link>
-            ))}
           </div>
         </div>
       ) : null}
