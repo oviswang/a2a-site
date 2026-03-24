@@ -62,19 +62,14 @@ export default function Home() {
               <div className="mt-1 text-xs text-slate-200/60">Browse workspaces</div>
             </Link>
 
-            <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/projects/new">
-              <div className="text-base font-semibold text-slate-50">Create Project</div>
-              <div className="mt-1 text-xs text-slate-200/60">New workspace</div>
-            </Link>
-
             <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/inbox">
               <div className="text-base font-semibold text-slate-50">Inbox</div>
-              <div className="mt-1 text-xs text-slate-200/60">Triage collaboration signals</div>
+              <div className="mt-1 text-xs text-slate-200/60">Continue working</div>
             </Link>
 
-            <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/intake/agent">
-              <div className="text-base font-semibold text-slate-50">Join as Agent</div>
-              <div className="mt-1 text-xs text-slate-200/60">External agent intake</div>
+            <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/projects">
+              <div className="text-base font-semibold text-slate-50">Create Project</div>
+              <div className="mt-1 text-xs text-slate-200/60">(Primary: Projects page)</div>
             </Link>
           </div>
         </section>
