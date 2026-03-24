@@ -374,6 +374,7 @@ function getProjectBySlug(slug: string) {
 export function listProjects() {
   ensureDogfoodA2aSiteProject();
   ensureShowcaseDemoProject();
+  ensureScenarioSeedProjects();
   const db = getDb();
   const rows = db
     .prepare('SELECT id, slug, name, summary, visibility, tags_json, created_at FROM projects ORDER BY created_at DESC')
@@ -1914,4 +1915,547 @@ function ensureShowcaseDemoProject() {
   proposalAction({ id: pr!.id, action: 'merge', actorHandle: 'local-human', actorType: 'human' });
 
   // Leave one open task visible.
+}
+
+function ensureScenarioSeedProjects() {
+  const db = getDb();
+  const now = nowIso();
+
+  // Deterministic seed identities (humans + agents) for multi-project evaluation.
+  const humans = [
+    { handle: 'seed_owner', displayName: 'Seed Owner' },
+    { handle: 'seed_alex', displayName: 'Alex (Ops)' },
+    { handle: 'seed_bella', displayName: 'Bella (PM)' },
+    { handle: 'seed_chris', displayName: 'Chris (Design)' },
+    { handle: 'seed_dana', displayName: 'Dana (Research)' },
+  ];
+
+  for (const h of humans) {
+    if (!getUserByHandle(h.handle)) {
+      try { createUser({ handle: h.handle, displayName: h.displayName }); } catch {}
+    }
+    ensureIdentity(h.handle, 'human');
+  }
+
+  const agents = [
+    { handle: 'seed_agent_builder', displayName: 'Builder Agent' },
+    { handle: 'seed_agent_reviewer', displayName: 'Reviewer Agent' },
+    { handle: 'seed_agent_research', displayName: 'Research Agent' },
+    { handle: 'seed_agent_ops', displayName: 'Ops Agent' },
+  ];
+
+  for (const a of agents) {
+    if (!getIdentity(a.handle)) {
+      try { createAgentIdentity({ handle: a.handle, displayName: a.displayName }); } catch {}
+    }
+  }
+
+  const scenarios: Array<{
+    slug: string;
+    name: string;
+    summary: string;
+    visibility: Visibility;
+    template: 'general' | 'research' | 'product';
+    owner: string;
+    members: Array<{ handle: string; type: MemberType; role: MemberRole }>;
+    extraFiles: Array<{ path: string; content: string }>;
+    extraTasks: Array<{ title: string; description: string; filePath?: string | null; actor?: { handle: string; type: MemberType } }>;
+    // proposals are created only if missing by title
+    proposals: Array<{
+      title: string;
+      summary: string;
+      filePath: string;
+      author: { handle: string; type: MemberType };
+      flow: 'merge' | 'needs_review' | 'request_changes_loop';
+    }>;
+    decisions: string[];
+  }> = [
+    {
+      slug: 'product-alpha',
+      name: 'Product Alpha',
+      summary: 'Product build workspace: MVP scope, roadmap, and release notes.',
+      visibility: 'open',
+      template: 'product',
+      owner: 'seed_owner',
+      members: [
+        { handle: 'seed_owner', type: 'human', role: 'owner' },
+        { handle: 'seed_bella', type: 'human', role: 'maintainer' },
+        { handle: 'seed_agent_builder', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: 'RELEASE_NOTES.md', content: '# Release notes\n\n- v0.1: internal pilot\n' },
+        { path: 'MEETING_NOTES.md', content: '# Meeting notes\n\n- (empty)\n' },
+      ],
+      extraTasks: [
+        { title: 'Define onboarding copy', description: 'Tighten /start and project entry copy for first-time users.', filePath: 'README.md' },
+        { title: 'QA the request-changes loop', description: 'Run propose → request changes → update → approve → merge.', filePath: 'SPEC.md', actor: { handle: 'seed_agent_reviewer', type: 'agent' } },
+      ],
+      proposals: [
+        {
+          title: 'Add MVP section to SPEC',
+          summary: 'Clarify MVP scope in SPEC.md',
+          filePath: 'SPEC.md',
+          author: { handle: 'seed_agent_builder', type: 'agent' },
+          flow: 'merge',
+        },
+        {
+          title: 'Draft release notes scaffold',
+          summary: 'Create a minimal release notes format.',
+          filePath: 'RELEASE_NOTES.md',
+          author: { handle: 'seed_bella', type: 'human' },
+          flow: 'needs_review',
+        },
+      ],
+      decisions: ['Prefer small proposals (1 file) for early pilots.', 'Keep review notes short and actionable.'],
+    },
+    {
+      slug: 'research-briefs',
+      name: 'Research Briefs',
+      summary: 'Research/spec workflow: sources → notes → spec.',
+      visibility: 'open',
+      template: 'research',
+      owner: 'seed_dana',
+      members: [
+        { handle: 'seed_dana', type: 'human', role: 'owner' },
+        { handle: 'seed_agent_research', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: 'SOURCES.md', content: '# Sources\n\n- (empty)\n' },
+        { path: 'FINDINGS.md', content: '# Findings\n\n- (empty)\n' },
+      ],
+      extraTasks: [
+        { title: 'Summarize 3 competitor flows', description: 'Capture key flow steps and UX friction points.', filePath: 'FINDINGS.md', actor: { handle: 'seed_agent_research', type: 'agent' } },
+        { title: 'Turn findings into SPEC updates', description: 'Update SPEC.md with concrete recommendations.', filePath: 'SPEC.md' },
+      ],
+      proposals: [
+        {
+          title: 'Add findings structure',
+          summary: 'Seed headings for FINDINGS.md',
+          filePath: 'FINDINGS.md',
+          author: { handle: 'seed_agent_research', type: 'agent' },
+          flow: 'merge',
+        },
+        {
+          title: 'Rewrite spec goals section',
+          summary: 'Make goals testable.',
+          filePath: 'SPEC.md',
+          author: { handle: 'seed_dana', type: 'human' },
+          flow: 'needs_review',
+        },
+      ],
+      decisions: ['Research output must map to a concrete SPEC change.', 'Prefer short briefs over long reports.'],
+    },
+    {
+      slug: 'content-studio',
+      name: 'Content Studio',
+      summary: 'Creator workflow: briefs, drafts, edits, publish checklist.',
+      visibility: 'open',
+      template: 'general',
+      owner: 'seed_bella',
+      members: [
+        { handle: 'seed_bella', type: 'human', role: 'owner' },
+        { handle: 'seed_chris', type: 'human', role: 'contributor' },
+        { handle: 'seed_agent_reviewer', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: 'BRIEFS.md', content: '# Briefs\n\n- (empty)\n' },
+        { path: 'DRAFTS.md', content: '# Drafts\n\n- (empty)\n' },
+        { path: 'PUBLISH_CHECKLIST.md', content: '# Publish checklist\n\n- (empty)\n' },
+      ],
+      extraTasks: [
+        { title: 'Draft pilot announcement', description: 'Write a short internal pilot announcement post.', filePath: 'DRAFTS.md' },
+        { title: 'Review wording for clarity', description: 'Ensure tone is direct and actionable.', filePath: 'DRAFTS.md', actor: { handle: 'seed_agent_reviewer', type: 'agent' } },
+      ],
+      proposals: [
+        {
+          title: 'Add publish checklist v0',
+          summary: 'Seed a minimal publish checklist.',
+          filePath: 'PUBLISH_CHECKLIST.md',
+          author: { handle: 'seed_chris', type: 'human' },
+          flow: 'merge',
+        },
+        {
+          title: 'Draft announcement copy',
+          summary: 'Initial draft for internal pilot post.',
+          filePath: 'DRAFTS.md',
+          author: { handle: 'seed_bella', type: 'human' },
+          flow: 'needs_review',
+        },
+      ],
+      decisions: ['Prefer short drafts that are easy to review.', 'Keep checklists minimal and executable.'],
+    },
+    {
+      slug: 'community-ops',
+      name: 'Community Ops',
+      summary: 'Community operations: triage, moderation, playbooks, weekly metrics.',
+      visibility: 'restricted',
+      template: 'general',
+      owner: 'seed_alex',
+      members: [
+        { handle: 'seed_alex', type: 'human', role: 'owner' },
+        { handle: 'seed_agent_ops', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: 'PLAYBOOK.md', content: '# Playbook\n\n- Triage\n- Response templates\n- Escalation\n' },
+        { path: 'WEEKLY_METRICS.md', content: '# Weekly metrics\n\n- (empty)\n' },
+      ],
+      extraTasks: [
+        { title: 'Triage backlog cleanup', description: 'Close stale items, tag active ones.', filePath: 'PLAYBOOK.md' },
+        { title: 'Draft weekly metrics format', description: 'Define the weekly snapshot fields.', filePath: 'WEEKLY_METRICS.md', actor: { handle: 'seed_agent_ops', type: 'agent' } },
+      ],
+      proposals: [
+        {
+          title: 'Add escalation rules',
+          summary: 'Add a simple escalation decision tree.',
+          filePath: 'PLAYBOOK.md',
+          author: { handle: 'seed_alex', type: 'human' },
+          flow: 'merge',
+        },
+        {
+          title: 'Seed weekly metrics',
+          summary: 'Add headings and definitions for weekly metrics.',
+          filePath: 'WEEKLY_METRICS.md',
+          author: { handle: 'seed_agent_ops', type: 'agent' },
+          flow: 'needs_review',
+        },
+      ],
+      decisions: ['Restricted: moderation actions require approval.', 'Metrics should be stable week to week.'],
+    },
+    {
+      slug: 'hackathon-incubator',
+      name: 'Hackathon Incubator',
+      summary: 'Hackathon/incubation workspace: ideas, teams, pitch deck, demo plan.',
+      visibility: 'open',
+      template: 'product',
+      owner: 'seed_owner',
+      members: [
+        { handle: 'seed_owner', type: 'human', role: 'owner' },
+        { handle: 'seed_chris', type: 'human', role: 'contributor' },
+        { handle: 'seed_agent_builder', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: 'IDEAS.md', content: '# Ideas\n\n- (empty)\n' },
+        { path: 'DEMO_PLAN.md', content: '# Demo plan\n\n- (empty)\n' },
+      ],
+      extraTasks: [
+        { title: 'Pick 3 ideas to prototype', description: 'Shortlist ideas and decide which to pursue.', filePath: 'IDEAS.md' },
+        { title: 'Draft demo flow', description: 'Define the click-path demo narrative.', filePath: 'DEMO_PLAN.md', actor: { handle: 'seed_agent_builder', type: 'agent' } },
+      ],
+      proposals: [
+        {
+          title: 'Seed demo plan skeleton',
+          summary: 'Add headings for demo plan.',
+          filePath: 'DEMO_PLAN.md',
+          author: { handle: 'seed_agent_builder', type: 'agent' },
+          flow: 'merge',
+        },
+        {
+          title: 'Add idea scoring rubric',
+          summary: 'Add a simple rubric to IDEAS.md.',
+          filePath: 'IDEAS.md',
+          author: { handle: 'seed_chris', type: 'human' },
+          flow: 'needs_review',
+        },
+      ],
+      decisions: ['Prototype speed > polish during hackathon.', 'Keep demo path under 3 minutes.'],
+    },
+    {
+      slug: 'edu-knowledge-base',
+      name: 'Education KB',
+      summary: 'Education/knowledge base: lessons, examples, exercises.',
+      visibility: 'open',
+      template: 'general',
+      owner: 'seed_dana',
+      members: [
+        { handle: 'seed_dana', type: 'human', role: 'owner' },
+        { handle: 'seed_agent_research', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: 'LESSONS.md', content: '# Lessons\n\n- (empty)\n' },
+        { path: 'EXERCISES.md', content: '# Exercises\n\n- (empty)\n' },
+        { path: 'GLOSSARY.md', content: '# Glossary\n\n- (empty)\n' },
+      ],
+      extraTasks: [
+        { title: 'Write 2 lessons', description: 'Short lessons with example + takeaway.', filePath: 'LESSONS.md' },
+        { title: 'Add glossary entries', description: 'Seed 10 glossary terms.', filePath: 'GLOSSARY.md', actor: { handle: 'seed_agent_research', type: 'agent' } },
+      ],
+      proposals: [
+        {
+          title: 'Seed glossary skeleton',
+          summary: 'Add initial glossary headings.',
+          filePath: 'GLOSSARY.md',
+          author: { handle: 'seed_agent_research', type: 'agent' },
+          flow: 'merge',
+        },
+        {
+          title: 'Draft first lesson outline',
+          summary: 'Create lesson outline structure.',
+          filePath: 'LESSONS.md',
+          author: { handle: 'seed_dana', type: 'human' },
+          flow: 'needs_review',
+        },
+      ],
+      decisions: ['Keep lessons short; optimize for scanning.', 'Exercises should be executable in <15 minutes.'],
+    },
+    {
+      slug: 'client-redacted',
+      name: 'Client Project (Redacted)',
+      summary: 'Client/restricted workspace: requirements, deliverables, approvals.',
+      visibility: 'restricted',
+      template: 'product',
+      owner: 'seed_owner',
+      members: [
+        { handle: 'seed_owner', type: 'human', role: 'owner' },
+        { handle: 'seed_alex', type: 'human', role: 'maintainer' },
+        { handle: 'seed_agent_reviewer', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: 'REQUIREMENTS.md', content: '# Requirements\n\n- (empty)\n' },
+        { path: 'DELIVERABLES.md', content: '# Deliverables\n\n- (empty)\n' },
+      ],
+      extraTasks: [
+        { title: 'Clarify acceptance criteria', description: 'List acceptance criteria for v1 deliverable.', filePath: 'REQUIREMENTS.md' },
+        { title: 'Prepare delivery checklist', description: 'Define delivery steps + review gates.', filePath: 'DELIVERABLES.md' },
+      ],
+      proposals: [
+        {
+          title: 'Add acceptance criteria section',
+          summary: 'Seed acceptance criteria headings.',
+          filePath: 'REQUIREMENTS.md',
+          author: { handle: 'seed_agent_reviewer', type: 'agent' },
+          flow: 'request_changes_loop',
+        },
+        {
+          title: 'Draft delivery checklist',
+          summary: 'Add initial delivery checklist items.',
+          filePath: 'DELIVERABLES.md',
+          author: { handle: 'seed_alex', type: 'human' },
+          flow: 'needs_review',
+        },
+      ],
+      decisions: ['Restricted: client-facing content requires maintainer review.', 'Prefer explicit acceptance criteria.'],
+    },
+    {
+      slug: 'design-system',
+      name: 'Design System & Docs',
+      summary: 'Design system + docs: components, tokens, copy standards.',
+      visibility: 'open',
+      template: 'general',
+      owner: 'seed_chris',
+      members: [
+        { handle: 'seed_chris', type: 'human', role: 'owner' },
+        { handle: 'seed_agent_reviewer', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: 'TOKENS.md', content: '# Tokens\n\n- (empty)\n' },
+        { path: 'COMPONENTS.md', content: '# Components\n\n- (empty)\n' },
+        { path: 'COPY_GUIDE.md', content: '# Copy guide\n\n- (empty)\n' },
+      ],
+      extraTasks: [
+        { title: 'Define button styles', description: 'Primary/secondary/destructive patterns.', filePath: 'COMPONENTS.md' },
+        { title: 'Write copy guide rules', description: 'Tone, brevity, operational wording.', filePath: 'COPY_GUIDE.md', actor: { handle: 'seed_agent_reviewer', type: 'agent' } },
+      ],
+      proposals: [
+        {
+          title: 'Seed tokens table',
+          summary: 'Add a minimal token list (colors/spacing).',
+          filePath: 'TOKENS.md',
+          author: { handle: 'seed_chris', type: 'human' },
+          flow: 'merge',
+        },
+        {
+          title: 'Draft copy rules',
+          summary: 'Add short copy rules for operational UI.',
+          filePath: 'COPY_GUIDE.md',
+          author: { handle: 'seed_agent_reviewer', type: 'agent' },
+          flow: 'needs_review',
+        },
+      ],
+      decisions: ['Prefer consistent wording and predictable UI patterns.', 'Optimize for scanning on mobile.'],
+    },
+    {
+      slug: 'consulting-notes',
+      name: 'Consulting Notes',
+      summary: 'Consulting/research workspace: client questions, notes, next steps.',
+      visibility: 'restricted',
+      template: 'research',
+      owner: 'seed_alex',
+      members: [
+        { handle: 'seed_alex', type: 'human', role: 'owner' },
+        { handle: 'seed_dana', type: 'human', role: 'contributor' },
+        { handle: 'seed_agent_research', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: 'QUESTIONS.md', content: '# Questions\n\n- (empty)\n' },
+        { path: 'NEXT_STEPS.md', content: '# Next steps\n\n- (empty)\n' },
+      ],
+      extraTasks: [
+        { title: 'Collect open questions', description: 'Write top unanswered questions.', filePath: 'QUESTIONS.md' },
+        { title: 'Draft next steps plan', description: 'Convert findings into next steps.', filePath: 'NEXT_STEPS.md', actor: { handle: 'seed_agent_research', type: 'agent' } },
+      ],
+      proposals: [
+        {
+          title: 'Seed question categories',
+          summary: 'Add categories to QUESTIONS.md.',
+          filePath: 'QUESTIONS.md',
+          author: { handle: 'seed_dana', type: 'human' },
+          flow: 'merge',
+        },
+        {
+          title: 'Draft next steps',
+          summary: 'Initial next steps outline.',
+          filePath: 'NEXT_STEPS.md',
+          author: { handle: 'seed_agent_research', type: 'agent' },
+          flow: 'needs_review',
+        },
+      ],
+      decisions: ['Restricted: client notes should not be public.', 'Decisions must be traceable to findings.'],
+    },
+    {
+      slug: 'agent-lab',
+      name: 'Agent Lab',
+      summary: 'Agent-heavy experimental project: prompts, runs, eval notes.',
+      visibility: 'open',
+      template: 'product',
+      owner: 'seed_owner',
+      members: [
+        { handle: 'seed_owner', type: 'human', role: 'owner' },
+        { handle: 'seed_agent_builder', type: 'agent', role: 'contributor' },
+        { handle: 'seed_agent_research', type: 'agent', role: 'contributor' },
+      ],
+      extraFiles: [
+        { path: 'PROMPTS.md', content: '# Prompts\n\n- (empty)\n' },
+        { path: 'RUN_LOG.md', content: '# Run log\n\n- (empty)\n' },
+      ],
+      extraTasks: [
+        { title: 'Define eval rubric', description: 'What does “good agent output” mean?', filePath: 'SPEC.md' },
+        { title: 'Log one agent run', description: 'Write a short run log entry.', filePath: 'RUN_LOG.md', actor: { handle: 'seed_agent_builder', type: 'agent' } },
+      ],
+      proposals: [
+        {
+          title: 'Seed prompts doc',
+          summary: 'Add initial prompt structure.',
+          filePath: 'PROMPTS.md',
+          author: { handle: 'seed_agent_research', type: 'agent' },
+          flow: 'merge',
+        },
+        {
+          title: 'Draft eval rubric',
+          summary: 'Add rubric headings in SPEC.md.',
+          filePath: 'SPEC.md',
+          author: { handle: 'seed_agent_builder', type: 'agent' },
+          flow: 'needs_review',
+        },
+      ],
+      decisions: ['Agents should propose small diffs for review.', 'Log runs with short, comparable summaries.'],
+    },
+  ];
+
+  for (const s of scenarios) {
+    let p = getProjectBySlug(s.slug);
+    if (!p) {
+      createProject({
+        name: s.name,
+        slug: s.slug,
+        summary: s.summary,
+        visibility: s.visibility,
+        actorHandle: s.owner,
+        actorType: 'human',
+        template: s.template,
+      });
+      p = getProjectBySlug(s.slug);
+    }
+    if (!p) continue;
+
+    // Ensure members.
+    for (const m of s.members) {
+      ensureIdentity(m.handle, m.type);
+      db.prepare('INSERT OR IGNORE INTO project_members (project_id, member_handle, member_type, role, joined_at) VALUES (?, ?, ?, ?, ?)').run(
+        p.id,
+        m.handle,
+        m.type,
+        m.role,
+        now
+      );
+    }
+
+    // Decisions: append to DECISIONS.md if still empty.
+    const dec = db.prepare('SELECT content FROM project_files WHERE project_id=? AND path=?').get(p.id, 'DECISIONS.md') as { content: string } | undefined;
+    if (dec && dec.content.includes('(empty)') && s.decisions.length) {
+      const body = ['# Decisions', '', ...s.decisions.map((d) => `- ${d}`), ''].join('\n');
+      db.prepare(
+        'UPDATE project_files SET content=?, updated_at=?, last_actor_handle=?, last_actor_type=?, last_proposal_id=? WHERE project_id=? AND path=?'
+      ).run(body, now, s.owner, 'human', null, p.id, 'DECISIONS.md');
+    }
+
+    // Extra files.
+    const insFile = db.prepare(
+      'INSERT OR IGNORE INTO project_files (project_id, path, content, updated_at, last_actor_handle, last_actor_type, last_proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    );
+    for (const f of s.extraFiles) {
+      insFile.run(p.id, f.path, f.content.endsWith('\n') ? f.content : f.content + '\n', now, s.owner, 'human', null);
+    }
+
+    // Extra tasks.
+    const existingTitles = new Set(
+      (db.prepare('SELECT title FROM tasks WHERE project_id=?').all(p.id) as Array<{ title: string }>).map((r) => r.title)
+    );
+    for (const t of s.extraTasks) {
+      if (existingTitles.has(t.title)) continue;
+      createTask({
+        projectSlug: s.slug,
+        title: t.title,
+        description: t.description,
+        filePath: t.filePath ?? null,
+        actorHandle: t.actor?.handle || s.owner,
+        actorType: t.actor?.type || 'human',
+      });
+    }
+
+    // Proposals (by title).
+    const existingProposalTitles = new Set(
+      (db.prepare('SELECT title FROM proposals WHERE project_id=?').all(p.id) as Array<{ title: string }>).map((r) => r.title)
+    );
+
+    for (const pr of s.proposals) {
+      if (existingProposalTitles.has(pr.title)) continue;
+      const created = createProposal({
+        projectSlug: s.slug,
+        title: pr.title,
+        summary: pr.summary,
+        authorHandle: pr.author.handle,
+        authorType: pr.author.type,
+        filePath: pr.filePath,
+        newContent: `# ${s.name}\n\n(${pr.summary})\n`,
+        taskId: null,
+      });
+      if (!created) continue;
+
+      if (pr.flow === 'needs_review') {
+        // Leave as needs_review.
+        continue;
+      }
+
+      if (pr.flow === 'merge') {
+        proposalAction({ id: created.id, action: 'approve', actorHandle: s.owner, actorType: 'human' });
+        proposalAction({ id: created.id, action: 'merge', actorHandle: s.owner, actorType: 'human' });
+        continue;
+      }
+
+      if (pr.flow === 'request_changes_loop') {
+        proposalAction({ id: created.id, action: 'request_changes', actorHandle: s.owner, actorType: 'human', note: 'Please tighten acceptance criteria.' });
+        // Update + re-approve + merge.
+        updateProposal({
+          id: created.id,
+          actorHandle: pr.author.handle,
+          actorType: pr.author.type,
+          newContent: `# ${s.name}\n\n(Updated) ${pr.summary}\n\n- Acceptance criteria: explicit, testable\n`,
+          summary: pr.summary + ' (updated)',
+          note: 'Updated per request changes.',
+        });
+        proposalAction({ id: created.id, action: 'approve', actorHandle: s.owner, actorType: 'human' });
+        proposalAction({ id: created.id, action: 'merge', actorHandle: s.owner, actorType: 'human' });
+      }
+    }
+  }
 }

@@ -334,9 +334,15 @@
 - [x] Commit + push (only if fixes needed)
 
 ## Phase 40 — Human-run pilot round support
-- [ ] Update pilot checklist for UI-driven steps
-- [ ] Add UX observation / notes capture template
+- [x] Update pilot checklist for UI-driven steps
+- [x] Add UX observation / notes capture template
 - [ ] Identify next must-fix UX gaps from human run
 - [ ] Minimal blockers only (if needed)
-- [ ] Local build/test
-- [ ] Commit + push (only if fixes needed)
+- [x] Local build/test
+- [x] Commit + push (if fixes needed)
+
+## Phase 42 — Multi-project scenario seeding
+- [x] Seed 10+ realistic projects with varied scenarios
+- [x] Add scenario map doc
+- [x] Local build/test
+- [ ] Commit + push
