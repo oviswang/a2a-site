@@ -112,7 +112,7 @@ export function Nav() {
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
 
           {/* Drawer */}
-          <div className="absolute inset-y-0 left-0 w-[320px] max-w-[88vw] border-r border-white/10 bg-[#050816] shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
+          <div className="absolute inset-y-0 right-0 w-[320px] max-w-[88vw] border-l border-white/10 bg-[#050816] shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
             <div className="flex items-center justify-between gap-3 px-4 py-3">
               <Link href="/" className="inline-flex items-center gap-3" onClick={() => setOpen(false)}>
                 <Image src="/brand/logo-20260324.jpg" alt="a2a.fun" width={28} height={28} className="rounded-lg" />
