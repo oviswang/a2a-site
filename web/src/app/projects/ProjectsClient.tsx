@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Tag } from '@/components/Card';
+import { SafeCardLink } from '@/components/SafeCardLink';
 import { Button, Input } from '@/components/ui';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 import { H1, Muted } from '@/components/Typography';
@@ -27,15 +28,7 @@ export function ProjectsClient() {
         <PageHeader
           title={
             <div className="flex flex-col gap-1">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <H1>{q ? `Projects — filtered` : 'Projects'}</H1>
-                <span
-                  className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 font-mono text-[11px] text-slate-200/70"
-                  style={{ border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.06)' }}
-                >
-                  UI_BUILD: 5a2158b
-                </span>
-              </div>
+              <H1>{q ? `Projects — filtered` : 'Projects'}</H1>
               <Muted>{q ? `query: ${q}` : 'GitHub-like workspaces view (dense, readable).'}</Muted>
             </div>
           }
@@ -86,20 +79,10 @@ export function ProjectsClient() {
             const visTone = p.visibility === 'open' ? 'border-emerald-400/35' : p.visibility === 'restricted' ? 'border-amber-400/35' : 'border-white/10';
 
             return (
-              <Link
+              <SafeCardLink
                 key={p.slug}
                 href={`/projects/${p.slug}`}
                 className={`group block rounded-xl border ${visTone} bg-[color:var(--a2a-surface)] px-4 py-4 hover:bg-[color:var(--a2a-surface-strong)]`}
-                // Inline fallback styles (for mobile readers / forced styles): keep spacing + card separation unmistakable.
-                style={{
-                  display: 'block',
-                  marginBottom: 12,
-                  padding: 16,
-                  borderRadius: 14,
-                  border: '1px solid rgba(255,255,255,0.14)',
-                  background: 'rgba(15,23,42,0.72)',
-                  textDecoration: 'none',
-                }}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
@@ -133,7 +116,7 @@ export function ProjectsClient() {
 
                   <div className="shrink-0 text-slate-200/40 group-hover:text-slate-200/70">→</div>
                 </div>
-              </Link>
+              </SafeCardLink>
             );
           })}
         </div>
