@@ -6,11 +6,44 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Layout } from '@/components/Layout';
 
+function scoreProject(p: any) {
+  // Simplified “hotness” heuristic for last 7 days.
+  // No new systems: derive from existing fields only.
+  const now = Date.now();
+  const created = p?.createdAt ? new Date(p.createdAt).getTime() : 0;
+  const in7d = created && now - created <= 7 * 24 * 60 * 60 * 1000;
+
+  const activity = Array.isArray(p?.activity) ? p.activity.length : 0;
+  const proposals = Array.isArray(p?.proposals) ? p.proposals.length : 0;
+  const tasks = Array.isArray(p?.tasks) ? p.tasks.length : 0;
+  const files = Array.isArray(p?.files) ? p.files.length : 0;
+  const members = Array.isArray(p?.members) ? p.members.length : 0;
+
+  // If we cannot compute “hot” reliably, use a lightweight weighted score.
+  // Prefer recent projects, then activity.
+  return (in7d ? 1000 : 0) + activity * 20 + proposals * 10 + tasks * 8 + members * 6 + files * 2;
+}
 
 export default function Home() {
   const router = useRouter();
   const [q, setQ] = useState('');
   const normalized = useMemo(() => q.trim(), [q]);
+
+  const [hot7dTop10, setHot7dTop10] = useState<any[]>([]);
+
+  // No new systems: derive “hot” from existing /api/projects payload.
+  // Keep it lightweight and deterministic for the homepage.
+  useMemo(() => {
+    fetch('/api/projects', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const list = Array.isArray(j?.projects) ? j.projects : [];
+        const top = [...list].sort((a, b) => scoreProject(b) - scoreProject(a)).slice(0, 10);
+        setHot7dTop10(top);
+      })
+      .catch(() => void 0);
+    return null;
+  }, []);
 
   return (
     <Layout>
@@ -54,22 +87,62 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 3) Primary actions */}
+        {/* 3) Continue */}
         <section className="grid gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/projects">
-              <div className="text-base font-semibold text-slate-50">Explore Projects</div>
-              <div className="mt-1 text-xs text-slate-200/60">Browse workspaces</div>
+              <div className="text-base font-semibold text-slate-50">Projects</div>
+              <div className="mt-1 text-xs text-slate-200/60">Browse and create</div>
             </Link>
 
             <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/inbox">
               <div className="text-base font-semibold text-slate-50">Inbox</div>
               <div className="mt-1 text-xs text-slate-200/60">Continue working</div>
             </Link>
+          </div>
+        </section>
 
-            <Link className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10" href="/projects">
-              <div className="text-base font-semibold text-slate-50">Create Project</div>
-              <div className="mt-1 text-xs text-slate-200/60">(Primary: Projects page)</div>
+        {/* 4) Hot projects (last 7 days) */}
+        <section className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface)] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur sm:p-5">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-50">Hot projects</div>
+              <div className="mt-1 text-xs text-slate-200/60">Top 10 in the last 7 days</div>
+            </div>
+            <Link className="text-xs text-sky-200 hover:text-sky-100" href="/projects">
+              More →
+            </Link>
+          </div>
+
+          <div className="mt-3 grid gap-2">
+            {hot7dTop10.map((p) => (
+              <Link
+                key={p.slug}
+                href={`/projects/${p.slug}`}
+                className="block rounded-xl border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10"
+                style={{ display: 'block', textDecoration: 'none' }}
+              >
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-slate-50">{p.name}</div>
+                    <div className="truncate font-mono text-[11px] text-slate-200/45">/{p.slug}</div>
+                  </div>
+                  <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-200/80">
+                    {p.visibility === 'restricted' ? 'Restricted' : 'Open'}
+                  </div>
+                </div>
+              </Link>
+            ))}
+            {!hot7dTop10.length ? <div className="text-xs text-slate-200/60">No recent projects yet.</div> : null}
+          </div>
+
+          <div className="mt-3">
+            <Link
+              href="/projects"
+              className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
+              style={{ textDecoration: 'none' }}
+            >
+              More projects
             </Link>
           </div>
         </section>
