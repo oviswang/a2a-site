@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Tag } from '@/components/Card';
+import { Button, Input } from '@/components/ui';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 import { useWorkspace } from '@/lib/state';
 
@@ -45,8 +46,8 @@ export function ProjectsClient() {
         >
           <label className="grid gap-1">
             <span className="text-[11px] text-slate-200/60">Filter</span>
-            <input
-              className="w-[320px] max-w-[85vw] rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+            <Input
+              className="w-[320px] max-w-[85vw] px-2 py-1 text-xs"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="slug / name / summary"
@@ -54,17 +55,13 @@ export function ProjectsClient() {
           </label>
           <div className="flex flex-wrap items-center gap-2">
             <div className="text-xs text-slate-200/60">{projects.length} projects</div>
-            <button type="submit" className="rounded-xl bg-sky-400/20 px-3 py-2 text-xs text-sky-100 hover:bg-sky-400/25">
+            <Button type="submit" variant="primary" size="sm">
               Apply
-            </button>
+            </Button>
             {query.trim() ? (
-              <button
-                type="button"
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
-                onClick={() => router.push('/projects')}
-              >
+              <Button type="button" size="sm" onClick={() => router.push('/projects')}>
                 Clear
-              </button>
+              </Button>
             ) : null}
           </div>
         </form>

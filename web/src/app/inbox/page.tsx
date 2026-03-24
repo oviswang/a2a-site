@@ -7,6 +7,7 @@ import { Card, Tag } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 import { Toast } from '@/components/Toast';
 import { Toolbar, ToolbarGroup, ToolbarLabel } from '@/components/Toolbar';
+import { Button, Input, Select } from '@/components/ui';
 import { useWorkspace } from '@/lib/state';
 
 type N = { id: string; kind: string; text: string; link: string | null; createdAt: string; readAt: string | null };
@@ -80,56 +81,40 @@ export default function InboxPage() {
           <Toolbar>
             <ToolbarGroup>
               <ToolbarLabel label="View">
-                <select
-                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value === 'read' ? 'read' : e.target.value === 'all' ? 'all' : 'unread')}
-                >
+                <Select value={filter} onChange={(e) => setFilter(e.target.value === 'read' ? 'read' : e.target.value === 'all' ? 'all' : 'unread')}>
                   <option value="unread">unread</option>
                   <option value="all">all</option>
                   <option value="read">read</option>
-                </select>
+                </Select>
               </ToolbarLabel>
               <ToolbarLabel label="Kind">
-                <select
-                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
-                  value={kind}
-                  onChange={(e) => setKind(e.target.value || 'all')}
-                >
+                <Select value={kind} onChange={(e) => setKind(e.target.value || 'all')}>
                   <option value="all">all</option>
                   {kinds.map((k) => (
                     <option key={k} value={k}>
                       {k}
                     </option>
                   ))}
-                </select>
+                </Select>
               </ToolbarLabel>
               <ToolbarLabel label="Search">
-                <input
-                  className="w-[240px] rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="text"
-                />
+                <Input className="w-[240px] px-2 py-1 text-xs" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="text" />
               </ToolbarLabel>
               <ToolbarLabel label="Sort">
-                <select
-                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value === 'created_asc' ? 'created_asc' : 'created_desc')}
-                >
+                <Select value={sort} onChange={(e) => setSort(e.target.value === 'created_asc' ? 'created_asc' : 'created_desc')}>
                   <option value="created_desc">newest</option>
                   <option value="created_asc">oldest</option>
-                </select>
+                </Select>
               </ToolbarLabel>
             </ToolbarGroup>
 
             <div className="flex flex-wrap items-center gap-2">
               <div className="text-xs text-slate-200/60">{visible.length} shown · {visibleUnread.length} unread</div>
               {visibleUnread.length ? (
-                <button
+                <Button
                   type="button"
-                  className="rounded-xl bg-sky-400/20 px-2 py-1 text-xs text-sky-100 hover:bg-sky-400/25"
+                  variant="primary"
+                  size="sm"
                   onClick={async () => {
                     if (!window.confirm(`Mark ${visibleUnread.length} notifications as read?`)) return;
                     await Promise.all(
@@ -146,7 +131,7 @@ export default function InboxPage() {
                   }}
                 >
                   Mark visible read
-                </button>
+                </Button>
               ) : null}
             </div>
           </Toolbar>

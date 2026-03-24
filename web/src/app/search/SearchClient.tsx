@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
+import { Button, Input } from '@/components/ui';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 
 type Results = {
@@ -58,7 +59,7 @@ export function SearchClient() {
 
         <Card title="Results">
           <form
-            className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3"
+            className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-white/10 bg-[color:var(--a2a-surface)] px-3 py-2"
             onSubmit={(e) => {
               e.preventDefault();
               const next = query.trim();
@@ -67,28 +68,28 @@ export function SearchClient() {
           >
             <label className="grid gap-1">
               <span className="text-[11px] text-slate-200/60">Query</span>
-              <input
-                className="w-[320px] max-w-[85vw] rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+              <Input
+                className="w-[320px] max-w-[85vw] px-2 py-1 text-xs"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="projects, tasks, proposals, files, agents"
               />
             </label>
             <div className="flex flex-wrap gap-2">
-              <button type="submit" className="rounded-xl bg-sky-400/20 px-3 py-2 text-xs text-sky-100 hover:bg-sky-400/25">
+              <Button type="submit" variant="primary" size="sm">
                 Search
-              </button>
+              </Button>
               {q ? (
-                <button
+                <Button
                   type="button"
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
+                  size="sm"
                   onClick={() => {
                     setQuery('');
                     router.push('/search');
                   }}
                 >
                   Clear
-                </button>
+                </Button>
               ) : null}
             </div>
           </form>
