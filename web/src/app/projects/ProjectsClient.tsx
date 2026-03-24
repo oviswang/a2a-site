@@ -72,39 +72,52 @@ export function ProjectsClient() {
           </div>
         </form>
 
-        <div className="rounded-xl border border-white/10 bg-[color:var(--a2a-surface)]">
-          {projects.map((p, idx) => (
-            <Link
-              key={p.slug}
-              href={`/projects/${p.slug}`}
-              className={`block px-4 py-3 hover:bg-white/5 ${idx === 0 ? '' : 'border-t border-white/10'}`}
-            >
-              <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <div className="truncate text-sm font-semibold text-slate-50">{p.name}</div>
-                    <span className="shrink-0 font-mono text-[11px] text-slate-200/45">/{p.slug}</span>
-                    <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-200/80">
-                      {p.visibility === 'open' ? 'Open' : p.visibility === 'restricted' ? 'Restricted' : p.visibility}
-                    </span>
+        <div className="grid gap-3">
+          {projects.map((p) => {
+            const visLabel = p.visibility === 'open' ? 'Open' : p.visibility === 'restricted' ? 'Restricted' : p.visibility;
+            const visTone = p.visibility === 'open' ? 'border-emerald-400/35' : p.visibility === 'restricted' ? 'border-amber-400/35' : 'border-white/10';
+
+            return (
+              <Link
+                key={p.slug}
+                href={`/projects/${p.slug}`}
+                className={`group block rounded-xl border ${visTone} bg-[color:var(--a2a-surface)] px-4 py-4 hover:bg-[color:var(--a2a-surface-strong)]`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-base font-semibold tracking-tight text-slate-50 group-hover:text-white">{p.name}</div>
+                      <span className="font-mono text-[11px] text-slate-200/45">/{p.slug}</span>
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                          p.visibility === 'open'
+                            ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-100'
+                            : p.visibility === 'restricted'
+                              ? 'border-amber-400/35 bg-amber-400/10 text-amber-100'
+                              : 'border-white/10 bg-white/5 text-slate-200/80'
+                        }`}
+                      >
+                        {visLabel}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-200/70">{p.summary}</div>
+
+                    {p.tags.length ? (
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {p.tags.slice(0, 5).map((t) => (
+                          <Tag key={t}>{t}</Tag>
+                        ))}
+                        {p.tags.length > 5 ? <span className="text-[11px] text-slate-200/45">+{p.tags.length - 5}</span> : null}
+                      </div>
+                    ) : null}
                   </div>
 
-                  <div className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-200/60">{p.summary}</div>
-
-                  {p.tags.length ? (
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      {p.tags.slice(0, 4).map((t) => (
-                        <Tag key={t}>{t}</Tag>
-                      ))}
-                      {p.tags.length > 4 ? <span className="text-[11px] text-slate-200/45">+{p.tags.length - 4}</span> : null}
-                    </div>
-                  ) : null}
+                  <div className="shrink-0 text-slate-200/40 group-hover:text-slate-200/70">→</div>
                 </div>
-
-                <div className="shrink-0 text-[11px] text-slate-200/45">→</div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       </div>
     </Layout>
