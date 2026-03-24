@@ -34,7 +34,7 @@ export function Nav() {
   }, [actor.handle, actor.actorType]);
 
   return (
-    <div className="sticky top-0 z-50 border-b border-white/10 bg-[color:var(--a2a-surface-strong)] backdrop-blur">
+    <div className="sticky top-0 z-50 border-b border-white/10 bg-[color:var(--a2a-surface-strong)] backdrop-blur relative">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <Link href="/" className="flex items-center gap-3 no-underline">
           <Image
@@ -107,28 +107,25 @@ export function Nav() {
       </div>
 
       {open ? (
-        <div className="fixed inset-0 z-[60] md:hidden">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
+        <div className="md:hidden">
+          {/* Backdrop (click outside to close) */}
+          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setOpen(false)} />
 
-          {/* Drawer */}
-          <div className="absolute inset-y-0 right-0 w-[320px] max-w-[88vw] border-l border-white/10 bg-[#050816] shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
-            <div className="flex items-center justify-between gap-3 px-4 py-3">
-              <Link href="/" className="inline-flex items-center gap-3" onClick={() => setOpen(false)}>
-                <Image src="/brand/logo-20260324.jpg" alt="a2a.fun" width={28} height={28} className="rounded-lg" />
-                <span className="text-sm font-semibold text-slate-100">a2a.fun</span>
-              </Link>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)} aria-label="Close">
+          {/* Dropdown panel (anchored to top-right) */}
+          <div className="absolute right-3 top-full z-[70] mt-2 w-[320px] max-w-[88vw] rounded-xl border border-white/10 bg-[#050816] shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
+              <div className="text-xs text-slate-200/70">
+                <span className="text-slate-200/50">@</span>
+                <span className="font-mono text-slate-100">{actor.handle}</span>
+                <span className="text-slate-200/50"> · {actor.actorType}</span>
+              </div>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)} aria-label="Close" className="px-2 py-1">
                 ×
               </Button>
             </div>
 
-            <div className="px-4 pb-4">
-              <div className="mb-3 text-xs text-slate-200/60">
-                Acting as <span className="font-mono">@{actor.handle}</span> ({actor.actorType})
-              </div>
-
-              <div className="mb-4 flex gap-2">
+            <div className="px-3 py-3">
+              <div className="mb-3 flex gap-2">
                 <Button type="button" size="sm" variant={actor.actorType === 'human' ? 'primary' : 'default'} onClick={() => actions.setActor({ handle: 'local-human', actorType: 'human' })}>
                   Human
                 </Button>
@@ -157,8 +154,6 @@ export function Nav() {
                   );
                 })}
               </div>
-
-              <div className="mt-4 border-t border-white/10 pt-4 text-xs text-slate-200/60">More sections coming (GitHub-style grouping).</div>
             </div>
           </div>
         </div>
