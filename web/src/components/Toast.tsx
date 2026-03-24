@@ -26,16 +26,16 @@ export function Toast({
 
   const styles =
     variant === 'success'
-      ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
+      ? 'border-emerald-400/30 text-emerald-100'
       : variant === 'error'
-        ? 'border-rose-400/30 bg-rose-500/10 text-rose-100'
-        : 'border-sky-400/30 bg-sky-500/10 text-sky-100';
+        ? 'border-rose-400/30 text-rose-100'
+        : 'border-sky-400/30 text-sky-100';
 
   return (
-    <div className={`flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2 text-xs ${styles}`}>
+    <div className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border-l-4 border-t border-r border-b border-white/10 bg-[color:var(--a2a-surface)] px-3 py-2 text-xs ${styles}`}>
       <div className="min-w-0">{message}</div>
-      <button type="button" className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10" onClick={onClose}>
-        Dismiss
+      <button type="button" className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10" onClick={onClose} aria-label="Dismiss">
+        ×
       </button>
     </div>
   );

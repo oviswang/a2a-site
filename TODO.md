@@ -363,8 +363,14 @@
 - [x] Commit + push
 
 ## Product nav cleanup — remove demo framing
-- [ ] Remove demo from nav + CTAs
-- [ ] Stop promoting a2a-site/showcase-demo as demo entry
-- [ ] /demo redirects to /projects
-- [ ] Local build/test
-- [ ] Commit + push
+- [x] Remove demo from nav + CTAs
+- [x] Stop promoting a2a-site/showcase-demo as demo entry
+- [x] /demo redirects to /projects
+- [x] Local build/test
+- [x] Commit + push
+
+## GitHub-aligned UI revamp (keep deep blue)
+- [ ] Round 1: global primitives (Nav, buttons, inputs, toolbars)
+- [ ] Round 2: list pages (/projects, /inbox, /search)
+- [ ] Round 3: detail pages (/projects/[slug], /proposals/*, /tasks/*)
+- [ ] Build + commit per round
