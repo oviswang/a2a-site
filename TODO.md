@@ -320,8 +320,15 @@
 - [x] Commit + push
 
 ## Phase 38 — Internal pilot execution support
-- [ ] Add pilot checklist + feedback template
-- [ ] Seed /projects/a2a-site with a small pilot task set (owner + invited human + external agent)
-- [ ] Minimal friction fixes discovered while preparing pilot
+- [x] Add pilot checklist + feedback template
+- [x] Seed /projects/a2a-site with a small pilot task set (owner + invited human + external agent)
+- [x] Minimal friction fixes discovered while preparing pilot
+- [x] Local build/test
+- [x] Commit + push
+
+## Phase 39 — First internal pilot follow-through
+- [ ] Run pilot pass (scripted via API)
+- [ ] Summarize feedback into must fix / should fix / later
+- [ ] Apply smallest obvious blockers (only if needed)
 - [ ] Local build/test
-- [ ] Commit + push
+- [ ] Commit + push (only if fixes needed)
