@@ -927,7 +927,7 @@ export default function ProjectDetailPage() {
                                       setToast(pr ? { message: 'Changes requested.', variant: 'success' } : { message: 'Request changes failed.', variant: 'error' });
                                     }}
                                   >
-                                    Request changes
+                                    Request changes…
                                   </button>
                                   <button
                                     type="button"

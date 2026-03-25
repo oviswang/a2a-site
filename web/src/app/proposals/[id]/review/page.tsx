@@ -300,7 +300,7 @@ export default function ProposalReviewPage() {
                         await refresh();
                       }}
                     >
-                      Request changes
+                      Request changes…
                     </Button>
                     <Button
                       disabled={!!locked}
