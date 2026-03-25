@@ -75,6 +75,7 @@ export function listUsers(): User[] {
   const db = getDb();
 
   // Ensure at least one default user exists for the minimal identity layer.
+  // NOTE: local-human is a fallback/dev identity and should not be exposed to signed-in users.
   if (!getUserByHandle('local-human')) {
     const now = nowIso();
     db.prepare('INSERT INTO users (handle, display_name, default_actor_handle, default_actor_type, created_at) VALUES (?, ?, ?, ?, ?)').run(
@@ -104,7 +105,17 @@ export function listUsers(): User[] {
     default_actor_type: string | null;
     created_at: string;
   }>;
-  return rows.map((r) => ({
+
+  // Hide internal/demo/dev identities from the People directory.
+  // This prevents real signed-in users from seeing or switching into seed/local/demo accounts.
+  const hiddenPrefixes = ['local_', 'seed_', 'pilot_'];
+  const filtered = rows.filter((r) => {
+    const h = String(r.handle || '');
+    if (h === 'local-human') return false;
+    return !hiddenPrefixes.some((p) => h.startsWith(p));
+  });
+
+  return filtered.map((r) => ({
     id: r.id,
     handle: r.handle,
     displayName: r.display_name ?? null,

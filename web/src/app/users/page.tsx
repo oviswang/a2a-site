@@ -7,32 +7,52 @@ import { Card, Tag } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 import { useWorkspace } from '@/lib/state';
 
-type User = { id: number; handle: string; displayName: string | null; createdAt: string };
+type User = { id: number; handle: string; displayName: string | null; createdAt: string; xUserId?: string | null };
+
+type WhoAmI = { ok?: boolean; signedIn?: boolean; handle?: string };
+
+function isHiddenHandle(h: string) {
+  if (!h) return true;
+  if (h === 'local-human') return true;
+  return h.startsWith('local_') || h.startsWith('seed_') || h.startsWith('pilot_');
+}
 
 export default function UsersPage() {
   const { state, actions } = useWorkspace();
   const [users, setUsers] = useState<User[]>([]);
-  const [handle, setHandle] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [err, setErr] = useState<string | null>(null);
+  const [who, setWho] = useState<WhoAmI | null>(null);
 
   async function refresh() {
     const res = await fetch('/api/users', { cache: 'no-store' });
     const j = (await res.json()) as { users: User[] };
-    setUsers(j.users || []);
+    setUsers((j.users || []).filter((u) => !isHiddenHandle(u.handle)));
+  }
+
+  async function refreshSession() {
+    const res = await fetch('/api/auth/whoami', { cache: 'no-store' });
+    const j = (await res.json().catch(() => null)) as WhoAmI | null;
+    setWho(j);
+
+    // If the server says we are signed in, force the client actor to the real user.
+    if (j?.signedIn && j.handle) {
+      actions.setActor({ handle: j.handle, actorType: 'human' });
+    }
   }
 
   useEffect(() => {
+    refreshSession().catch(() => void 0);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh().catch(() => void 0);
   }, []);
+
+  const signedInHandle = who?.signedIn && who.handle ? who.handle : null;
 
   return (
     <Layout>
       <div className="flex flex-col gap-6">
         <PageHeader
           title="People"
-          subtitle="Human participants in this workspace"
+          subtitle="Human participants"
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'People' }]} />}
         />
 
@@ -41,9 +61,15 @@ export default function UsersPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Tag>{state.actor.actorType}</Tag>
               <span className="font-mono text-slate-50">@{state.actor.handle}</span>
-              <span className="text-xs text-slate-200/60">(who you are acting as right now)</span>
+              <span className="text-xs text-slate-200/60">(current identity)</span>
             </div>
-            <div className="text-xs text-slate-200/60">Switching changes your current identity for browsing and actions.</div>
+            {signedInHandle ? (
+              <div className="text-xs text-slate-200/60">
+                Signed in as <span className="font-mono text-slate-50">@{signedInHandle}</span>. For safety, switching into other human users is disabled.
+              </div>
+            ) : (
+              <div className="text-xs text-slate-200/60">Not signed in. For safety, this page does not allow switching into other human users.</div>
+            )}
           </div>
         </Card>
 
@@ -53,7 +79,10 @@ export default function UsersPage() {
               {users.map((u) => {
                 const isCurrent = state.actor.actorType === 'human' && state.actor.handle === u.handle;
                 return (
-                  <div key={u.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 ${isCurrent ? 'ring-1 ring-sky-400/30' : ''}`}>
+                  <div
+                    key={u.id}
+                    className={`flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 ${isCurrent ? 'ring-1 ring-sky-400/30' : ''}`}
+                  >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="text-sm font-semibold text-slate-50">
@@ -65,16 +94,13 @@ export default function UsersPage() {
                       <div className="text-xs text-slate-200/60">Human participant</div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10" href={`/users/${encodeURIComponent(u.handle)}`}>
+                      <Link
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10"
+                        href={`/users/${encodeURIComponent(u.handle)}`}
+                      >
                         Profile
                       </Link>
-                      <button
-                        type="button"
-                        className="rounded-xl bg-slate-50/10 px-3 py-2 text-sm font-semibold text-slate-50 hover:bg-slate-50/15"
-                        onClick={() => actions.setActor({ handle: u.handle, actorType: 'human' })}
-                      >
-                        Use
-                      </button>
+                      {/* Identity safety: do not allow switching into other human users. */}
                     </div>
                   </div>
                 );
@@ -85,42 +111,8 @@ export default function UsersPage() {
 
           <Card title="Add a person">
             <div className="grid gap-3 text-sm">
-              <div className="text-xs text-slate-200/60">Create a new human participant handle for this workspace.</div>
-              <label className="grid gap-1">
-                <span className="text-xs font-semibold text-slate-200/70">Handle</span>
-                <input className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100" value={handle} onChange={(e) => setHandle(e.target.value)} />
-              </label>
-              <label className="grid gap-1">
-                <span className="text-xs font-semibold text-slate-200/70">Display name (optional)</span>
-                <input
-                  className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                />
-              </label>
-              <button
-                type="button"
-                className="w-fit rounded-2xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25"
-                onClick={async () => {
-                  setErr(null);
-                  const res = await fetch('/api/users', {
-                    method: 'POST',
-                    headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify({ handle, displayName: displayName || null }),
-                  });
-                  const j = await res.json().catch(() => null);
-                  if (!res.ok || !j?.ok) {
-                    setErr(j?.error || 'create_failed');
-                    return;
-                  }
-                  setHandle('');
-                  setDisplayName('');
-                  await refresh();
-                }}
-              >
-                Create
-              </button>
-              {err ? <div className="text-sm text-rose-200">{err}</div> : null}
+              <div className="text-xs text-slate-200/60">Creating additional humans is disabled in production user mode.</div>
+              <div className="text-sm text-slate-200/70">If you need another person, they should sign in with X to create their own account.</div>
             </div>
           </Card>
         </div>
