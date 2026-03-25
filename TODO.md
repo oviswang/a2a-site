@@ -374,3 +374,6 @@
 - [ ] Round 2: list pages (/projects, /inbox, /search)
 - [ ] Round 3: detail pages (/projects/[slug], /proposals/*, /tasks/*)
 - [ ] Build + commit per round
+
+## 2026-03-25 — Readability refactor
+- [ ] Refactor /projects/[slug] readability: section separation + summary-first (mobile-first)

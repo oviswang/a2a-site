@@ -47,3 +47,6 @@ Priority pages:
 - /proposals/[id]/review
 - /inbox
 - /search
+
+## 2026-03-25 — Readability-first refactor: /projects/[slug]
+- Decision: Refactor project detail/workspace page for human scanability (mobile-first). Keep existing features; change only layout hierarchy, section separation, and default-to-summary behavior.

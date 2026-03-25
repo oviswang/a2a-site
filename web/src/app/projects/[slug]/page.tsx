@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Layout } from '@/components/Layout';
@@ -61,12 +61,28 @@ export default function ProjectDetailPage() {
   const [timelineQuery, setTimelineQuery] = useState('');
   const [timelineKindFilter, setTimelineKindFilter] = useState<'all' | 'task' | 'proposal' | 'review' | 'merge' | 'invite' | 'member' | 'access' | 'event'>('all');
 
-  // Dense-page defaults: summary-first
+  // Dense-page defaults: summary-first + collapse long blocks
   const [showActiveDetails, setShowActiveDetails] = useState(false);
   const [showProposalMeta, setShowProposalMeta] = useState(false);
   const [showJoinRequests, setShowJoinRequests] = useState(false);
   const [showInvites, setShowInvites] = useState(false);
   const [showMemberOps, setShowMemberOps] = useState(false);
+
+  useEffect(() => {
+    // Mobile-first: collapse long sections by default.
+    setExpandTasks(false);
+    setExpandProposals(false);
+    setExpandFiles(false);
+    setExpandPeople(false);
+    setExpandTimeline(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  const [expandTasks, setExpandTasks] = useState(false);
+  const [expandProposals, setExpandProposals] = useState(false);
+  const [expandFiles, setExpandFiles] = useState(false);
+  const [expandPeople, setExpandPeople] = useState(false);
+  const [expandTimeline, setExpandTimeline] = useState(false);
 
   const [reqRoles, setReqRoles] = useState<Record<string, 'contributor' | 'maintainer'>>({});
   const [inviteHandle, setInviteHandle] = useState('');
@@ -173,6 +189,28 @@ export default function ProjectDetailPage() {
     {} as Record<string, Array<{ ts: string; text: string }>>
   );
 
+  // Summary-first: compute top-level "attention now" counts once.
+  const counts = useMemo(() => {
+    const needsReview = proposals.filter((p) => p.status === 'needs_review').length;
+    const openTasks = tasksGrouped.open.length;
+    const pendingJoin = (project?.joinRequests || []).filter((r) => r.status === 'pending').length;
+    const pendingInvites = (project?.invitations || []).filter((i) => i.status === 'pending').length;
+    const pendingTotal = pendingJoin + pendingInvites;
+    const fileCount = files.length;
+    const memberCount = project?.members?.length || 0;
+    const lastFileUpdatedAt = files.length ? [...files].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0]?.updatedAt : null;
+    return {
+      needsReview,
+      openTasks,
+      pendingJoin,
+      pendingInvites,
+      pendingTotal,
+      fileCount,
+      memberCount,
+      lastFileUpdatedAt,
+    };
+  }, [proposals, tasksGrouped.open.length, project?.joinRequests, project?.invitations, project?.members, files]);
+
   return (
     <Layout>
       <div className="flex flex-col gap-6">
@@ -224,6 +262,47 @@ export default function ProjectDetailPage() {
             ) : null
           }
         />
+
+        {project ? (
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="text-xs text-slate-200/60">Attention now</div>
+              <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                <span className={`rounded-full px-2 py-0.5 ${counts.needsReview ? 'bg-amber-500/20 text-amber-100' : 'bg-white/5 text-slate-200/60'}`}>
+                  needs review {counts.needsReview}
+                </span>
+                <span className={`rounded-full px-2 py-0.5 ${counts.openTasks ? 'bg-sky-400/20 text-sky-100' : 'bg-white/5 text-slate-200/60'}`}>
+                  open tasks {counts.openTasks}
+                </span>
+                <span className={`rounded-full px-2 py-0.5 ${counts.pendingTotal ? 'bg-rose-500/20 text-rose-100' : 'bg-white/5 text-slate-200/60'}`}>
+                  pending {counts.pendingTotal}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="text-xs text-slate-200/60">Workspace</div>
+              <div className="mt-1 text-sm text-slate-50">
+                <span className="font-semibold">{counts.fileCount}</span> files · <span className="font-semibold">{tasks.length}</span> tasks
+              </div>
+              <div className="mt-1 text-xs text-slate-200/60">{counts.lastFileUpdatedAt ? `last file update ${counts.lastFileUpdatedAt}` : '—'}</div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="text-xs text-slate-200/60">People</div>
+              <div className="mt-1 text-sm text-slate-50">
+                <span className="font-semibold">{counts.memberCount}</span> members
+              </div>
+              <div className="mt-1 text-xs text-slate-200/60">visibility: {project.visibility}</div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="text-xs text-slate-200/60">You</div>
+              <div className="mt-1 text-sm font-mono text-slate-50">@{actor.handle}</div>
+              <div className="mt-1 text-xs text-slate-200/60">{actor.actorType}</div>
+            </div>
+          </div>
+        ) : null}
 
         <Toast
           message={toast?.message || null}
@@ -360,6 +439,19 @@ export default function ProjectDetailPage() {
             {/* TASKS */}
             <section id="tasks" className="scroll-mt-24">
               <Card title="Tasks">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs text-slate-200/70">
+                    <span className="font-semibold text-slate-100">Summary:</span> {sortedTasks.length} shown · open {tasksGrouped.open.length} · in progress {tasksGrouped.in_progress.length}
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                    onClick={() => setExpandTasks((v) => !v)}
+                  >
+                    {expandTasks ? 'Collapse list' : 'Expand list'}
+                  </button>
+                </div>
+
                 <Toolbar>
                   <ToolbarGroup>
                     <ToolbarLabel label="Search">
@@ -446,8 +538,9 @@ export default function ProjectDetailPage() {
                   </button>
                 </div>
 
-                <div className="mt-4 flex flex-col gap-2">
-                  {sortedTasks.map((t) => (
+                {expandTasks ? (
+                  <div className="mt-4 flex flex-col gap-2">
+                    {sortedTasks.map((t) => (
                     <div key={t.id} className="rounded-2xl border border-white/10 bg-white/5 p-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="text-sm font-medium text-slate-50">
@@ -523,15 +616,33 @@ export default function ProjectDetailPage() {
                         </Link>
                       </div>
                     </div>
-                  ))}
-                  {sortedTasks.length === 0 ? <div className="text-sm text-slate-200/60">No matching tasks.</div> : null}
-                </div>
+                    ))}
+                    {sortedTasks.length === 0 ? <div className="text-sm text-slate-200/60">No matching tasks.</div> : null}
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-slate-200/70">
+                    List collapsed. Expand to view tasks.
+                  </div>
+                )}
               </Card>
             </section>
 
             {/* PROPOSALS */}
             <section id="proposals" className="scroll-mt-24">
               <Card title="Proposals">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs text-slate-200/70">
+                    <span className="font-semibold text-slate-100">Summary:</span> {sortedProposals.length} shown · needs review {proposals.filter((p) => p.status === 'needs_review').length} · merged {proposals.filter((p) => p.status === 'merged').length}
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                    onClick={() => setExpandProposals((v) => !v)}
+                  >
+                    {expandProposals ? 'Collapse list' : 'Expand list'}
+                  </button>
+                </div>
+
                 <Toolbar>
                   <ToolbarGroup>
                     <ToolbarLabel label="Search">
@@ -592,8 +703,9 @@ export default function ProjectDetailPage() {
                   <div className="text-xs text-slate-200/60">{sortedProposals.length} shown</div>
                 </Toolbar>
 
-                <div className="mt-3 flex flex-col gap-3">
-                  {sortedProposals.map((p) => (
+                {expandProposals ? (
+                  <div className="mt-3 flex flex-col gap-3">
+                    {sortedProposals.map((p) => (
                     <div key={p.id} className="rounded-2xl border border-white/10 bg-white/5 p-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <Link className="text-sm font-medium underline decoration-white/30 hover:decoration-white/60" href={`/proposals/${p.id}/review`}>
@@ -689,16 +801,35 @@ export default function ProjectDetailPage() {
                       ) : null}
                     </div>
                   ))}
-                  {sortedProposals.length === 0 ? <div className="text-sm text-slate-200/60">No matching proposals.</div> : null}
-                </div>
+                    {sortedProposals.length === 0 ? <div className="text-sm text-slate-200/60">No matching proposals.</div> : null}
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-slate-200/70">
+                    List collapsed. Expand to view proposals.
+                  </div>
+                )}
               </Card>
             </section>
 
             {/* FILES */}
             <section id="files" className="scroll-mt-24">
               <Card title="Files">
-                <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
-                  <aside className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs text-slate-200/70">
+                    <span className="font-semibold text-slate-100">Summary:</span> {files.length} files · selected {selectedFile?.path || '—'}
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                    onClick={() => setExpandFiles((v) => !v)}
+                  >
+                    {expandFiles ? 'Collapse' : 'Expand'}
+                  </button>
+                </div>
+
+                {expandFiles ? (
+                  <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+                    <aside className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
                     <div className="text-xs font-semibold text-slate-200/70">File tree</div>
                     <div className="mt-3 flex flex-col gap-3 text-sm">
                       {Object.keys(tree)
@@ -825,6 +956,12 @@ export default function ProjectDetailPage() {
                     </div>
                   </div>
                 </div>
+
+                  ) : (
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-slate-200/70">
+                      Files collapsed. Expand to browse the file tree and content.
+                    </div>
+                  )}
               </Card>
             </section>
 
@@ -855,9 +992,24 @@ export default function ProjectDetailPage() {
             {/* PEOPLE */}
             <section id="people" className="scroll-mt-24">
               <Card title="People">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs text-slate-200/70">
+                    <span className="font-semibold text-slate-100">Summary:</span> {(project.members || []).length} members · {(project.joinRequests || []).filter((r) => r.status === 'pending').length} join req · {(project.invitations || []).filter((i) => i.status === 'pending').length} invites
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                    onClick={() => setExpandPeople((v) => !v)}
+                  >
+                    {expandPeople ? 'Collapse' : 'Expand'}
+                  </button>
+                </div>
+
                 <div className="text-xs text-slate-200/60">Join mode: {project.visibility}</div>
 
-                <div className="mt-3">
+                {expandPeople ? (
+                  <>
+                    <div className="mt-3">
                   <Toolbar>
                     <ToolbarGroup>
                       <ToolbarLabel label="Search">
@@ -929,7 +1081,8 @@ export default function ProjectDetailPage() {
                 </div>
 
                 {isOwnerOrMaintainer ? (
-                  <div className="mt-6 grid gap-6">
+                  <div className="mt-6 grid gap-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <div className="text-xs font-semibold text-slate-200/70">Owner / Maintainer controls</div>
                     {/* Join requests */}
                     <div>
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1214,6 +1367,13 @@ export default function ProjectDetailPage() {
                     </div>
                   </div>
                 ) : null}
+
+                  </>
+                ) : (
+                  <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-slate-200/70">
+                    People collapsed. Expand to manage members, invites, and requests.
+                  </div>
+                )}
               </Card>
 
               <div id="join-agent" className="scroll-mt-24">
@@ -1245,8 +1405,23 @@ export default function ProjectDetailPage() {
             {/* TIMELINE */}
             <section id="timeline" className="scroll-mt-24">
               <Card title="Timeline">
-                <Toolbar>
-                  <ToolbarGroup>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs text-slate-200/70">
+                    <span className="font-semibold text-slate-100">Summary:</span> {activity.length} events · showing recent days first
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                    onClick={() => setExpandTimeline((v) => !v)}
+                  >
+                    {expandTimeline ? 'Collapse' : 'Expand'}
+                  </button>
+                </div>
+
+                {expandTimeline ? (
+                  <>
+                    <Toolbar>
+                      <ToolbarGroup>
                     <ToolbarLabel label="Filter">
                       <select
                         className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
@@ -1285,11 +1460,11 @@ export default function ProjectDetailPage() {
                         placeholder="text / @handle"
                       />
                     </ToolbarLabel>
-                  </ToolbarGroup>
-                  <div className="text-xs text-slate-200/60">{activity.length} events</div>
-                </Toolbar>
+                      </ToolbarGroup>
+                      <div className="text-xs text-slate-200/60">{activity.length} events</div>
+                    </Toolbar>
 
-                <div className="mt-3 grid gap-4">
+                    <div className="mt-3 grid gap-4">
                   {Object.keys(activityByDay)
                     .sort()
                     .reverse()
@@ -1310,7 +1485,7 @@ export default function ProjectDetailPage() {
                             .map((a, idx) => {
                               const k = kindOf(a.text);
                               return (
-                              <div key={idx} className="flex flex-wrap items-start justify-between gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
+                                <div key={idx} className="flex flex-wrap items-start justify-between gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
                                 <div className="min-w-0">
                                   <div className="text-xs text-slate-200/50">{a.ts.slice(11, 19)}</div>
                                   <div className="mt-1 text-sm text-slate-50">{a.text}</div>
@@ -1322,8 +1497,14 @@ export default function ProjectDetailPage() {
                         </div>
                       </div>
                     ))}
-                  {activity.length === 0 ? <div className="text-sm text-slate-200/60">No activity yet.</div> : null}
-                </div>
+                      {activity.length === 0 ? <div className="text-sm text-slate-200/60">No activity yet.</div> : null}
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-slate-200/70">
+                    Timeline collapsed. Expand to view recent activity.
+                  </div>
+                )}
               </Card>
             </section>
           </WorkspaceShell>
