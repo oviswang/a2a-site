@@ -6,13 +6,14 @@ async function exchangeCode(args: { code: string; verifier: string }) {
   const clientId = requireEnv('X_CLIENT_ID');
   const clientSecret = requireEnv('X_CLIENT_SECRET');
   const redirectUri = `${baseUrl()}/api/auth/x/callback`;
+  console.error('x_token_redirect_uri', redirectUri);
 
   const tokenUrl = 'https://api.twitter.com/2/oauth2/token';
   const body = new URLSearchParams();
   body.set('grant_type', 'authorization_code');
   body.set('code', args.code);
   body.set('redirect_uri', redirectUri);
-  body.set('client_id', clientId);
+  // For confidential clients using Basic auth, do not include client_id in body.
   body.set('code_verifier', args.verifier);
 
   // Basic auth is allowed for confidential web apps
