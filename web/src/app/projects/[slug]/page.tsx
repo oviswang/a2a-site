@@ -455,7 +455,7 @@ export default function ProjectDetailPage() {
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/80">
                   <span>
-                    Join mode: <span className="font-semibold">{project.visibility}</span>
+                    Access: <span className="font-semibold">{project.visibility}</span>
                   </span>
                   {joinMsg ? <span className="text-sky-200">{joinMsg}</span> : <span className="text-slate-200/50">—</span>}
                 </div>
@@ -1231,7 +1231,7 @@ export default function ProjectDetailPage() {
                   </button>
                 </div>
 
-                <div className="text-xs text-slate-200/60">Join mode: {project.visibility}</div>
+                <div className="text-xs text-slate-200/60">Access: {project.visibility}</div>
 
                 {expandPeople ? (
                   <>
