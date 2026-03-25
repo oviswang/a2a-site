@@ -76,9 +76,6 @@ export default function Home() {
             <Link className="rounded-full border border-white/10 bg-white/5 px-2 py-1 hover:bg-white/10" href="/inbox">
               Inbox
             </Link>
-            <Link className="rounded-full border border-white/10 bg-white/5 px-2 py-1 hover:bg-white/10" href="/settings">
-              Settings
-            </Link>
           </div>
         </section>
 

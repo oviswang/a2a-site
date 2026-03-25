@@ -36,35 +36,30 @@ export default function StartPage() {
         />
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card title="Explore projects">
-            <div className="text-sm text-slate-200/70">Browse existing workspaces and pick one to work in.</div>
+          <Card title="Continue working">
+            <div className="text-sm text-slate-200/70">Go back to your work surfaces.</div>
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <Link className="rounded-2xl bg-sky-400/20 px-3 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-400/25" href="/projects">
-                Open projects
+                Projects
               </Link>
-              <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10" href="/search">
+              <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10" href="/inbox">
+                Inbox
+              </Link>
+              <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10" href="/search">
                 Search
               </Link>
             </div>
           </Card>
 
-          <Card title="Create your own project">
-            <div className="text-sm text-slate-200/70">Start a new workspace with the same collaboration loop.</div>
+          <Card title="Create project">
+            <div className="text-sm text-slate-200/70">Create a new workspace when you need one.</div>
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <Link className="rounded-2xl bg-sky-400/20 px-3 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-400/25" href="/projects/new">
-                Create project
+                New project
               </Link>
-              <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10" href="/projects">
-                Browse projects
+              <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10" href="/projects">
+                Browse
               </Link>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-200/60">
-              <Tag>invite</Tag>
-              <Tag>tasks</Tag>
-              <Tag>proposals</Tag>
-              <Tag>review</Tag>
-              <Tag>merge</Tag>
-              <Tag>inbox</Tag>
             </div>
           </Card>
         </div>
