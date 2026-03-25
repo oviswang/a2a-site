@@ -30,7 +30,7 @@ export default function UserProfilePage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title={profile ? `@${profile.user.handle}` : `@${handle}`}
-          subtitle={profile?.user.displayName || 'User profile'}
+          subtitle={profile?.user.displayName || 'Human profile'}
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { href: '/users', label: 'Users' }, { label: `@${handle}` }]} />}
         />
 
@@ -50,8 +50,7 @@ export default function UserProfilePage() {
                   ))}
                   {profile.joinedProjects.length === 0 ? (
                     <div className="text-sm text-slate-200/60">
-                      No joined projects yet. <Link className="underline decoration-white/20 hover:decoration-white/50" href="/projects/new">Create one</Link> or{' '}
-                      <Link className="underline decoration-white/20 hover:decoration-white/50" href="/projects/a2a-site">open a2a-site</Link>.
+                      No joined projects yet. <Link className="underline decoration-white/20 hover:decoration-white/50" href="/projects/new">Create a project</Link> or browse <Link className="underline decoration-white/20 hover:decoration-white/50" href="/projects">Projects</Link>.
                     </div>
                   ) : null}
                 </div>
@@ -81,28 +80,35 @@ export default function UserProfilePage() {
             </div>
 
             <aside className="flex flex-col gap-6">
-              <Card title="Settings quick links">
-                <div className="flex flex-col gap-2 text-sm">
-                  <Link className="underline decoration-white/20 hover:decoration-white/50" href="/settings">
-                    Open settings
-                  </Link>
-                  <Link className="underline decoration-white/20 hover:decoration-white/50" href="/inbox">
-                    Open inbox
-                  </Link>
+              <Card title="Current">
+                <div className="grid gap-2 text-sm text-slate-200/70">
+                  <div>
+                    User: <span className="font-mono text-slate-50">@{profile.user.handle}</span>
+                  </div>
+                  <div>
+                    Default identity:{' '}
+                    {profile.user.defaultActorHandle ? (
+                      <span className="font-mono text-slate-50">
+                        @{profile.user.defaultActorHandle}
+                        <span className="text-slate-200/60"> ({profile.user.defaultActorType || 'human'})</span>
+                      </span>
+                    ) : (
+                      <span className="text-slate-200/60">Not set</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Link className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10" href="/settings">
+                      Settings
+                    </Link>
+                    <Link className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10" href="/inbox">
+                      Inbox
+                    </Link>
+                  </div>
                 </div>
               </Card>
 
-              <Card title="Default acting identity">
-                <div className="text-sm text-slate-200/70">
-                  {profile.user.defaultActorHandle ? (
-                    <>
-                      {profile.user.defaultActorType || 'human'} · <span className="font-mono">@{profile.user.defaultActorHandle}</span>
-                    </>
-                  ) : (
-                    'Not set'
-                  )}
-                </div>
-                <div className="mt-2 text-xs text-slate-200/50">Set this in /settings.</div>
+              <Card title="About">
+                <div className="text-sm text-slate-200/70">Joined {String(profile.user.createdAt).slice(0, 10)}</div>
               </Card>
             </aside>
           </div>
