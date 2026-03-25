@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Card, Tag } from '@/components/Card';
@@ -30,48 +31,61 @@ export default function UsersPage() {
     <Layout>
       <div className="flex flex-col gap-6">
         <PageHeader
-          title="Users"
-          subtitle="Minimal persistent human-user layer (no OAuth yet)."
-          breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'Users' }]} />}
+          title="People"
+          subtitle="Human participants in this workspace"
+          breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'People' }]} />}
         />
 
-        <Card title="Current acting user">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-200/80">
-            <Tag>{state.actor.actorType}</Tag>
-            <span className="font-mono">@{state.actor.handle}</span>
+        <Card title="Current">
+          <div className="grid gap-2 text-sm text-slate-200/80">
+            <div className="flex flex-wrap items-center gap-2">
+              <Tag>{state.actor.actorType}</Tag>
+              <span className="font-mono text-slate-50">@{state.actor.handle}</span>
+              <span className="text-xs text-slate-200/60">(who you are acting as right now)</span>
+            </div>
+            <div className="text-xs text-slate-200/60">Switching changes your current identity for browsing and actions.</div>
           </div>
         </Card>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
-          <Card title="All users">
+          <Card title="People">
             <div className="grid gap-2">
-              {users.map((u) => (
-                <div key={u.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="min-w-0">
-                    <div className="text-sm text-slate-50">
-                      <span className="font-mono">@{u.handle}</span>
-                      {u.displayName ? <span className="text-slate-200/70"> · {u.displayName}</span> : null}
+              {users.map((u) => {
+                const isCurrent = state.actor.actorType === 'human' && state.actor.handle === u.handle;
+                return (
+                  <div key={u.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 ${isCurrent ? 'ring-1 ring-sky-400/30' : ''}`}>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="text-sm font-semibold text-slate-50">
+                          <span className="font-mono">@{u.handle}</span>
+                        </div>
+                        {u.displayName ? <div className="text-sm text-slate-200/70">{u.displayName}</div> : null}
+                        {isCurrent ? <Tag>current</Tag> : null}
+                      </div>
+                      <div className="text-xs text-slate-200/60">Human participant</div>
                     </div>
-                    <div className="text-xs text-slate-200/50">created {String(u.createdAt).slice(0, 19).replace('T', ' ')}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10" href={`/users/${encodeURIComponent(u.handle)}`}>
+                        Profile
+                      </Link>
+                      <button
+                        type="button"
+                        className="rounded-xl bg-slate-50/10 px-3 py-2 text-sm font-semibold text-slate-50 hover:bg-slate-50/15"
+                        onClick={() => actions.setActor({ handle: u.handle, actorType: 'human' })}
+                      >
+                        Use
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    className="rounded-2xl bg-slate-50/10 px-3 py-2 text-sm text-slate-50 hover:bg-slate-50/15"
-                    onClick={() => actions.setActor({ handle: u.handle, actorType: 'human' })}
-                  >
-                    Use
-                  </button>
-                </div>
-              ))}
-              {users.length === 0 ? <div className="text-sm text-slate-200/60">No users yet.</div> : null}
+                );
+              })}
+              {users.length === 0 ? <div className="text-sm text-slate-200/60">No people yet.</div> : null}
             </div>
           </Card>
 
-          <Card title="Create user">
+          <Card title="Add a person">
             <div className="grid gap-3 text-sm">
-              <div className="text-xs text-slate-200/60">
-                Handles are normalized (slug-style). After creating, pick the canonical handle from the list and click “Use”.
-              </div>
+              <div className="text-xs text-slate-200/60">Create a new human participant handle for this workspace.</div>
               <label className="grid gap-1">
                 <span className="text-xs font-semibold text-slate-200/70">Handle</span>
                 <input className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100" value={handle} onChange={(e) => setHandle(e.target.value)} />
