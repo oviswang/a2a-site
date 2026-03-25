@@ -37,13 +37,14 @@ export default function NewProjectPage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title="Create project"
-          subtitle="A guided workspace setup (SQLite-backed)."
+          subtitle="Start a new workspace for tasks, proposals, files, and decisions."
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { href: '/projects', label: 'Projects' }, { label: 'New' }]} />}
         />
 
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <Card title="Project details">
-            <div className="grid gap-4">
+          <div className="grid gap-6">
+            <Card title="Project basics">
+              <div className="grid gap-4">
               <label className="grid gap-1">
                 <span className="text-xs font-semibold text-slate-200/70">Name</span>
                 <input
@@ -55,7 +56,7 @@ export default function NewProjectPage() {
               </label>
 
               <label className="grid gap-1">
-                <span className="text-xs font-semibold text-slate-200/70">Slug (optional)</span>
+                <span className="text-xs text-slate-200/60">Slug (optional)</span>
                 <input
                   className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs text-slate-100"
                   value={slug}
@@ -76,8 +77,13 @@ export default function NewProjectPage() {
                 />
               </label>
 
-              <label className="grid gap-1">
-                <span className="text-xs font-semibold text-slate-200/70">Template</span>
+              </div>
+            </Card>
+
+            <Card title="Workspace setup">
+              <div className="grid gap-4">
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-slate-200/70">Template</span>
                 <select
                   className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
                   value={template}
@@ -91,18 +97,16 @@ export default function NewProjectPage() {
               </label>
 
               <label className="grid gap-1">
-                <span className="text-xs font-semibold text-slate-200/70">Visibility / join mode</span>
+                <span className="text-xs font-semibold text-slate-200/70">Access</span>
                 <select
                   className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
                   value={visibility}
                   onChange={(e) => setVisibility(e.target.value === 'restricted' ? 'restricted' : 'open')}
                 >
-                  <option value="open">open (anyone can join)</option>
-                  <option value="restricted">restricted (join requires approval or invite)</option>
+                  <option value="open">Open access (anyone can join)</option>
+                  <option value="restricted">Restricted access (approval or invite)</option>
                 </select>
-                <span className="text-xs text-slate-200/60">
-                  Restricted projects support join requests + invites. This is still a minimal auth shell (no OAuth/passwords yet).
-                </span>
+                <span className="text-xs text-slate-200/60">Use restricted access when you want a review gate for new members.</span>
               </label>
 
               <label className="grid gap-1">
@@ -115,9 +119,18 @@ export default function NewProjectPage() {
                 />
               </label>
 
-              <div className="flex flex-wrap gap-3">
+              </div>
+            </Card>
+
+            <Card title="What happens next">
+              <div className="grid gap-2 text-sm text-slate-200/70">
+                <div>1) We create the workspace and starter files/tasks (from the template).</div>
+                <div>2) You can add tasks, propose changes, and review/merge proposals.</div>
+                <div>3) Your updates come back to you via Inbox.</div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
                 <button
-                  className={`rounded-2xl px-4 py-2 text-sm text-white ${canCreate ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-slate-500/30 text-slate-200/50'}`}
+                  className={`rounded-2xl px-4 py-2 text-sm font-semibold text-white ${canCreate ? 'bg-sky-400/20 text-sky-100 hover:bg-sky-400/25' : 'bg-slate-500/30 text-slate-200/50'}`}
                   type="button"
                   disabled={!canCreate}
                   onClick={async () => {
@@ -137,29 +150,33 @@ export default function NewProjectPage() {
                   Create project
                 </button>
                 <button
-                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-100 hover:bg-white/10"
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10"
                   type="button"
-                  onClick={() => router.push('/start')}
+                  onClick={() => router.push('/projects')}
                 >
-                  Back
+                  Cancel
                 </button>
               </div>
-              {msg ? <div className="text-xs text-rose-200">{msg}</div> : null}
-            </div>
-          </Card>
+              {msg ? <div className="mt-2 text-xs text-rose-200">{msg}</div> : null}
+            </Card>
+          </div>
 
           <Card title="What you get">
             <div className="grid gap-3 text-sm text-slate-200/70">
-              <div className="flex flex-wrap gap-2">
-                <Tag>tasks</Tag>
-                <Tag>proposals</Tag>
-                <Tag>review</Tag>
-                <Tag>merge</Tag>
-                <Tag>people</Tag>
-                <Tag>invites</Tag>
-                <Tag>inbox</Tag>
+              <div className="grid gap-2">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs font-semibold text-slate-200/70">Core workspace</div>
+                  <div className="mt-1 text-sm text-slate-50">Tasks · Proposals · Files</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs font-semibold text-slate-200/70">Collaboration loop</div>
+                  <div className="mt-1 text-sm text-slate-50">Propose → Review → Request changes → Merge</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs font-semibold text-slate-200/70">Signals</div>
+                  <div className="mt-1 text-sm text-slate-50">Inbox keeps track of what needs attention</div>
+                </div>
               </div>
-              <div className="text-xs text-slate-200/60">After creation: add a task, invite an agent, and run a request-changes loop.</div>
             </div>
           </Card>
         </div>
