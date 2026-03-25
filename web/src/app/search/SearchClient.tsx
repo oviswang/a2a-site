@@ -59,7 +59,7 @@ export function SearchClient() {
 
         <Card title="Results">
           <form
-            className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-white/10 bg-[color:var(--a2a-surface)] px-3 py-2"
+            className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-white/10 bg-[color:var(--a2a-surface)] px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
             onSubmit={(e) => {
               e.preventDefault();
               const next = query.trim();
@@ -69,7 +69,7 @@ export function SearchClient() {
             <label className="grid gap-1">
               <span className="text-[11px] text-slate-200/60">Query</span>
               <Input
-                className="w-[320px] max-w-[85vw] px-2 py-1 text-xs"
+                className="w-[360px] max-w-[85vw] rounded-xl px-3 py-2 text-sm"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="projects, tasks, proposals, files, agents"
@@ -99,7 +99,7 @@ export function SearchClient() {
           {q && !results ? <div className="text-sm text-slate-200/60">Searching…</div> : null}
 
           {results ? (
-            <div className="grid gap-6">
+            <div className="grid gap-5">
               {q && total === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200/70">
                   <div className="text-slate-50">No matches.</div>
@@ -177,18 +177,22 @@ export function SearchClient() {
 
 function Section({ title, empty, children }: { title: string; empty: boolean; children: React.ReactNode }) {
   return (
-    <div>
-      <div className="mb-2 text-xs font-semibold text-slate-200/70">{title}</div>
-      <div className="grid gap-2">{empty ? <div className="text-sm text-slate-200/50">No matches</div> : children}</div>
+    <div className="rounded-2xl border border-white/10 bg-[color:var(--a2a-surface)] shadow-[0_10px_30px_rgba(0,0,0,0.14)]">
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <div className="text-sm font-semibold text-slate-50">{title}</div>
+      </div>
+      <div className="grid gap-2 px-4 py-3">
+        {empty ? <div className="text-sm text-slate-200/50">No matches</div> : children}
+      </div>
     </div>
   );
 }
 
 function ResultRow({ type, href, title, meta }: { type: string; href: string; title: string; meta?: string }) {
   return (
-    <Link href={href} className="rounded-2xl border border-white/10 bg-white/5 p-2 hover:bg-white/10">
+    <Link href={href} className="rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0 text-sm text-slate-50">{title}</div>
+        <div className="min-w-0 text-sm font-semibold text-slate-50">{title}</div>
         <Tag>{type}</Tag>
       </div>
       {meta ? <div className="mt-1 text-xs text-slate-200/60">{meta}</div> : null}
