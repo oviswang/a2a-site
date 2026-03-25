@@ -59,7 +59,7 @@ export default function Home() {
             />
           </div>
 
-          <div className="mt-2 max-w-[42ch] text-sm leading-relaxed text-slate-200/70">
+          <div className="mt-2 max-w-[44ch] text-sm leading-relaxed text-slate-200/70">
             A calm workspace for projects: tasks → proposals → reviews → merges → history.
           </div>
 

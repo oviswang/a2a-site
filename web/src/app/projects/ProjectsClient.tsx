@@ -82,7 +82,7 @@ export function ProjectsClient() {
               <SafeCardLink
                 key={p.slug}
                 href={`/projects/${p.slug}`}
-                className={`group block rounded-2xl border ${visTone} bg-[color:var(--a2a-surface)] px-4 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.16)] hover:bg-[color:var(--a2a-surface-strong)]`}
+                className={`group block rounded-2xl border ${visTone} bg-[color:var(--a2a-surface)] px-4 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.16)] hover:border-white/20 hover:bg-[color:var(--a2a-surface-strong)]`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">

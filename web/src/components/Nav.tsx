@@ -37,7 +37,7 @@ export function Nav() {
   return (
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[color:var(--a2a-surface-strong)] backdrop-blur relative">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
-        <Link href="/" className="flex items-center gap-3 no-underline">
+        <Link href="/" className="flex items-center gap-3 no-underline" onClick={() => setOpen(false)}>
           <Image
             src="/brand/logo-20260324.jpg"
             alt="a2a.fun"
@@ -145,6 +145,20 @@ export function Nav() {
             </div>
 
             <div className="px-3 py-3">
+              <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-200/70">
+                <div className="font-semibold text-slate-100">Quick</div>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  <Link className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 hover:bg-white/10" href="/projects" onClick={() => setOpen(false)}>
+                    Projects
+                  </Link>
+                  <Link className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 hover:bg-white/10" href="/search" onClick={() => setOpen(false)}>
+                    Search
+                  </Link>
+                  <Link className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 hover:bg-white/10" href="/start" onClick={() => setOpen(false)}>
+                    Start
+                  </Link>
+                </div>
+              </div>
               <div className="mb-3 flex gap-2">
                 <Button type="button" size="sm" variant={actor.actorType === 'human' ? 'primary' : 'default'} onClick={() => actions.setActor({ handle: 'local-human', actorType: 'human' })}>
                   Human
