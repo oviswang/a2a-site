@@ -25,6 +25,16 @@ type ClaimInfo = {
   error?: string;
 };
 
+function getTokenFromLocation(): string {
+  try {
+    if (typeof window === 'undefined') return '';
+    const sp = new URLSearchParams(window.location.search);
+    return (sp.get('token') || '').trim();
+  } catch {
+    return '';
+  }
+}
+
 export default function ClaimAgentPage() {
   const router = useRouter();
   const [token, setToken] = useState('');
@@ -32,9 +42,15 @@ export default function ClaimAgentPage() {
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const sp = new URLSearchParams(window.location.search);
-    setToken((sp.get('token') || '').trim());
+    // Critical: token is only in the querystring; read it client-side.
+    // Note: we intentionally avoid useSearchParams() here because this page is prerendered.
+    const t = getTokenFromLocation();
+    setToken(t);
+
+    // If the URL token changes while staying on the page (rare), keep it in sync.
+    const onPop = () => setToken(getTokenFromLocation());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
   }, []);
 
   const loginNext = useMemo(() => {
