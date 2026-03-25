@@ -66,35 +66,67 @@ export default function InboxPage() {
 
   const visibleUnread = visible.filter((n) => !n.readAt);
 
+  const counts = {
+    unread,
+    needsReview: visible.filter((n) => !n.readAt && String(n.kind).includes('proposal.needs_review')).length,
+    access: visible.filter((n) => !n.readAt && (String(n.kind).includes('join.requested') || String(n.kind).includes('invite.'))).length,
+    merged: visible.filter((n) => !n.readAt && String(n.kind).includes('proposal.merged')).length,
+  };
+
   return (
     <Layout>
       <div className="flex flex-col gap-6">
         <PageHeader
           title="Inbox"
-          subtitle={`@${state.actor.handle} · unread ${unread}`}
+          subtitle={unread ? `${unread} need attention` : 'Nothing needs your attention right now.'}
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'Inbox' }]} />}
         />
 
         <Toast message={toast?.message || null} variant={toast?.variant || 'info'} onClose={() => setToast(null)} autoHideMs={4000} />
 
-        <Card title="Notifications">
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-2xl border border-white/10 bg-[color:var(--a2a-surface)] p-3">
+            <div className="text-xs text-slate-200/60">Unread</div>
+            <div className="mt-1 text-lg font-semibold text-slate-50">{counts.unread}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-[color:var(--a2a-surface)] p-3">
+            <div className="text-xs text-slate-200/60">Needs review</div>
+            <div className="mt-1 text-lg font-semibold text-slate-50">{counts.needsReview}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-[color:var(--a2a-surface)] p-3">
+            <div className="text-xs text-slate-200/60">Access</div>
+            <div className="mt-1 text-lg font-semibold text-slate-50">{counts.access}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-[color:var(--a2a-surface)] p-3">
+            <div className="text-xs text-slate-200/60">Recent merges</div>
+            <div className="mt-1 text-lg font-semibold text-slate-50">{counts.merged}</div>
+          </div>
+        </div>
+
+        <Card title="Signals">
           <Toolbar>
             <ToolbarGroup>
               <ToolbarLabel label="View">
                 <Select value={filter} onChange={(e) => setFilter(e.target.value === 'read' ? 'read' : e.target.value === 'all' ? 'all' : 'unread')}>
-                  <option value="unread">unread</option>
-                  <option value="all">all</option>
-                  <option value="read">read</option>
+                  <option value="unread">Unread</option>
+                  <option value="all">All</option>
+                  <option value="read">Read</option>
                 </Select>
               </ToolbarLabel>
-              <ToolbarLabel label="Kind">
+              <ToolbarLabel label="Filter">
                 <Select value={kind} onChange={(e) => setKind(e.target.value || 'all')}>
-                  <option value="all">all</option>
-                  {kinds.map((k) => (
-                    <option key={k} value={k}>
-                      {k}
-                    </option>
-                  ))}
+                  <option value="all">All</option>
+                  <option value="proposal.needs_review">Needs review</option>
+                  <option value="join.requested">Access</option>
+                  <option value="invite.created">Access</option>
+                  <option value="invite.revoked">Access</option>
+                  {kinds
+                    .filter((k) => !['proposal.needs_review', 'join.requested', 'invite.created', 'invite.revoked'].includes(k))
+                    .map((k) => (
+                      <option key={k} value={k}>
+                        {k}
+                      </option>
+                    ))}
                 </Select>
               </ToolbarLabel>
               <ToolbarLabel label="Search">
@@ -144,7 +176,6 @@ export default function InboxPage() {
                     {!n.readAt ? <span className="h-2 w-2 rounded-full bg-sky-300" /> : <span className="h-2 w-2 rounded-full bg-white/10" />}
                     <Tag>{n.kind}</Tag>
                     <span className="text-[11px] text-slate-200/50">{String(n.createdAt).slice(0, 16).replace('T', ' ')}</span>
-                    {n.readAt ? <span className="text-[11px] text-slate-200/40">read</span> : <span className="text-[11px] text-slate-200/60">unread</span>}
                   </div>
                   <div className="mt-1 truncate text-sm text-slate-50">{n.text}</div>
                 </div>
@@ -169,14 +200,14 @@ export default function InboxPage() {
             ))}
             {visible.length === 0 ? (
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200/70">
-                <div className="text-slate-50">No notifications yet.</div>
-                <div className="mt-1 text-xs text-slate-200/60">Start by opening a project, inviting an agent, and running a proposal/review loop.</div>
+                <div className="text-slate-50">Nothing needs your attention right now.</div>
+                <div className="mt-1 text-xs text-slate-200/60">Signals show up here when work comes back to you (needs review, access, changes, merges).</div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Link className="rounded-2xl bg-sky-400/20 px-3 py-2 text-xs text-sky-100 hover:bg-sky-400/25" href="/start">
-                    Start here
+                  <Link className="rounded-2xl bg-sky-400/20 px-3 py-2 text-xs text-sky-100 hover:bg-sky-400/25" href="/projects">
+                    Open projects
                   </Link>
-                  <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10" href="/projects/a2a-site">
-                    Open a2a-site
+                  <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10" href="/search">
+                    Search
                   </Link>
                 </div>
               </div>
