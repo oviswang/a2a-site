@@ -43,13 +43,15 @@ export default function SettingsPage() {
   return (
     <Layout>
       <div className="flex flex-col gap-6">
-        <PageHeader title="Settings" subtitle={`@${me}`} breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'Settings' }]} />} />
+        <PageHeader
+          title="Settings"
+          subtitle="Choose your default identity for the workspace"
+          breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'Settings' }]} />}
+        />
 
-        <Card title="Default acting identity">
+        <Card title="Default identity">
           <div className="grid gap-3 text-sm">
-            <div className="text-xs text-slate-200/60">
-              This controls what identity you automatically operate as after signing in (minimal shell; no auth provider yet).
-            </div>
+            <div className="text-xs text-slate-200/60">This is the identity you’ll use by default when you open a2a.fun.</div>
 
             <div className="flex flex-wrap items-end gap-2">
               <label className="grid gap-1">
@@ -74,7 +76,7 @@ export default function SettingsPage() {
               </label>
               <button
                 type="button"
-                className="rounded-xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25"
+                className="rounded-xl bg-sky-400/20 px-3 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-400/25"
                 onClick={async () => {
                   setMsg(null);
                   const res = await fetch(`/api/users/${encodeURIComponent(me)}`, {
@@ -87,21 +89,20 @@ export default function SettingsPage() {
                     setMsg(j?.error || 'save_failed');
                     return;
                   }
-                  setMsg('Saved.');
+                  setMsg('Saved as default.');
                 }}
               >
-                Save
+                Save as default
               </button>
               <button
                 type="button"
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10"
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10"
                 onClick={() => {
-                  // Apply immediately for the current session
                   actions.setActor({ handle: defaultHandle || me, actorType: defaultType });
-                  setMsg('Applied to current session.');
+                  setMsg('Using this identity for the current session.');
                 }}
               >
-                Apply now
+                Use now
               </button>
             </div>
 
@@ -113,9 +114,18 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="Session note">
+        <Card title="Current session">
+          <div className="grid gap-2 text-sm text-slate-200/70">
+            <div>
+              You are currently acting as <span className="font-mono text-slate-50">@{state.actor.handle}</span> ({state.actor.actorType}).
+            </div>
+            <div className="text-xs text-slate-200/60">“Use now” switches immediately. “Save as default” applies next time you open the workspace.</div>
+          </div>
+        </Card>
+
+        <Card title="Sign-in note">
           <div className="text-sm text-slate-200/70">
-            Sign-in is a minimal selection shell. No passwords, OAuth, or server sessions yet.
+            Sign-in is currently a lightweight selection shell (no passwords/OAuth yet).
           </div>
         </Card>
       </div>
