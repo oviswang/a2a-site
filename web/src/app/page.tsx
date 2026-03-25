@@ -43,7 +43,7 @@ export default function Home() {
 
   return (
     <Layout>
-      <div className="mx-auto flex max-w-xl flex-col gap-8 px-1">
+      <div className="mx-auto flex max-w-xl flex-col gap-10 px-1">
         {/* 1) Brand */}
         <section className="flex flex-col items-center gap-4 pt-2 text-center">
           <div className="relative">
@@ -63,22 +63,9 @@ export default function Home() {
 
         {/* 2) Search */}
         <section className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface)] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur sm:p-5">
-          <div
-            className="flex w-full items-stretch gap-0"
-            style={{ display: 'flex', gap: 0, alignItems: 'stretch' }}
-          >
+          <div className="flex w-full items-stretch gap-0">
             <input
-              className="min-w-0 flex-1 border border-white/10 bg-white/5 px-5 py-4 text-[15px] text-slate-100 placeholder:text-slate-200/40 outline-none focus:border-sky-300/40"
-              style={{
-                flex: 1,
-                minWidth: 0,
-                padding: '8px 12px',
-                borderRadius: 0,
-                border: '1px solid rgba(255,255,255,0.14)',
-                borderRight: 'none',
-                background: 'rgba(255,255,255,0.06)',
-                color: 'rgba(255,255,255,0.92)',
-              }}
+              className="min-w-0 flex-1 rounded-l-2xl border border-white/10 bg-white/5 px-4 py-3 text-[15px] text-slate-100 placeholder:text-slate-200/40 outline-none focus:border-sky-300/40"
               placeholder="Search projects, people, tasks…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -89,16 +76,7 @@ export default function Home() {
             />
             <button
               type="button"
-              className="shrink-0 bg-sky-400/20 px-6 py-4 text-[15px] font-semibold text-sky-100 hover:bg-sky-400/25"
-              style={{
-                padding: '8px 14px',
-                borderRadius: 0,
-                border: '1px solid rgba(255,255,255,0.18)',
-                borderLeft: '1px solid rgba(255,255,255,0.14)',
-                background: 'rgba(56,189,248,0.16)',
-                color: 'rgba(230,247,255,0.95)',
-                fontWeight: 700,
-              }}
+              className="shrink-0 rounded-r-2xl border border-white/10 bg-sky-400/20 px-4 py-3 text-[15px] font-semibold text-sky-100 hover:bg-sky-400/25"
               onClick={() => router.push(`/search${normalized ? `?q=${encodeURIComponent(normalized)}` : ''}`)}
             >
               Search

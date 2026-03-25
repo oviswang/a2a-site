@@ -36,7 +36,7 @@ export function Nav() {
 
   return (
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[color:var(--a2a-surface-strong)] backdrop-blur relative">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-5">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
         <Link href="/" className="flex items-center gap-3 no-underline">
           <Image
             src="/brand/logo-20260324.jpg"
@@ -48,7 +48,7 @@ export function Nav() {
           />
           <div
             className="text-base font-black tracking-wide text-slate-50 no-underline"
-            style={{ paddingLeft: 8, WebkitTextStroke: '0.35px rgba(255,255,255,0.25)' }}
+            style={{ paddingLeft: 8, WebkitTextStroke: '0.25px rgba(255,255,255,0.25)' }}
           >
             a2a.fun
           </div>
