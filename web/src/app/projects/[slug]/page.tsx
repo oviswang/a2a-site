@@ -548,18 +548,34 @@ export default function ProjectDetailPage() {
               </Card>
             </section>
 
-            {/* TASKS */}
+            {/* TASKS (PRIMARY) */}
             <section id="tasks" className="scroll-mt-24">
-              <div className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface)] p-4 shadow-none">
+              <div className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface-strong)] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-sm font-semibold text-slate-50">Tasks</div>
-                  <button
-                    type="button"
-                    className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
-                    onClick={() => setExpandTasks((v) => !v)}
-                  >
-                    {expandTasks ? 'Collapse' : 'Expand'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-semibold text-slate-50">Tasks</div>
+                    <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-slate-200/70">open {tasksGrouped.open.length}</span>
+                    <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-slate-200/70">in progress {tasksGrouped.in_progress.length}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="rounded-xl bg-sky-400/20 px-2 py-1 text-[11px] text-sky-100 hover:bg-sky-400/25"
+                      onClick={() => {
+                        setExpandTasks(true);
+                        document.getElementById('tasks-create')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                    >
+                      + Create
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                      onClick={() => setExpandTasks((v) => !v)}
+                    >
+                      {expandTasks ? 'Collapse' : 'Expand'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
@@ -643,7 +659,7 @@ export default function ProjectDetailPage() {
                   <div className="text-xs text-slate-200/60">{sortedTasks.length} shown</div>
                 </Toolbar>
 
-                <div className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div id="tasks-create" className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
                   <div className="text-xs font-semibold text-slate-200/70">Create task</div>
                   <input
                     className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
@@ -762,9 +778,35 @@ export default function ProjectDetailPage() {
               </div>
             </section>
 
-            {/* PROPOSALS */}
+            {/* PROPOSALS (PRIMARY) */}
             <section id="proposals" className="scroll-mt-24">
-              <Card title="Proposals">
+              <div className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface-strong)] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-semibold text-slate-50">Proposals</div>
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${counts.needsReview ? 'bg-amber-500/20 text-amber-100' : 'bg-white/5 text-slate-200/60'}`}>needs review {counts.needsReview}</span>
+                    <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-slate-200/70">total {proposals.length}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="rounded-xl bg-sky-400/20 px-2 py-1 text-[11px] text-sky-100 hover:bg-sky-400/25"
+                      onClick={() => {
+                        const fp = selectedFile?.path || 'README.md';
+                        router.push(`/projects/${slug}/proposals/new?file=${encodeURIComponent(fp)}`);
+                      }}
+                    >
+                      + New
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                      onClick={() => setExpandProposals((v) => !v)}
+                    >
+                      {expandProposals ? 'Collapse' : 'Expand'}
+                    </button>
+                  </div>
+                </div>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
                   <div className="min-w-0 text-xs text-slate-200/70">
                     <div>
@@ -954,12 +996,28 @@ export default function ProjectDetailPage() {
                     List collapsed. Expand to view proposals.
                   </div>
                 )}
-              </Card>
+              </div>
             </section>
 
-            {/* FILES */}
+            {/* FILES (PRIMARY) */}
             <section id="files" className="scroll-mt-24">
-              <Card title="Files">
+              <div className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface-strong)] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-semibold text-slate-50">Files</div>
+                    <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-slate-200/70">{files.length} files</span>
+                    {counts.lastFilePath ? <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-slate-200/70">last {counts.lastFilePath}</span> : null}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                      onClick={() => setExpandFiles((v) => !v)}
+                    >
+                      {expandFiles ? 'Collapse' : 'Expand'}
+                    </button>
+                  </div>
+                </div>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
                   <div className="min-w-0 text-xs text-slate-200/70">
                     <div>
@@ -1119,7 +1177,7 @@ export default function ProjectDetailPage() {
                       Files collapsed. Expand to browse the file tree and content.
                     </div>
                   )}
-              </Card>
+              </div>
             </section>
 
             {/* DECISIONS */}
