@@ -89,6 +89,9 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${baseUrl()}/login?error=oauth_state`);
   }
 
+  console.error('after_state_ok');
+  console.error('before_token_exchange');
+
   let tok: Awaited<ReturnType<typeof exchangeCode>>;
   try {
     tok = await exchangeCode({ code, verifier });
@@ -97,6 +100,9 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${baseUrl()}/login?error=token_exchange_failed`);
   }
 
+  console.error('after_token_exchange_ok', { hasAccessToken: Boolean(tok?.access_token) });
+  console.error('before_me_fetch');
+
   // V1 rollback: identity from /2/users/me (OIDC scopes not enabled on X app).
   let me: Awaited<ReturnType<typeof fetchMe>>;
   try {
@@ -104,6 +110,8 @@ export async function GET(req: Request) {
   } catch {
     return NextResponse.redirect(`${baseUrl()}/login?error=me_fetch_failed`);
   }
+
+  console.error('after_me_fetch_ok');
 
   const xUserId = String(me.data.id);
   const xUsername = String(me.data.username);
@@ -115,6 +123,8 @@ export async function GET(req: Request) {
 
   const session = signSession({ user_id: user.id, handle: user.handle, x_user_id: xUserId, iat: Math.floor(Date.now() / 1000) });
 
+  console.error('before_set_session_cookie', { secure: isCookieSecure() });
+
   const res = NextResponse.redirect(`${baseUrl()}${next.startsWith('/') ? next : '/start'}`);
   const secure = isCookieSecure();
 
@@ -125,6 +135,9 @@ export async function GET(req: Request) {
     path: '/',
     maxAge: 30 * 24 * 60 * 60,
   });
+
+  console.error('after_set_session_cookie');
+  console.error('before_final_redirect', { next: next.startsWith('/') ? next : '/start' });
 
   // clear oauth temp cookies
   res.cookies.set('a2a_oauth_state', '', { httpOnly: true, secure, sameSite: 'lax', path: '/api/auth/x', maxAge: 0 });
