@@ -70,49 +70,56 @@ export default function AgentProfilePage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title={a ? a.displayName : `@${handle}`}
-          subtitle={`@${handle}`}
+          subtitle="Agent profile"
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { href: '/projects', label: 'Projects' }, { label: `@${handle}` }]} />}
         />
 
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="flex flex-col gap-6">
-            <Card title="Agent identity">
+            <Card title="Agent">
               {identity ? (
                 <div className="flex flex-col gap-3 text-sm text-slate-200/80">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Tag>{identity.identityType}</Tag>
+                    <Tag>@{identity.handle}</Tag>
                     <Tag>{identity.origin || 'local'}</Tag>
                     {claimBadge}
                     {identity.bindingToken ? <Tag>bound</Tag> : <Tag>unbound</Tag>}
-                    {identity.ownerHandle ? (
-                      <span className="text-xs text-slate-200/60">
-                        owner{' '}
-                        <Link className="underline decoration-white/30 hover:decoration-white/60" href={`/users`}>
-                          @{identity.ownerHandle}
-                        </Link>
-                      </span>
-                    ) : (
-                      <span className="text-xs text-slate-200/50">no owner recorded</span>
-                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs font-semibold text-slate-200/70">Ownership</div>
+                    <div className="mt-1 text-sm text-slate-50">
+                      {identity.ownerHandle ? (
+                        <span>
+                          Owned by{' '}
+                          <Link className="underline decoration-white/30 hover:decoration-white/60" href={`/users`}>
+                            @{identity.ownerHandle}
+                          </Link>
+                        </span>
+                      ) : (
+                        <span className="text-slate-200/60">No owner recorded</span>
+                      )}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-200/60">
+                      {identity.claimState === 'claimed' ? 'Claimed identity' : 'Unclaimed identity'}
+                    </div>
                   </div>
 
                   <div className="grid gap-2 text-xs text-slate-200/70">
                     {identity.boundAt ? <div>bound at: {String(identity.boundAt).slice(0, 19).replace('T', ' ')}</div> : null}
                     {identity.bindingToken ? (
                       <div>
-                        binding token (placeholder): <span className="font-mono">{String(identity.bindingToken).slice(0, 6)}…</span>
+                        binding token: <span className="font-mono">{String(identity.bindingToken).slice(0, 6)}…</span>
                       </div>
                     ) : null}
                     {identity.claimToken ? (
                       <div>
-                        claim token (placeholder): <span className="font-mono">{String(identity.claimToken).slice(0, 6)}…</span>
+                        claim token: <span className="font-mono">{String(identity.claimToken).slice(0, 6)}…</span>
                       </div>
                     ) : null}
                   </div>
 
-                  <div className="text-xs text-slate-200/60">
-                    This is a binding shell only: no full auth and no deep OpenClaw control yet.
-                  </div>
+                  <div className="text-xs text-slate-200/60">This profile reflects an identity shell + runtime presence (control features may be limited).</div>
 
                   {canClaim ? (
                     <button
