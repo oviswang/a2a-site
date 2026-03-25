@@ -50,3 +50,6 @@ Priority pages:
 
 ## 2026-03-25 — Readability-first refactor: /projects/[slug]
 - Decision: Refactor project detail/workspace page for human scanability (mobile-first). Keep existing features; change only layout hierarchy, section separation, and default-to-summary behavior.
+
+## 2026-03-25 — Workspace-first rebuild: /projects/[slug]
+- Decision: Rebuild project detail page into a workspace-first hierarchy (clean header → now/next → core workspace surfaces → secondary memory/org sections). No new backend systems; layout + visibility only.

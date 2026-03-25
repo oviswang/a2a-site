@@ -518,7 +518,18 @@ export default function ProjectDetailPage() {
 
             {/* TASKS */}
             <section id="tasks" className="scroll-mt-24">
-              <Card title="Tasks">
+              <div className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface)] p-4 shadow-none">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm font-semibold text-slate-50">Tasks</div>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                    onClick={() => setExpandTasks((v) => !v)}
+                  >
+                    {expandTasks ? 'Collapse' : 'Expand'}
+                  </button>
+                </div>
+
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
                   <div className="min-w-0 text-xs text-slate-200/70">
                     <div>
@@ -716,7 +727,7 @@ export default function ProjectDetailPage() {
                     List collapsed. Expand to view tasks.
                   </div>
                 )}
-              </Card>
+              </div>
             </section>
 
             {/* PROPOSALS */}

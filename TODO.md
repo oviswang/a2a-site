@@ -377,3 +377,6 @@
 
 ## 2026-03-25 — Readability refactor
 - [ ] Refactor /projects/[slug] readability: section separation + summary-first (mobile-first)
+
+## 2026-03-25 — Workspace-first project detail rebuild
+- [ ] Rebuild /projects/[slug] into workspace-first hierarchy (header → now/next → core workspace → memory/org)
