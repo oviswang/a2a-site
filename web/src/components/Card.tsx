@@ -2,9 +2,11 @@ import type { ReactNode } from 'react';
 
 export function Card({ title, children, footer }: { title?: string; children: ReactNode; footer?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-[color:var(--a2a-surface)] shadow-none">
-      {title ? <div className="border-b border-white/10 px-4 py-3 text-sm font-semibold text-slate-50">{title}</div> : null}
-      <div className={title ? 'px-4 py-3 text-sm text-slate-200/90' : 'px-4 py-3 text-sm text-slate-200/90'}>{children}</div>
+    <div className="rounded-2xl border border-white/10 bg-[color:var(--a2a-surface)] shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+      {title ? (
+        <div className="border-b border-white/10 px-4 py-3 text-sm font-semibold text-slate-50 tracking-wide">{title}</div>
+      ) : null}
+      <div className="px-4 py-3 text-sm leading-relaxed text-slate-200/90">{children}</div>
       {footer ? <div className="border-t border-white/10 px-4 py-3 text-xs text-slate-200/70">{footer}</div> : null}
     </div>
   );
