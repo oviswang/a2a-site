@@ -18,9 +18,12 @@ export function ProjectsClient() {
   const qRaw = (sp.get('q') || '').trim();
   const [query, setQuery] = useState(qRaw);
   const q = query.trim().toLowerCase();
-  const projects = q
+  const projectsRaw = q
     ? state.projects.filter((p) => `${p.slug} ${p.name} ${p.summary}`.toLowerCase().includes(q))
     : state.projects;
+
+  // Keep stable ordering; avoid implying activity without backend support.
+  const projects = projectsRaw;
 
   return (
     <Layout>
@@ -36,7 +39,7 @@ export function ProjectsClient() {
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'Projects' }]} />}
           actions={
             <div className="flex gap-2">
-              <Link className="rounded-lg bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25" href="/projects/new">
+              <Link className="rounded-xl bg-sky-400/20 px-3 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-400/25" href="/projects/new">
                 New project
               </Link>
             </div>
@@ -82,13 +85,13 @@ export function ProjectsClient() {
               <SafeCardLink
                 key={p.slug}
                 href={`/projects/${p.slug}`}
-                className={`group block rounded-2xl border ${visTone} bg-[color:var(--a2a-surface)] px-4 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.16)] hover:border-white/20 hover:bg-[color:var(--a2a-surface-strong)]`}
+                className={`group block rounded-2xl border ${visTone} bg-[color:var(--a2a-surface)] px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.14)] hover:border-white/20 hover:bg-[color:var(--a2a-surface-strong)]`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="text-base font-semibold tracking-tight text-slate-50 group-hover:text-white">{p.name}</div>
-                      <span className="font-mono text-[11px] text-slate-200/45">/{p.slug}</span>
+                      <span className="font-mono text-[11px] text-slate-200/40">/{p.slug}</span>
                       <span
                         className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold tracking-wide ${
                           p.visibility === 'open'
@@ -102,14 +105,14 @@ export function ProjectsClient() {
                       </span>
                     </div>
 
-                    <div className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-200/70">{p.summary}</div>
+                    <div className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-200/70">{p.summary}</div>
 
                     {p.tags.length ? (
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        {p.tags.slice(0, 4).map((t) => (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {p.tags.slice(0, 2).map((t) => (
                           <Tag key={t}>{t}</Tag>
                         ))}
-                        {p.tags.length > 4 ? <span className="text-[11px] text-slate-200/45">+{p.tags.length - 4}</span> : null}
+                        {p.tags.length > 2 ? <span className="text-[11px] text-slate-200/45">+{p.tags.length - 2}</span> : null}
                       </div>
                     ) : null}
                   </div>
