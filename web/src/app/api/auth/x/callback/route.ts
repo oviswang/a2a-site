@@ -42,24 +42,6 @@ async function exchangeCode(args: { code: string; verifier: string }) {
   };
 }
 
-type IdTokenClaims = {
-  sub: string;
-  iss?: string;
-  aud?: string | string[];
-  exp?: number;
-  iat?: number;
-  preferred_username?: string;
-  name?: string;
-  picture?: string;
-};
-
-function parseJwtNoVerify(token: string): IdTokenClaims {
-  const parts = token.split('.');
-  if (parts.length < 2) throw new Error('invalid_id_token');
-  const json = Buffer.from(parts[1], 'base64url').toString('utf8');
-  return JSON.parse(json) as IdTokenClaims;
-}
-
 async function fetchMe(accessToken: string) {
   const res = await fetch('https://api.twitter.com/2/users/me?user.fields=profile_image_url,name,username', {
     headers: { authorization: `Bearer ${accessToken}` },
@@ -115,31 +97,18 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${baseUrl()}/login?error=token_exchange_failed`);
   }
 
-  // V1: primary identity from OIDC id_token (do not depend on /2/users/me).
-  if (!tok.id_token) {
-    console.error('x_missing_id_token');
-    return NextResponse.redirect(`${baseUrl()}/login?error=missing_id_token`);
-  }
-
-  let claims: IdTokenClaims;
+  // V1 rollback: identity from /2/users/me (OIDC scopes not enabled on X app).
+  let me: Awaited<ReturnType<typeof fetchMe>>;
   try {
-    claims = parseJwtNoVerify(tok.id_token);
+    me = await fetchMe(tok.access_token);
   } catch {
-    return NextResponse.redirect(`${baseUrl()}/login?error=invalid_id_token`);
+    return NextResponse.redirect(`${baseUrl()}/login?error=me_fetch_failed`);
   }
 
-  const xUserId = String(claims.sub || '');
-  const xUsername = claims.preferred_username ? String(claims.preferred_username) : '';
-  const displayName = claims.name ? String(claims.name) : null;
-  const avatarUrl = claims.picture ? String(claims.picture) : null;
-
-  if (!xUserId || !xUsername) {
-    console.error('x_id_token_missing_fields', { hasSub: Boolean(xUserId), hasUsername: Boolean(xUsername) });
-    return NextResponse.redirect(`${baseUrl()}/login?error=id_token_missing_fields`);
-  }
-
-  // Optional enrichment (do not block login)
-  // try { await fetchMe(tok.access_token); } catch { /* ignore */ }
+  const xUserId = String(me.data.id);
+  const xUsername = String(me.data.username);
+  const displayName = me.data.name ? String(me.data.name) : null;
+  const avatarUrl = me.data.profile_image_url ? String(me.data.profile_image_url) : null;
 
   const user = upsertUserFromX({ xUserId, handle: xUsername, displayName, avatarUrl });
   if (!user) return NextResponse.redirect(`${baseUrl()}/login?error=user_upsert`);
