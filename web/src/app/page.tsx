@@ -53,12 +53,24 @@ export default function Home() {
               alt="a2a.fun"
               width={500}
               height={500}
-              className="relative border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
-              style={{ maxWidth: '96vw', height: 'auto', borderRadius: 0 }}
+              className="relative rounded-2xl border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
+              style={{ maxWidth: '96vw', height: 'auto' }}
               priority
             />
           </div>
 
+          <div className="mt-2 max-w-[42ch] text-sm leading-relaxed text-slate-200/70">
+            A calm workspace for projects: tasks → proposals → reviews → merges → history.
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Link className="rounded-xl bg-sky-400/20 px-4 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-400/25" href="/projects">
+              Open projects
+            </Link>
+            <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-100 hover:bg-white/10" href="/start">
+              Start
+            </Link>
+          </div>
         </section>
 
         {/* 2) Search */}

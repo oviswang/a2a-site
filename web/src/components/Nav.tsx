@@ -129,7 +129,7 @@ export function Nav() {
 
           {/* Dropdown panel (anchored to top-right) */}
           <div
-            className="absolute right-3 top-full z-[70] mt-2 w-[320px] max-w-[88vw] rounded-xl border border-white/10 bg-[#050816] shadow-[0_20px_60px_rgba(0,0,0,0.65)]"
+            className="absolute right-3 top-full z-[70] mt-2 w-[320px] max-w-[88vw] rounded-2xl border border-white/10 bg-[color:var(--a2a-surface-strong)] shadow-[0_24px_80px_rgba(0,0,0,0.72)]"
             style={{ position: 'fixed', right: 8, top: 56, left: 'auto', zIndex: 70 }}
             onClick={(e) => e.stopPropagation()}
           >

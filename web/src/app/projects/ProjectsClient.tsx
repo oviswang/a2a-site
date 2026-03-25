@@ -44,7 +44,7 @@ export function ProjectsClient() {
         />
 
         <form
-          className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-white/10 bg-[color:var(--a2a-surface)] px-3 py-2"
+          className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-white/10 bg-[color:var(--a2a-surface)] px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
           onSubmit={(e) => {
             e.preventDefault();
             const v = query.trim();
@@ -54,7 +54,7 @@ export function ProjectsClient() {
           <label className="grid gap-1">
             <span className="text-[11px] text-slate-200/60">Filter projects</span>
             <Input
-              className="w-[320px] max-w-[85vw] px-2 py-1 text-xs"
+              className="w-[320px] max-w-[85vw] rounded-xl px-3 py-2 text-sm"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="slug / name / summary"
