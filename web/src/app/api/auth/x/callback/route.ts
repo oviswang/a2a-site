@@ -24,8 +24,14 @@ async function exchangeCode(args: { code: string; verifier: string }) {
       authorization: `Basic ${basic}`,
     },
     body,
+    cache: 'no-store',
   });
-  if (!res.ok) throw new Error('token_exchange_failed');
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    // Do not log tokens; response body from X may include error codes only.
+    console.error('x_token_exchange_failed', res.status, detail.slice(0, 500));
+    throw new Error('token_exchange_failed');
+  }
   return (await res.json()) as { access_token: string; token_type: string; expires_in: number; scope?: string };
 }
 
@@ -34,7 +40,11 @@ async function fetchMe(accessToken: string) {
     headers: { authorization: `Bearer ${accessToken}` },
     cache: 'no-store',
   });
-  if (!res.ok) throw new Error('me_fetch_failed');
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    console.error('x_me_fetch_failed', res.status, detail.slice(0, 500));
+    throw new Error('me_fetch_failed');
+  }
   return (await res.json()) as { data: { id: string; name: string; username: string; profile_image_url?: string } };
 }
 
