@@ -8,15 +8,15 @@ import { useWorkspace } from '@/lib/state';
 import { Button } from '@/components/ui';
 
 const nav = [
-  { href: '/projects', label: 'Projects', icon: '▦' },
+  { href: '/projects', label: 'Projects', icon: '📁' },
   // Start is redundant with Home; keep page but remove from global nav.
   // { href: '/start', label: 'Start', icon: '⇢' },
-  { href: '/inbox', label: 'Inbox', icon: '▤' },
+  { href: '/inbox', label: 'Inbox', icon: '📥' },
   // Sign-in is contextual (shown in nav header / dedicated page), not a primary entry.
   // { href: '/login', label: 'Sign in', icon: '⍰' },
-  { href: '/settings', label: 'Settings', icon: '⚙' },
-  { href: '/users', label: 'Users', icon: '◎' },
-  { href: '/identities', label: 'Identities', icon: '▣' },
+  { href: '/settings', label: 'Settings', icon: '⚙️' },
+  { href: '/users', label: 'Users', icon: '👥' },
+  { href: '/identities', label: 'Identities', icon: '🪪' },
 ];
 
 export function Nav() {
@@ -165,7 +165,7 @@ export function Nav() {
                       className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${active ? 'bg-white/5 text-slate-50' : 'text-slate-200/80 hover:bg-white/5 hover:text-slate-50'}`}
                     >
                       {active ? <span className="absolute left-0 top-2 h-6 w-1 rounded-r bg-sky-300" /> : null}
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-white/10 bg-white/5 text-[12px] text-slate-100">
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-white/10 bg-white/5 text-[12px] text-slate-100" style={{ marginRight: 4 }}>
                         {n.icon}
                       </span>
                       <span className="flex-1">{n.label}</span>
