@@ -383,3 +383,6 @@
 
 ## 2026-03-25 — /projects/[slug] strict module separation
 - [ ] Refactor /projects/[slug] into strict 5-layer module separation (header, now/next, core workspace, org, history/advanced)
+
+## 2026-03-25 — Phase 50: product surface simplification
+- [ ] Simplify entry surfaces (/, nav, /start, /projects): remove duplicated entry points; keep primary actions only; demote low-priority/system pages to menu-level or contextual

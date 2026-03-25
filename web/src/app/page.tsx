@@ -67,9 +67,6 @@ export default function Home() {
             <Link className="rounded-xl bg-sky-400/20 px-4 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-400/25" href="/projects">
               Open projects
             </Link>
-            <Link className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10" href="/start">
-              Start
-            </Link>
           </div>
 
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-200/60">
@@ -78,6 +75,9 @@ export default function Home() {
             </Link>
             <Link className="rounded-full border border-white/10 bg-white/5 px-2 py-1 hover:bg-white/10" href="/inbox">
               Inbox
+            </Link>
+            <Link className="rounded-full border border-white/10 bg-white/5 px-2 py-1 hover:bg-white/10" href="/settings">
+              Settings
             </Link>
           </div>
         </section>
