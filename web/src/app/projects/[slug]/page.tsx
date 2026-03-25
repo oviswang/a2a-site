@@ -193,23 +193,44 @@ export default function ProjectDetailPage() {
   const counts = useMemo(() => {
     const needsReview = proposals.filter((p) => p.status === 'needs_review').length;
     const openTasks = tasksGrouped.open.length;
+    const inProgressTasks = tasksGrouped.in_progress.length;
+    const claimedTasks = tasksGrouped.claimed.length;
+
     const pendingJoin = (project?.joinRequests || []).filter((r) => r.status === 'pending').length;
     const pendingInvites = (project?.invitations || []).filter((i) => i.status === 'pending').length;
     const pendingTotal = pendingJoin + pendingInvites;
+
     const fileCount = files.length;
+    const selectedFilePath = selectedFile?.path || null;
     const memberCount = project?.members?.length || 0;
-    const lastFileUpdatedAt = files.length ? [...files].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0]?.updatedAt : null;
+
+    const lastFile = files.length ? [...files].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0] : null;
+    const lastFileUpdatedAt = lastFile?.updatedAt || null;
+    const lastFilePath = lastFile?.path || null;
+
+    const topOpenTask = tasksGrouped.open.length
+      ? [...tasksGrouped.open].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0]
+      : null;
+
+    const topNeedsReview = proposals.filter((p) => p.status === 'needs_review').sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0] || null;
+
     return {
       needsReview,
       openTasks,
+      inProgressTasks,
+      claimedTasks,
       pendingJoin,
       pendingInvites,
       pendingTotal,
       fileCount,
+      selectedFilePath,
       memberCount,
       lastFileUpdatedAt,
+      lastFilePath,
+      topOpenTask,
+      topNeedsReview,
     };
-  }, [proposals, tasksGrouped.open.length, project?.joinRequests, project?.invitations, project?.members, files]);
+  }, [proposals, tasksGrouped, project?.joinRequests, project?.invitations, project?.members, files, selectedFile?.path]);
 
   return (
     <Layout>
@@ -266,40 +287,99 @@ export default function ProjectDetailPage() {
         {project ? (
           <div className="grid gap-3 md:grid-cols-4">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="text-xs text-slate-200/60">Attention now</div>
-              <div className="mt-1 flex flex-wrap gap-2 text-xs">
-                <span className={`rounded-full px-2 py-0.5 ${counts.needsReview ? 'bg-amber-500/20 text-amber-100' : 'bg-white/5 text-slate-200/60'}`}>
-                  needs review {counts.needsReview}
-                </span>
-                <span className={`rounded-full px-2 py-0.5 ${counts.openTasks ? 'bg-sky-400/20 text-sky-100' : 'bg-white/5 text-slate-200/60'}`}>
-                  open tasks {counts.openTasks}
-                </span>
-                <span className={`rounded-full px-2 py-0.5 ${counts.pendingTotal ? 'bg-rose-500/20 text-rose-100' : 'bg-white/5 text-slate-200/60'}`}>
-                  pending {counts.pendingTotal}
-                </span>
+              <div className="text-xs text-slate-200/60">Next action</div>
+              <div className="mt-2 grid gap-2">
+                {counts.needsReview ? (
+                  <button
+                    type="button"
+                    className="w-fit rounded-xl bg-amber-500/20 px-2 py-1 text-xs text-amber-100 hover:bg-amber-500/25"
+                    onClick={() => {
+                      setExpandProposals(true);
+                      document.getElementById('proposals')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                  >
+                    Review {counts.needsReview} proposal{counts.needsReview === 1 ? '' : 's'}
+                  </button>
+                ) : counts.openTasks ? (
+                  <button
+                    type="button"
+                    className="w-fit rounded-xl bg-sky-400/20 px-2 py-1 text-xs text-sky-100 hover:bg-sky-400/25"
+                    onClick={() => {
+                      setExpandTasks(true);
+                      document.getElementById('tasks')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                  >
+                    Pick up {counts.openTasks} open task{counts.openTasks === 1 ? '' : 's'}
+                  </button>
+                ) : counts.pendingTotal && isOwnerOrMaintainer ? (
+                  <button
+                    type="button"
+                    className="w-fit rounded-xl bg-rose-500/20 px-2 py-1 text-xs text-rose-100 hover:bg-rose-500/25"
+                    onClick={() => {
+                      setExpandPeople(true);
+                      setShowJoinRequests(true);
+                      setShowInvites(true);
+                      document.getElementById('people')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                  >
+                    Resolve {counts.pendingTotal} pending request{counts.pendingTotal === 1 ? '' : 's'}
+                  </button>
+                ) : (
+                  <div className="text-xs text-slate-200/60">No urgent items.</div>
+                )}
+
+                <div className="text-xs text-slate-200/60">
+                  {counts.inProgressTasks ? `${counts.inProgressTasks} in progress` : '—'} · {counts.claimedTasks ? `${counts.claimedTasks} claimed` : '—'}
+                </div>
               </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="text-xs text-slate-200/60">Workspace</div>
-              <div className="mt-1 text-sm text-slate-50">
-                <span className="font-semibold">{counts.fileCount}</span> files · <span className="font-semibold">{tasks.length}</span> tasks
+              <div className="text-xs text-slate-200/60">Proposals</div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                <span className={`rounded-full px-2 py-0.5 ${counts.needsReview ? 'bg-amber-500/20 text-amber-100' : 'bg-white/5 text-slate-200/60'}`}>
+                  needs review {counts.needsReview}
+                </span>
+                <span className="rounded-full bg-white/5 px-2 py-0.5 text-slate-200/70">total {proposals.length}</span>
               </div>
-              <div className="mt-1 text-xs text-slate-200/60">{counts.lastFileUpdatedAt ? `last file update ${counts.lastFileUpdatedAt}` : '—'}</div>
+              <div className="mt-2 text-xs text-slate-200/60">
+                {counts.topNeedsReview ? (
+                  <span className="text-slate-200/70">latest: {counts.topNeedsReview.title}</span>
+                ) : (
+                  <span className="text-slate-200/50">—</span>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="text-xs text-slate-200/60">Files</div>
+              <div className="mt-2 text-sm text-slate-50">
+                <span className="font-semibold">{counts.fileCount}</span> files
+              </div>
+              <div className="mt-1 text-xs text-slate-200/60">
+                {counts.lastFilePath ? (
+                  <span>
+                    last: <span className="font-mono">{counts.lastFilePath}</span>
+                  </span>
+                ) : (
+                  '—'
+                )}
+              </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
               <div className="text-xs text-slate-200/60">People</div>
-              <div className="mt-1 text-sm text-slate-50">
+              <div className="mt-2 text-sm text-slate-50">
                 <span className="font-semibold">{counts.memberCount}</span> members
               </div>
-              <div className="mt-1 text-xs text-slate-200/60">visibility: {project.visibility}</div>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="text-xs text-slate-200/60">You</div>
-              <div className="mt-1 text-sm font-mono text-slate-50">@{actor.handle}</div>
-              <div className="mt-1 text-xs text-slate-200/60">{actor.actorType}</div>
+              <div className="mt-1 text-xs text-slate-200/60">
+                {counts.pendingTotal ? (
+                  <span className="text-rose-100">pending {counts.pendingTotal}</span>
+                ) : (
+                  <span className="text-slate-200/50">no pending</span>
+                )}
+                <span className="ml-2 text-slate-200/60">· {project.visibility}</span>
+              </div>
             </div>
           </div>
         ) : null}
@@ -440,8 +520,20 @@ export default function ProjectDetailPage() {
             <section id="tasks" className="scroll-mt-24">
               <Card title="Tasks">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-200/70">
-                    <span className="font-semibold text-slate-100">Summary:</span> {sortedTasks.length} shown · open {tasksGrouped.open.length} · in progress {tasksGrouped.in_progress.length}
+                  <div className="min-w-0 text-xs text-slate-200/70">
+                    <div>
+                      <span className="font-semibold text-slate-100">Summary:</span> {sortedTasks.length} shown · open {tasksGrouped.open.length} · in progress {tasksGrouped.in_progress.length}
+                      {tasksGrouped.claimed.length ? <span className="text-slate-200/60"> · claimed {tasksGrouped.claimed.length}</span> : null}
+                    </div>
+                    <div className="mt-1 text-slate-200/60">
+                      {counts.topOpenTask ? (
+                        <span>
+                          suggested next: <span className="text-slate-100">{counts.topOpenTask.title}</span>
+                        </span>
+                      ) : (
+                        <span>suggested next: —</span>
+                      )}
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -631,8 +723,19 @@ export default function ProjectDetailPage() {
             <section id="proposals" className="scroll-mt-24">
               <Card title="Proposals">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-200/70">
-                    <span className="font-semibold text-slate-100">Summary:</span> {sortedProposals.length} shown · needs review {proposals.filter((p) => p.status === 'needs_review').length} · merged {proposals.filter((p) => p.status === 'merged').length}
+                  <div className="min-w-0 text-xs text-slate-200/70">
+                    <div>
+                      <span className="font-semibold text-slate-100">Summary:</span> {sortedProposals.length} shown · needs review {proposals.filter((p) => p.status === 'needs_review').length} · merged {proposals.filter((p) => p.status === 'merged').length}
+                    </div>
+                    <div className="mt-1 text-slate-200/60">
+                      {counts.topNeedsReview ? (
+                        <span>
+                          suggested next: <span className="text-slate-100">{counts.topNeedsReview.title}</span>
+                        </span>
+                      ) : (
+                        <span>suggested next: —</span>
+                      )}
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -815,8 +918,19 @@ export default function ProjectDetailPage() {
             <section id="files" className="scroll-mt-24">
               <Card title="Files">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-200/70">
-                    <span className="font-semibold text-slate-100">Summary:</span> {files.length} files · selected {selectedFile?.path || '—'}
+                  <div className="min-w-0 text-xs text-slate-200/70">
+                    <div>
+                      <span className="font-semibold text-slate-100">Summary:</span> {files.length} files · selected <span className="font-mono text-slate-100">{selectedFile?.path || '—'}</span>
+                    </div>
+                    <div className="mt-1 text-slate-200/60">
+                      {counts.lastFilePath ? (
+                        <span>
+                          last updated: <span className="font-mono text-slate-100">{counts.lastFilePath}</span>
+                        </span>
+                      ) : (
+                        <span>last updated: —</span>
+                      )}
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -993,8 +1107,19 @@ export default function ProjectDetailPage() {
             <section id="people" className="scroll-mt-24">
               <Card title="People">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs text-slate-200/70">
-                    <span className="font-semibold text-slate-100">Summary:</span> {(project.members || []).length} members · {(project.joinRequests || []).filter((r) => r.status === 'pending').length} join req · {(project.invitations || []).filter((i) => i.status === 'pending').length} invites
+                  <div className="min-w-0 text-xs text-slate-200/70">
+                    <div>
+                      <span className="font-semibold text-slate-100">Summary:</span> {(project.members || []).length} members · {(project.joinRequests || []).filter((r) => r.status === 'pending').length} join req · {(project.invitations || []).filter((i) => i.status === 'pending').length} invites
+                    </div>
+                    <div className="mt-1 text-slate-200/60">
+                      {isOwnerOrMaintainer && counts.pendingTotal ? (
+                        <span>
+                          suggested next: <span className="text-slate-100">review pending requests</span>
+                        </span>
+                      ) : (
+                        <span>suggested next: —</span>
+                      )}
+                    </div>
                   </div>
                   <button
                     type="button"
