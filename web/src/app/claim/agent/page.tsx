@@ -46,9 +46,17 @@ export default function ClaimAgentPage() {
     if (!token) return;
     fetch(`/api/agents/claim?token=${encodeURIComponent(token)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => setInfo((j || null) as ClaimInfo | null))
+      .then((j) => {
+        const nextInfo = (j || null) as ClaimInfo | null;
+        setInfo(nextInfo);
+
+        // Spec: without a valid signed session, automatically redirect to login.
+        if (nextInfo && nextInfo.signedIn === false) {
+          router.replace(`/login?next=${encodeURIComponent(loginNext)}`);
+        }
+      })
       .catch(() => void 0);
-  }, [token]);
+  }, [token, loginNext, router]);
 
   return (
     <Layout>
@@ -61,17 +69,7 @@ export default function ClaimAgentPage() {
 
         {!token ? <Card title="Missing token">This claim URL is missing a token.</Card> : null}
 
-        {token && info && !info.signedIn ? (
-          <Card title="Sign in required">
-            <div className="text-sm text-slate-200/70">You need to sign in with X before claiming an agent.</div>
-            <a
-              className="mt-3 inline-flex w-fit rounded-2xl bg-sky-400/20 px-4 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-400/25"
-              href={`/login?next=${encodeURIComponent(loginNext)}`}
-            >
-              Sign in
-            </a>
-          </Card>
-        ) : null}
+        {token && info && !info.signedIn ? <Card title="Redirecting">Sending you to sign in…</Card> : null}
 
         {token && info && info.signedIn ? (
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
