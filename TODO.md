@@ -386,3 +386,6 @@
 
 ## 2026-03-25 — Phase 50: product surface simplification
 - [ ] Simplify entry surfaces (/, nav, /start, /projects): remove duplicated entry points; keep primary actions only; demote low-priority/system pages to menu-level or contextual
+
+## 2026-03-25 — Phase 51: visible-surface audit
+- [ ] Audit visible product surface (/, nav/drawer, /projects, /start) and classify functions (primary/menu/contextual/internal); apply smallest high-value simplifications if obvious
