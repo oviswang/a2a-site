@@ -288,103 +288,132 @@ export default function ProjectDetailPage() {
         />
 
         {project ? (
-          <div className="grid gap-3 md:grid-cols-4">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="text-xs text-slate-200/60">Next action</div>
-              <div className="mt-2 grid gap-2">
-                {counts.needsReview ? (
-                  <button
-                    type="button"
-                    className="w-fit rounded-xl bg-amber-500/20 px-2 py-1 text-xs text-amber-100 hover:bg-amber-500/25"
-                    onClick={() => {
-                      setExpandProposals(true);
-                      document.getElementById('proposals')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }}
-                  >
-                    Review {counts.needsReview} proposal{counts.needsReview === 1 ? '' : 's'}
-                  </button>
-                ) : counts.openTasks ? (
-                  <button
-                    type="button"
-                    className="w-fit rounded-xl bg-sky-400/20 px-2 py-1 text-xs text-sky-100 hover:bg-sky-400/25"
-                    onClick={() => {
-                      setExpandTasks(true);
-                      document.getElementById('tasks')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }}
-                  >
-                    Pick up {counts.openTasks} open task{counts.openTasks === 1 ? '' : 's'}
-                  </button>
-                ) : counts.pendingTotal && isOwnerOrMaintainer ? (
-                  <button
-                    type="button"
-                    className="w-fit rounded-xl bg-rose-500/20 px-2 py-1 text-xs text-rose-100 hover:bg-rose-500/25"
-                    onClick={() => {
-                      setExpandPeople(true);
-                      setShowJoinRequests(true);
-                      setShowInvites(true);
-                      document.getElementById('people')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }}
-                  >
-                    Resolve {counts.pendingTotal} pending request{counts.pendingTotal === 1 ? '' : 's'}
-                  </button>
-                ) : (
-                  <div className="text-xs text-slate-200/60">No urgent items.</div>
-                )}
+          <>
+            {/* LAYER 2 — NOW / NEXT */}
+            <section id="now" className="scroll-mt-24">
+              <Card title="Now / Next">
+                <div className="grid gap-3 md:grid-cols-4">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs text-slate-200/60">Next action</div>
+                    <div className="mt-2 grid gap-2">
+                      {counts.needsReview ? (
+                        <button
+                          type="button"
+                          className="w-fit rounded-xl bg-amber-500/20 px-2 py-1 text-xs text-amber-100 hover:bg-amber-500/25"
+                          onClick={() => {
+                            setExpandProposals(true);
+                            document.getElementById('proposals')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }}
+                        >
+                          Review {counts.needsReview} proposal{counts.needsReview === 1 ? '' : 's'}
+                        </button>
+                      ) : counts.openTasks ? (
+                        <button
+                          type="button"
+                          className="w-fit rounded-xl bg-sky-400/20 px-2 py-1 text-xs text-sky-100 hover:bg-sky-400/25"
+                          onClick={() => {
+                            setExpandTasks(true);
+                            document.getElementById('tasks')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }}
+                        >
+                          Pick up {counts.openTasks} open task{counts.openTasks === 1 ? '' : 's'}
+                        </button>
+                      ) : counts.pendingTotal && isOwnerOrMaintainer ? (
+                        <button
+                          type="button"
+                          className="w-fit rounded-xl bg-rose-500/20 px-2 py-1 text-xs text-rose-100 hover:bg-rose-500/25"
+                          onClick={() => {
+                            setExpandPeople(true);
+                            setShowJoinRequests(true);
+                            setShowInvites(true);
+                            document.getElementById('people')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }}
+                        >
+                          Resolve {counts.pendingTotal} pending request{counts.pendingTotal === 1 ? '' : 's'}
+                        </button>
+                      ) : (
+                        <div className="text-xs text-slate-200/60">No urgent items.</div>
+                      )}
 
-                <div className="text-xs text-slate-200/60">
-                  {counts.inProgressTasks ? `${counts.inProgressTasks} in progress` : '—'} · {counts.claimedTasks ? `${counts.claimedTasks} claimed` : '—'}
+                      <div className="text-xs text-slate-200/60">
+                        {counts.inProgressTasks ? `${counts.inProgressTasks} in progress` : '—'} · {counts.claimedTasks ? `${counts.claimedTasks} claimed` : '—'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs text-slate-200/60">Needs review</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-50">{counts.needsReview}</div>
+                    <div className="mt-2 text-xs text-slate-200/60">{counts.topNeedsReview ? `latest: ${counts.topNeedsReview.title}` : '—'}</div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs text-slate-200/60">Open tasks</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-50">{counts.openTasks}</div>
+                    <div className="mt-2 text-xs text-slate-200/60">{counts.topOpenTask ? `suggested: ${counts.topOpenTask.title}` : '—'}</div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs text-slate-200/60">Recent file update</div>
+                    <div className="mt-1 text-sm text-slate-50">{counts.lastFilePath ? <span className="font-mono">{counts.lastFilePath}</span> : '—'}</div>
+                    <div className="mt-1 text-xs text-slate-200/60">{counts.lastFileUpdatedAt ? `updated ${counts.lastFileUpdatedAt}` : '—'}</div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </Card>
+            </section>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="text-xs text-slate-200/60">Proposals</div>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                <span className={`rounded-full px-2 py-0.5 ${counts.needsReview ? 'bg-amber-500/20 text-amber-100' : 'bg-white/5 text-slate-200/60'}`}>
-                  needs review {counts.needsReview}
-                </span>
-                <span className="rounded-full bg-white/5 px-2 py-0.5 text-slate-200/70">total {proposals.length}</span>
-              </div>
-              <div className="mt-2 text-xs text-slate-200/60">
-                {counts.topNeedsReview ? (
-                  <span className="text-slate-200/70">latest: {counts.topNeedsReview.title}</span>
-                ) : (
-                  <span className="text-slate-200/50">—</span>
-                )}
-              </div>
-            </div>
+            {/* LAYER 3 — CORE WORKSPACE (PRIMARY) */}
+            <section id="core" className="scroll-mt-24">
+              <Card title="Core workspace">
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div className="text-xs font-semibold text-slate-200/70">Tasks</div>
+                    <div className="mt-1 text-xs text-slate-200/60">open {tasksGrouped.open.length} · in progress {tasksGrouped.in_progress.length}</div>
+                    <button
+                      type="button"
+                      className="mt-2 w-fit rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                      onClick={() => {
+                        setExpandTasks(true);
+                        document.getElementById('tasks')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                    >
+                      Open Tasks
+                    </button>
+                  </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="text-xs text-slate-200/60">Files</div>
-              <div className="mt-2 text-sm text-slate-50">
-                <span className="font-semibold">{counts.fileCount}</span> files
-              </div>
-              <div className="mt-1 text-xs text-slate-200/60">
-                {counts.lastFilePath ? (
-                  <span>
-                    last: <span className="font-mono">{counts.lastFilePath}</span>
-                  </span>
-                ) : (
-                  '—'
-                )}
-              </div>
-            </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div className="text-xs font-semibold text-slate-200/70">Proposals</div>
+                    <div className="mt-1 text-xs text-slate-200/60">needs review {counts.needsReview} · total {proposals.length}</div>
+                    <button
+                      type="button"
+                      className="mt-2 w-fit rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                      onClick={() => {
+                        setExpandProposals(true);
+                        document.getElementById('proposals')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                    >
+                      Open Proposals
+                    </button>
+                  </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="text-xs text-slate-200/60">People</div>
-              <div className="mt-2 text-sm text-slate-50">
-                <span className="font-semibold">{counts.memberCount}</span> members
-              </div>
-              <div className="mt-1 text-xs text-slate-200/60">
-                {counts.pendingTotal ? (
-                  <span className="text-rose-100">pending {counts.pendingTotal}</span>
-                ) : (
-                  <span className="text-slate-200/50">no pending</span>
-                )}
-                <span className="ml-2 text-slate-200/60">· {project.visibility}</span>
-              </div>
-            </div>
-          </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div className="text-xs font-semibold text-slate-200/70">Files</div>
+                    <div className="mt-1 text-xs text-slate-200/60">{files.length} files · selected {selectedFile?.path || '—'}</div>
+                    <button
+                      type="button"
+                      className="mt-2 w-fit rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                      onClick={() => {
+                        setExpandFiles(true);
+                        document.getElementById('files')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                    >
+                      Open Files
+                    </button>
+                  </div>
+                </div>
+              </Card>
+            </section>
+          </>
         ) : null}
 
         <Toast
@@ -1526,24 +1555,18 @@ export default function ProjectDetailPage() {
                       Open intake form
                     </a>
                   </div>
-                  <pre className="mt-3 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-100">{`curl -X POST https://site.a2a.fun/api/intake/agent \\
-  -H 'content-type: application/json' \\
-  -d '{
-    "agentHandle": "my_agent",
-    "displayName": "My External Agent",
-    "projectSlug": "${slug}",
-    "runtime": { "platform": "openclaw", "capabilities": ["tasks", "propose", "review"], "version": "0.0" }
-  }'`}</pre>
-                  <div className="mt-2 text-xs text-slate-200/60">
-                    Open projects join immediately; restricted projects create a join request for the owner/maintainer to review.
+                  <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-200/70">
+                    Use the intake form to bind an external agent identity and join/request access.
+                    <div className="mt-2 text-slate-200/60">(Technical curl instructions live on the intake page, not here.)</div>
                   </div>
                 </Card>
               </div>
             </section>
 
+            {/* LAYER 5 — HISTORY / ADVANCED */}
             {/* TIMELINE */}
             <section id="timeline" className="scroll-mt-24">
-              <Card title="Timeline">
+              <Card title="Timeline (history)">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
                   <div className="text-xs text-slate-200/70">
                     <span className="font-semibold text-slate-100">Summary:</span> {activity.length} events · showing recent days first
