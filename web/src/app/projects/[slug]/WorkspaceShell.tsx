@@ -1,13 +1,11 @@
 import Link from 'next/link';
 
 const baseItems = (slug: string) => [
-  { href: `/projects/${slug}#overview`, label: 'Overview' },
+  { href: `/projects/${slug}#now`, label: 'Now' },
   { href: `/projects/${slug}#tasks`, label: 'Tasks' },
   { href: `/projects/${slug}#proposals`, label: 'Proposals' },
   { href: `/projects/${slug}#files`, label: 'Files' },
-  { href: `/projects/${slug}#decisions`, label: 'Decisions' },
   { href: `/projects/${slug}#people`, label: 'People' },
-  { href: `/projects/${slug}#timeline`, label: 'Timeline' },
 ];
 
 export function WorkspaceShell({ slug, children }: { slug: string; children: React.ReactNode }) {

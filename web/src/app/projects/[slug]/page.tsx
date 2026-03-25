@@ -297,71 +297,59 @@ export default function ProjectDetailPage() {
             {/* LAYER 2 — NOW / NEXT */}
             <section id="now" className="scroll-mt-24">
               <Card title="Now / Next">
-                <div className="grid gap-3 md:grid-cols-4">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <button
+                    type="button"
+                    className="text-left rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
+                    onClick={() => {
+                      if (counts.needsReview) {
+                        setExpandProposals(true);
+                        document.getElementById('proposals')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        return;
+                      }
+                      if (counts.openTasks) {
+                        setExpandTasks(true);
+                        document.getElementById('tasks')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        return;
+                      }
+                      if (counts.pendingTotal && isOwnerOrMaintainer) {
+                        setExpandPeople(true);
+                        setShowJoinRequests(true);
+                        setShowInvites(true);
+                        document.getElementById('people')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        return;
+                      }
+                    }}
+                  >
                     <div className="text-xs text-slate-200/60">Next action</div>
-                    <div className="mt-2 grid gap-2">
-                      {counts.needsReview ? (
-                        <button
-                          type="button"
-                          className="w-fit rounded-xl bg-amber-500/20 px-2 py-1 text-xs text-amber-100 hover:bg-amber-500/25"
-                          onClick={() => {
-                            setExpandProposals(true);
-                            document.getElementById('proposals')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                          }}
-                        >
-                          Review {counts.needsReview} proposal{counts.needsReview === 1 ? '' : 's'}
-                        </button>
-                      ) : counts.openTasks ? (
-                        <button
-                          type="button"
-                          className="w-fit rounded-xl bg-sky-400/20 px-2 py-1 text-xs text-sky-100 hover:bg-sky-400/25"
-                          onClick={() => {
-                            setExpandTasks(true);
-                            document.getElementById('tasks')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                          }}
-                        >
-                          Pick up {counts.openTasks} open task{counts.openTasks === 1 ? '' : 's'}
-                        </button>
-                      ) : counts.pendingTotal && isOwnerOrMaintainer ? (
-                        <button
-                          type="button"
-                          className="w-fit rounded-xl bg-rose-500/20 px-2 py-1 text-xs text-rose-100 hover:bg-rose-500/25"
-                          onClick={() => {
-                            setExpandPeople(true);
-                            setShowJoinRequests(true);
-                            setShowInvites(true);
-                            document.getElementById('people')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                          }}
-                        >
-                          Resolve {counts.pendingTotal} pending request{counts.pendingTotal === 1 ? '' : 's'}
-                        </button>
-                      ) : (
-                        <div className="text-xs text-slate-200/60">No urgent items.</div>
-                      )}
-
-                      <div className="text-xs text-slate-200/60">
-                        {counts.inProgressTasks ? `${counts.inProgressTasks} in progress` : '—'} · {counts.claimedTasks ? `${counts.claimedTasks} claimed` : '—'}
-                      </div>
+                    <div className="mt-1 text-sm font-semibold text-slate-50">
+                      {counts.needsReview
+                        ? `Review ${counts.needsReview}`
+                        : counts.openTasks
+                          ? `Pick up ${counts.openTasks}`
+                          : counts.pendingTotal && isOwnerOrMaintainer
+                            ? `Resolve ${counts.pendingTotal}`
+                            : 'No urgent items'}
                     </div>
-                  </div>
+                    <div className="mt-1 text-xs text-slate-200/60">{counts.inProgressTasks ? `${counts.inProgressTasks} in progress` : '—'}</div>
+                  </button>
 
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                     <div className="text-xs text-slate-200/60">Needs review</div>
-                    <div className="mt-1 text-lg font-semibold text-slate-50">{counts.needsReview}</div>
-                    <div className="mt-2 text-xs text-slate-200/60">{counts.topNeedsReview ? `latest: ${counts.topNeedsReview.title}` : '—'}</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-50">{counts.needsReview}</div>
+                    <div className="mt-1 text-xs text-slate-200/60">{counts.topNeedsReview ? counts.topNeedsReview.title : '—'}</div>
                   </div>
 
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                     <div className="text-xs text-slate-200/60">Open tasks</div>
-                    <div className="mt-1 text-lg font-semibold text-slate-50">{counts.openTasks}</div>
-                    <div className="mt-2 text-xs text-slate-200/60">{counts.topOpenTask ? `suggested: ${counts.topOpenTask.title}` : '—'}</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-50">{counts.openTasks}</div>
+                    <div className="mt-1 text-xs text-slate-200/60">{counts.topOpenTask ? counts.topOpenTask.title : '—'}</div>
                   </div>
 
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <div className="text-xs text-slate-200/60">Recent file update</div>
-                    <div className="mt-1 text-sm text-slate-50">{counts.lastFilePath ? <span className="font-mono">{counts.lastFilePath}</span> : '—'}</div>
-                    <div className="mt-1 text-xs text-slate-200/60">{counts.lastFileUpdatedAt ? `updated ${counts.lastFileUpdatedAt}` : '—'}</div>
+                    <div className="text-xs text-slate-200/60">Recent file</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-50">{counts.lastFilePath ? <span className="font-mono">{counts.lastFilePath}</span> : '—'}</div>
+                    <div className="mt-1 text-xs text-slate-200/60">{counts.lastFileUpdatedAt ? String(counts.lastFileUpdatedAt).slice(0, 10) : '—'}</div>
                   </div>
                 </div>
               </Card>
@@ -590,16 +578,15 @@ export default function ProjectDetailPage() {
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
                   <div className="min-w-0 text-xs text-slate-200/70">
                     <div>
-                      <span className="font-semibold text-slate-100">Summary:</span> {sortedTasks.length} shown · open {tasksGrouped.open.length} · in progress {tasksGrouped.in_progress.length}
-                      {tasksGrouped.claimed.length ? <span className="text-slate-200/60"> · claimed {tasksGrouped.claimed.length}</span> : null}
+                      <span className="font-semibold text-slate-100">Summary:</span> open {tasksGrouped.open.length} · in progress {tasksGrouped.in_progress.length}
                     </div>
                     <div className="mt-1 text-slate-200/60">
                       {counts.topOpenTask ? (
                         <span>
-                          suggested next: <span className="text-slate-100">{counts.topOpenTask.title}</span>
+                          next: <span className="text-slate-100">{counts.topOpenTask.title}</span>
                         </span>
                       ) : (
-                        <span>suggested next: —</span>
+                        <span>next: —</span>
                       )}
                     </div>
                   </div>
@@ -612,9 +599,12 @@ export default function ProjectDetailPage() {
                   </button>
                 </div>
 
-                <Toolbar>
-                  <ToolbarGroup>
-                    <ToolbarLabel label="Search">
+                {expandTasks ? (
+                  <>
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <Toolbar>
+                        <ToolbarGroup>
+                          <ToolbarLabel label="Search">
                       <input
                         className="w-[220px] rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
                         value={taskQuery}
@@ -667,39 +657,39 @@ export default function ProjectDetailPage() {
 
                   <div className="text-xs text-slate-200/60">{sortedTasks.length} shown</div>
                 </Toolbar>
+                    </div>
 
-                <div id="tasks-create" className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-xs font-semibold text-slate-200/70">Create task</div>
-                  <input
-                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
-                    value={taskTitle}
-                    onChange={(e) => setTaskTitle(e.target.value)}
-                    placeholder="Task title"
-                  />
-                  <textarea
-                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
-                    rows={3}
-                    value={taskDesc}
-                    onChange={(e) => setTaskDesc(e.target.value)}
-                    placeholder="Optional description"
-                  />
-                  <button
-                    type="button"
-                    className="w-fit rounded-2xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25"
-                    onClick={async () => {
-                      if (!taskTitle.trim()) return;
-                      await actions.createTask({ projectSlug: slug, title: taskTitle, description: taskDesc, filePath: selectedFile?.path || null });
-                      setTaskTitle('');
-                      setTaskDesc('');
-                      await actions.loadProject(slug);
-                    }}
-                  >
-                    Add task
-                  </button>
-                </div>
+                    <div id="tasks-create" className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 opacity-90">
+                      <div className="text-xs font-semibold text-slate-200/70">Create task</div>
+                      <input
+                        className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                        value={taskTitle}
+                        onChange={(e) => setTaskTitle(e.target.value)}
+                        placeholder="Task title"
+                      />
+                      <textarea
+                        className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                        rows={3}
+                        value={taskDesc}
+                        onChange={(e) => setTaskDesc(e.target.value)}
+                        placeholder="Optional description"
+                      />
+                      <button
+                        type="button"
+                        className="w-fit rounded-2xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25"
+                        onClick={async () => {
+                          if (!taskTitle.trim()) return;
+                          await actions.createTask({ projectSlug: slug, title: taskTitle, description: taskDesc, filePath: selectedFile?.path || null });
+                          setTaskTitle('');
+                          setTaskDesc('');
+                          await actions.loadProject(slug);
+                        }}
+                      >
+                        Add task
+                      </button>
+                    </div>
 
-                {expandTasks ? (
-                  <div className="mt-4 flex flex-col gap-2">
+                    <div className="mt-4 flex flex-col gap-2">
                     {sortedTasks.map((t) => (
                     <div key={t.id} className="rounded-2xl border border-white/10 bg-white/5 p-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -778,7 +768,8 @@ export default function ProjectDetailPage() {
                     </div>
                     ))}
                     {sortedTasks.length === 0 ? <div className="text-sm text-slate-200/60">No matching tasks.</div> : null}
-                  </div>
+                    </div>
+                  </>
                 ) : (
                   <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-slate-200/70">
                     List collapsed. Expand to view tasks.
