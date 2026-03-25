@@ -54,7 +54,7 @@ export function ProjectsClient() {
           title={
             <div className="flex flex-col gap-1">
               <H1>{q ? `Projects — filtered` : 'Projects'}</H1>
-              <Muted>{q ? `query: ${q}` : 'GitHub-like workspaces view (dense, readable).'}</Muted>
+              <Muted>{q ? `query: ${q}` : 'A calm workspace for projects: tasks → proposals → reviews → merges → history.'}</Muted>
             </div>
           }
           subtitle={undefined}
