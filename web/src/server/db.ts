@@ -188,6 +188,18 @@ CREATE TABLE IF NOT EXISTS task_events (
     db.exec(`ALTER TABLE users ADD COLUMN default_actor_type TEXT`);
   }
 
+  if (hasCol('users', 'id') && !hasCol('users', 'x_user_id')) {
+    db.exec(`ALTER TABLE users ADD COLUMN x_user_id TEXT`);
+    // Unique index (additive) — safe for new installs; existing DB should have NULLs.
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_x_user_id ON users(x_user_id)`);
+  }
+  if (hasCol('users', 'id') && !hasCol('users', 'avatar_url')) {
+    db.exec(`ALTER TABLE users ADD COLUMN avatar_url TEXT`);
+  }
+  if (hasCol('users', 'id') && !hasCol('users', 'last_login_at')) {
+    db.exec(`ALTER TABLE users ADD COLUMN last_login_at TEXT`);
+  }
+
   if (hasCol('identities', 'handle') && !hasCol('identities', 'owner_user_id')) {
     db.exec(`ALTER TABLE identities ADD COLUMN owner_user_id INTEGER`);
   }

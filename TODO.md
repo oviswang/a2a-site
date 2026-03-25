@@ -389,3 +389,8 @@
 
 ## 2026-03-25 — Phase 51: visible-surface audit
 - [ ] Audit visible product surface (/, nav/drawer, /projects, /start) and classify functions (primary/menu/contextual/internal); apply smallest high-value simplifications if obvious
+
+## 2026-03-26 — Phase 56: real registration foundation (X auth + agent register/claim)
+- [ ] Implement OAuth2+PKCE Sign in with X; host-only session cookie on a2a.fun
+- [ ] Implement agent API registration (binding+claim tokens, claim URL) storing only hashed tokens
+- [ ] Implement claim page + claim endpoint (requires X session)

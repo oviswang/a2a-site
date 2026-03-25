@@ -15,6 +15,9 @@ export type User = {
   id: number;
   handle: string;
   displayName: string | null;
+  xUserId?: string | null;
+  avatarUrl?: string | null;
+  lastLoginAt?: string | null;
   defaultActorHandle?: string | null;
   defaultActorType?: MemberType | null;
   createdAt: string;
@@ -30,6 +33,42 @@ function newToken(bytes = 16) {
 
 function normalizeUserHandle(input: string) {
   return slugify(input).replace(/-/g, '_');
+}
+
+export function upsertUserFromX(args: {
+  xUserId: string;
+  handle: string; // x username
+  displayName: string | null;
+  avatarUrl: string | null;
+}) {
+  const db = getDb();
+  const now = nowIso();
+  const xUserId = String(args.xUserId);
+  const handle = normalizeUserHandle(args.handle);
+  if (!xUserId) throw new Error('invalid_x_user_id');
+  if (!handle) throw new Error('invalid_handle');
+
+  // Find by x_user_id first.
+  const existing = db
+    .prepare('SELECT id, handle FROM users WHERE x_user_id=?')
+    .get(xUserId) as { id: number; handle: string } | undefined;
+
+  if (existing) {
+    db.prepare('UPDATE users SET display_name=?, avatar_url=?, last_login_at=? WHERE id=?').run(args.displayName || null, args.avatarUrl || null, now, existing.id);
+    ensureIdentity(existing.handle, 'human');
+    db.prepare('UPDATE identities SET user_id=? WHERE handle=?').run(existing.id, existing.handle);
+    return getUserByHandle(existing.handle);
+  }
+
+  // Create new user (handle from X username).
+  db.prepare(
+    'INSERT INTO users (handle, display_name, x_user_id, avatar_url, last_login_at, default_actor_handle, default_actor_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(handle, args.displayName || null, xUserId, args.avatarUrl || null, now, null, null, now);
+
+  const u = getUserByHandle(handle);
+  ensureIdentity(handle, 'human');
+  if (u) db.prepare('UPDATE identities SET user_id=? WHERE handle=?').run(u.id, handle);
+  return u;
 }
 
 export function listUsers(): User[] {
@@ -50,10 +89,17 @@ export function listUsers(): User[] {
     if (u) db.prepare('UPDATE identities SET user_id=? WHERE handle=?').run(u.id, 'local-human');
   }
 
-  const rows = db.prepare('SELECT id, handle, display_name, default_actor_handle, default_actor_type, created_at FROM users ORDER BY created_at DESC').all() as Array<{
+  const rows = db
+    .prepare(
+      'SELECT id, handle, display_name, x_user_id, avatar_url, last_login_at, default_actor_handle, default_actor_type, created_at FROM users ORDER BY created_at DESC'
+    )
+    .all() as Array<{
     id: number;
     handle: string;
     display_name: string | null;
+    x_user_id: string | null;
+    avatar_url: string | null;
+    last_login_at: string | null;
     default_actor_handle: string | null;
     default_actor_type: string | null;
     created_at: string;
@@ -62,6 +108,9 @@ export function listUsers(): User[] {
     id: r.id,
     handle: r.handle,
     displayName: r.display_name ?? null,
+    xUserId: r.x_user_id ?? null,
+    avatarUrl: r.avatar_url ?? null,
+    lastLoginAt: r.last_login_at ?? null,
     defaultActorHandle: r.default_actor_handle ?? null,
     defaultActorType: r.default_actor_type === 'agent' ? 'agent' : r.default_actor_type === 'human' ? 'human' : null,
     createdAt: r.created_at,
@@ -70,11 +119,16 @@ export function listUsers(): User[] {
 
 export function getUserByHandle(handle: string): User | null {
   const db = getDb();
-  const r = db.prepare('SELECT id, handle, display_name, default_actor_handle, default_actor_type, created_at FROM users WHERE handle=?').get(handle) as
+  const r = db
+    .prepare('SELECT id, handle, display_name, x_user_id, avatar_url, last_login_at, default_actor_handle, default_actor_type, created_at FROM users WHERE handle=?')
+    .get(handle) as
     | {
         id: number;
         handle: string;
         display_name: string | null;
+        x_user_id: string | null;
+        avatar_url: string | null;
+        last_login_at: string | null;
         default_actor_handle: string | null;
         default_actor_type: string | null;
         created_at: string;
@@ -85,6 +139,9 @@ export function getUserByHandle(handle: string): User | null {
     id: r.id,
     handle: r.handle,
     displayName: r.display_name ?? null,
+    xUserId: r.x_user_id ?? null,
+    avatarUrl: r.avatar_url ?? null,
+    lastLoginAt: r.last_login_at ?? null,
     defaultActorHandle: r.default_actor_handle ?? null,
     defaultActorType: r.default_actor_type === 'agent' ? 'agent' : r.default_actor_type === 'human' ? 'human' : null,
     createdAt: r.created_at,
@@ -97,13 +154,9 @@ export function createUser(args: { handle: string; displayName?: string | null }
   const handle = normalizeUserHandle(args.handle);
   if (!handle) throw new Error('invalid_handle');
 
-  db.prepare('INSERT INTO users (handle, display_name, default_actor_handle, default_actor_type, created_at) VALUES (?, ?, ?, ?, ?)').run(
-    handle,
-    args.displayName || null,
-    null,
-    null,
-    now
-  );
+  db.prepare(
+    'INSERT INTO users (handle, display_name, x_user_id, avatar_url, last_login_at, default_actor_handle, default_actor_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(handle, args.displayName || null, null, null, null, null, null, now);
 
   // Ensure the corresponding human identity exists and is linked.
   ensureIdentity(handle, 'human');
