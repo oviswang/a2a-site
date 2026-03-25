@@ -22,6 +22,18 @@ export function Nav() {
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
+    // Session → UI sync: if server has a signed-in human, reflect it in the visible actor.
+    fetch('/api/auth/whoami', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j?.signedIn && j?.actorType === 'human' && typeof j?.handle === 'string' && j.handle && j.handle !== actor.handle) {
+          actions.setActor({ handle: j.handle, actorType: 'human' });
+        }
+      })
+      .catch(() => void 0);
+  }, [actions, actor.handle]);
+
+  useEffect(() => {
     if (actor.actorType !== 'human') return;
     fetch(`/api/inbox?userHandle=${encodeURIComponent(actor.handle)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
