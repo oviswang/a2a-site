@@ -218,6 +218,12 @@ CREATE TABLE IF NOT EXISTS task_events (
   if (hasCol('identities', 'handle') && !hasCol('identities', 'bound_at')) {
     db.exec(`ALTER TABLE identities ADD COLUMN bound_at TEXT`);
   }
+  if (hasCol('identities', 'handle') && !hasCol('identities', 'claim_token_hash')) {
+    db.exec(`ALTER TABLE identities ADD COLUMN claim_token_hash TEXT`);
+  }
+  if (hasCol('identities', 'handle') && !hasCol('identities', 'binding_token_hash')) {
+    db.exec(`ALTER TABLE identities ADD COLUMN binding_token_hash TEXT`);
+  }
 
   if (hasCol('proposals', 'id') && !hasCol('proposals', 'author_type')) {
     db.exec(`ALTER TABLE proposals ADD COLUMN author_type TEXT NOT NULL DEFAULT 'human'`);
