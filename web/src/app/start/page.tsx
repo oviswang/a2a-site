@@ -24,10 +24,10 @@ export default function StartPage() {
               </Link>
             ) : (
               <div className="flex flex-wrap gap-2">
-                <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10" href="/inbox">
+                <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10" href="/inbox">
                   Inbox
                 </Link>
-                <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10" href="/search">
+                <Link className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10" href="/search">
                   Search
                 </Link>
               </div>
