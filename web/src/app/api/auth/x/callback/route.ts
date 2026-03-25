@@ -32,7 +32,31 @@ async function exchangeCode(args: { code: string; verifier: string }) {
     console.error('x_token_exchange_failed', res.status, detail.slice(0, 500));
     throw new Error('token_exchange_failed');
   }
-  return (await res.json()) as { access_token: string; token_type: string; expires_in: number; scope?: string };
+  return (await res.json()) as {
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    scope?: string;
+    id_token?: string;
+  };
+}
+
+type IdTokenClaims = {
+  sub: string;
+  iss?: string;
+  aud?: string | string[];
+  exp?: number;
+  iat?: number;
+  preferred_username?: string;
+  name?: string;
+  picture?: string;
+};
+
+function parseJwtNoVerify(token: string): IdTokenClaims {
+  const parts = token.split('.');
+  if (parts.length < 2) throw new Error('invalid_id_token');
+  const json = Buffer.from(parts[1], 'base64url').toString('utf8');
+  return JSON.parse(json) as IdTokenClaims;
 }
 
 async function fetchMe(accessToken: string) {
@@ -57,17 +81,52 @@ export async function GET(req: Request) {
   const verifier = (req as any).cookies?.get?.('a2a_oauth_verifier')?.value || null;
   const next = (req as any).cookies?.get?.('a2a_oauth_next')?.value || '/start';
 
+  // Debug (no values): confirm whether callback cookies survived.
+  console.error('x_oauth_callback_cookies', {
+    hasState: Boolean(cookieState),
+    hasVerifier: Boolean(verifier),
+    hasNext: Boolean(next),
+    hasCode: Boolean(code),
+    hasQueryState: Boolean(state),
+  });
+
   if (!code || !state || !cookieState || state !== cookieState || !verifier) {
     return NextResponse.redirect(`${baseUrl()}/login?error=oauth_state`);
   }
 
-  const tok = await exchangeCode({ code, verifier });
-  const me = await fetchMe(tok.access_token);
+  let tok: Awaited<ReturnType<typeof exchangeCode>>;
+  try {
+    tok = await exchangeCode({ code, verifier });
+  } catch {
+    // Do not 500 on token exchange failure; allow user to retry.
+    return NextResponse.redirect(`${baseUrl()}/login?error=token_exchange_failed`);
+  }
 
-  const xUserId = String(me.data.id);
-  const xUsername = String(me.data.username);
-  const displayName = me.data.name ? String(me.data.name) : null;
-  const avatarUrl = me.data.profile_image_url ? String(me.data.profile_image_url) : null;
+  // V1: primary identity from OIDC id_token (do not depend on /2/users/me).
+  if (!tok.id_token) {
+    console.error('x_missing_id_token');
+    return NextResponse.redirect(`${baseUrl()}/login?error=missing_id_token`);
+  }
+
+  let claims: IdTokenClaims;
+  try {
+    claims = parseJwtNoVerify(tok.id_token);
+  } catch {
+    return NextResponse.redirect(`${baseUrl()}/login?error=invalid_id_token`);
+  }
+
+  const xUserId = String(claims.sub || '');
+  const xUsername = claims.preferred_username ? String(claims.preferred_username) : '';
+  const displayName = claims.name ? String(claims.name) : null;
+  const avatarUrl = claims.picture ? String(claims.picture) : null;
+
+  if (!xUserId || !xUsername) {
+    console.error('x_id_token_missing_fields', { hasSub: Boolean(xUserId), hasUsername: Boolean(xUsername) });
+    return NextResponse.redirect(`${baseUrl()}/login?error=id_token_missing_fields`);
+  }
+
+  // Optional enrichment (do not block login)
+  // try { await fetchMe(tok.access_token); } catch { /* ignore */ }
 
   const user = upsertUserFromX({ xUserId, handle: xUsername, displayName, avatarUrl });
   if (!user) return NextResponse.redirect(`${baseUrl()}/login?error=user_upsert`);
