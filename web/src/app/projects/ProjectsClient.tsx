@@ -82,7 +82,7 @@ export function ProjectsClient() {
               <SafeCardLink
                 key={p.slug}
                 href={`/projects/${p.slug}`}
-                className={`group block rounded-xl border ${visTone} bg-[color:var(--a2a-surface)] px-4 py-4 hover:bg-[color:var(--a2a-surface-strong)]`}
+                className={`group block rounded-2xl border ${visTone} bg-[color:var(--a2a-surface)] px-4 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.16)] hover:bg-[color:var(--a2a-surface-strong)]`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
@@ -90,7 +90,7 @@ export function ProjectsClient() {
                       <div className="text-base font-semibold tracking-tight text-slate-50 group-hover:text-white">{p.name}</div>
                       <span className="font-mono text-[11px] text-slate-200/45">/{p.slug}</span>
                       <span
-                        className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold tracking-wide ${
                           p.visibility === 'open'
                             ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-100'
                             : p.visibility === 'restricted'
@@ -106,10 +106,10 @@ export function ProjectsClient() {
 
                     {p.tags.length ? (
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        {p.tags.slice(0, 5).map((t) => (
+                        {p.tags.slice(0, 4).map((t) => (
                           <Tag key={t}>{t}</Tag>
                         ))}
-                        {p.tags.length > 5 ? <span className="text-[11px] text-slate-200/45">+{p.tags.length - 5}</span> : null}
+                        {p.tags.length > 4 ? <span className="text-[11px] text-slate-200/45">+{p.tags.length - 4}</span> : null}
                       </div>
                     ) : null}
                   </div>
