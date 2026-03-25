@@ -47,6 +47,7 @@ export type WorkspaceProject = {
   summary: string;
   visibility: 'open' | 'restricted'; // also used as join_mode for now
   tags: string[];
+  createdAt?: string;
   files: WorkspaceFile[];
   activity: Array<{ ts: string; text: string }>;
   members: WorkspaceMember[];

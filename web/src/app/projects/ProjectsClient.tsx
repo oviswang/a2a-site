@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Tag } from '@/components/Card';
 import { SafeCardLink } from '@/components/SafeCardLink';
@@ -18,12 +18,34 @@ export function ProjectsClient() {
   const qRaw = (sp.get('q') || '').trim();
   const [query, setQuery] = useState(qRaw);
   const q = query.trim().toLowerCase();
+
   const projectsRaw = q
     ? state.projects.filter((p) => `${p.slug} ${p.name} ${p.summary}`.toLowerCase().includes(q))
     : state.projects;
 
-  // Keep stable ordering; avoid implying activity without backend support.
-  const projects = projectsRaw;
+  // Default sorting: newest first (createdAt desc), fallback to slug.
+  const projectsSorted = useMemo(() => {
+    return [...projectsRaw].sort((a, b) => {
+      const ac = String(a.createdAt || '');
+      const bc = String(b.createdAt || '');
+      if (ac && bc && ac !== bc) return bc.localeCompare(ac);
+      return String(a.slug).localeCompare(String(b.slug));
+    });
+  }, [projectsRaw]);
+
+  // Mobile-first paging: render at most N, then load more.
+  const PAGE_SIZE = 30;
+  const [limit, setLimit] = useState(PAGE_SIZE);
+
+  // Reset paging when query changes.
+  useMemo(() => {
+    setLimit(PAGE_SIZE);
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
+  const projects = useMemo(() => projectsSorted.slice(0, limit), [projectsSorted, limit]);
+  const hasMore = projectsSorted.length > projects.length;
 
   return (
     <Layout>
@@ -64,7 +86,7 @@ export function ProjectsClient() {
             />
           </label>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="text-xs text-slate-200/60">{projects.length} projects</div>
+            <div className="text-xs text-slate-200/60">{projectsSorted.length} projects</div>
             <Button type="submit" variant="primary" size="sm">
               Apply
             </Button>
@@ -77,6 +99,11 @@ export function ProjectsClient() {
         </form>
 
         <div className="grid gap-4">
+          {hasMore ? (
+            <div className="rounded-2xl border border-white/10 bg-[color:var(--a2a-surface)] px-4 py-3 text-sm text-slate-200/70">
+              Showing {projects.length} of {projectsSorted.length} projects.
+            </div>
+          ) : null}
           {projects.map((p) => {
             const visLabel = p.visibility === 'open' ? 'Open' : p.visibility === 'restricted' ? 'Restricted access' : p.visibility;
             const visTone = p.visibility === 'open' ? 'border-emerald-400/35' : p.visibility === 'restricted' ? 'border-amber-400/35' : 'border-white/10';
@@ -122,6 +149,13 @@ export function ProjectsClient() {
               </SafeCardLink>
             );
           })}
+          {hasMore ? (
+            <div className="mt-2 flex justify-center">
+              <Button type="button" variant="default" size="sm" onClick={() => setLimit((n) => n + PAGE_SIZE)}>
+                Load more
+              </Button>
+            </div>
+          ) : null}
         </div>
       </div>
     </Layout>
