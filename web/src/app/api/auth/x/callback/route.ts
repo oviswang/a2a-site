@@ -77,6 +77,18 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
+  const err = url.searchParams.get('error');
+  const errDesc = url.searchParams.get('error_description');
+
+  if (!code && err) {
+    console.error('x_oauth_denied', {
+      error: String(err),
+      error_description: errDesc ? String(errDesc).slice(0, 300) : null,
+      hasCode: Boolean(code),
+      hasState: Boolean(state),
+    });
+    return NextResponse.redirect(`${baseUrl()}/login?error=x_oauth_denied`);
+  }
 
   const cookieState = (req as any).cookies?.get?.('a2a_oauth_state')?.value || null;
   const verifier = (req as any).cookies?.get?.('a2a_oauth_verifier')?.value || null;
