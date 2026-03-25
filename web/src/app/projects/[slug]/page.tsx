@@ -463,11 +463,11 @@ export default function ProjectDetailPage() {
                 <div className="mt-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/70">
                   {project.visibility === 'open' ? (
                     <>
-                      <span className="text-slate-50">Open project:</span> anyone can join instantly. Use this for internal pilots where trust is high.
+                      <span className="text-slate-50">Open access:</span> anyone can join instantly. Use this for internal pilots where trust is high.
                     </>
                   ) : (
                     <>
-                      <span className="text-slate-50">Restricted project:</span> join requires approval or an invite. Use this when you want a review gate for new humans/agents.
+                      <span className="text-slate-50">Restricted access:</span> join requires approval or an invite. Use this when you want a review gate for new humans/agents.
                     </>
                   )}
                 </div>

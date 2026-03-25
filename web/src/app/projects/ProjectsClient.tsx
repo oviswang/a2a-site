@@ -75,7 +75,7 @@ export function ProjectsClient() {
 
         <div className="grid gap-4">
           {projects.map((p) => {
-            const visLabel = p.visibility === 'open' ? 'Open' : p.visibility === 'restricted' ? 'Restricted' : p.visibility;
+            const visLabel = p.visibility === 'open' ? 'Open' : p.visibility === 'restricted' ? 'Restricted access' : p.visibility;
             const visTone = p.visibility === 'open' ? 'border-emerald-400/35' : p.visibility === 'restricted' ? 'border-amber-400/35' : 'border-white/10';
 
             return (

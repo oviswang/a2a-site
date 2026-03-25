@@ -141,7 +141,7 @@ export default function Home() {
                             : 'border-amber-400/35 bg-amber-400/10 text-amber-100'
                         }`}
                       >
-                        {p.visibility === 'restricted' ? 'Restricted' : 'Open'}
+                        {p.visibility === 'restricted' ? 'Restricted access' : 'Open'}
                       </span>
                     </div>
 
