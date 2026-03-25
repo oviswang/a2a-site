@@ -380,3 +380,6 @@
 
 ## 2026-03-25 — Workspace-first project detail rebuild
 - [ ] Rebuild /projects/[slug] into workspace-first hierarchy (header → now/next → core workspace → memory/org)
+
+## 2026-03-25 — /projects/[slug] strict module separation
+- [ ] Refactor /projects/[slug] into strict 5-layer module separation (header, now/next, core workspace, org, history/advanced)

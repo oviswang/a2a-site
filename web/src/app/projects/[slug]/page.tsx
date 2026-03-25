@@ -237,48 +237,51 @@ export default function ProjectDetailPage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title={project ? project.name : 'Project'}
-          subtitle={project ? `${project.summary} · ${project.visibility}` : `Loading: ${slug}`}
+          subtitle={project ? project.summary : `Loading: ${slug}`}
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { href: '/projects', label: 'Projects' }, { label: slug }]} />}
           actions={
             project ? (
-              <div className="flex flex-wrap gap-2">
-                {!myMember ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full border border-white/10 px-2 py-1 text-xs ${
+                    project.visibility === 'restricted' ? 'bg-amber-500/15 text-amber-100' : 'bg-emerald-500/15 text-emerald-100'
+                  }`}
+                >
+                  {project.visibility}
+                </span>
+
+                {myMember ? (
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">
+                    @{myMember.handle} · {myMember.role}
+                  </span>
+                ) : null}
+
+                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">
+                  @{actor.handle} · {actor.actorType}
+                </span>
+
+                <div className="ml-auto flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className={`rounded-xl px-3 py-2 text-sm text-white ${project.visibility === 'restricted' ? 'bg-amber-700 hover:bg-amber-600' : 'bg-emerald-700 hover:bg-emerald-600'}`}
-                    onClick={async () => {
-                      const r = await actions.joinProject(slug);
-                      if (!r) return;
-                      if (r.mode === 'joined') {
-                        setJoinMsg('Joined ✅ You now have access to tasks, proposals, and people ops.');
-                        setToast({ message: 'Joined project.', variant: 'success' });
-                      } else if (r.mode === 'requested') {
-                        setJoinMsg('Request sent ✅ Waiting for owner/maintainer approval (restricted project).');
-                        setToast({ message: 'Join request sent.', variant: 'success' });
-                      } else if (r.mode === 'already_member') {
-                        setJoinMsg('Already a member.');
-                        setToast({ message: 'Already a member.', variant: 'info' });
-                      }
-                      await actions.loadProject(slug);
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:bg-white/10"
+                    onClick={() => {
+                      setExpandTasks(true);
+                      document.getElementById('tasks')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }}
                   >
-                    {project.visibility === 'restricted' ? 'Request access' : 'Join'}
+                    Create task
                   </button>
-                ) : (
-                  <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
-                    @{myMember.handle} · {myMember.role}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className="rounded-xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25"
-                  onClick={() => {
-                    const fp = selectedFile?.path || 'README.md';
-                    router.push(`/projects/${slug}/proposals/new?file=${encodeURIComponent(fp)}`);
-                  }}
-                >
-                  New proposal
-                </button>
+                  <button
+                    type="button"
+                    className="rounded-xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25"
+                    onClick={() => {
+                      const fp = selectedFile?.path || 'README.md';
+                      router.push(`/projects/${slug}/proposals/new?file=${encodeURIComponent(fp)}`);
+                    }}
+                  >
+                    New proposal
+                  </button>
+                </div>
               </div>
             ) : null
           }

@@ -53,3 +53,6 @@ Priority pages:
 
 ## 2026-03-25 — Workspace-first rebuild: /projects/[slug]
 - Decision: Rebuild project detail page into a workspace-first hierarchy (clean header → now/next → core workspace surfaces → secondary memory/org sections). No new backend systems; layout + visibility only.
+
+## 2026-03-25 — Strict module-separation refactor: /projects/[slug]
+- Decision: Restructure project detail page into strict modules and 5-layer hierarchy. Make Tasks/Proposals/Files primary; move People/Decisions secondary; Timeline/Join-as-Agent lowest priority and collapsed. No new backend systems.
