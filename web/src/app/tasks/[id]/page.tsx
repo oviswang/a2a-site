@@ -133,27 +133,56 @@ export default function TaskDetailPage() {
             </Card>
 
             <Card title="Deliverable">
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div
+                className={`flex flex-wrap items-center justify-between gap-2 rounded-2xl border p-3 ${
+                  deliverable?.status === 'accepted'
+                    ? 'border-emerald-400/25 bg-emerald-400/10'
+                    : deliverable?.status === 'changes_requested'
+                      ? 'border-amber-400/25 bg-amber-400/10'
+                      : deliverable?.status === 'submitted'
+                        ? 'border-sky-400/25 bg-sky-400/10'
+                        : 'border-white/10 bg-white/5'
+                }`}
+              >
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="text-slate-200/70">Status</span>
+                  <span className="text-slate-200/70">State</span>
                   <Tag>{deliverable?.status || 'none'}</Tag>
                   {(() => {
                     const c = parseChecklistCount(deliverable?.summaryMd || summaryMd || '');
                     if (!c.total) return null;
-                    return (
-                      <span className="text-slate-200/60">· Checklist {c.checked}/{c.total}</span>
-                    );
+                    return <span className="text-slate-200/70">· Checklist {c.checked}/{c.total}</span>;
                   })()}
-                  {deliverable?.reviewedAt ? <span className="text-slate-200/50">· reviewed {String(deliverable.reviewedAt).slice(0, 16).replace('T', ' ')}</span> : null}
-                  {deliverable?.submittedAt ? <span className="text-slate-200/50">· submitted {String(deliverable.submittedAt).slice(0, 16).replace('T', ' ')}</span> : null}
+                  {deliverable?.reviewedAt ? <span className="text-slate-200/60">· reviewed {String(deliverable.reviewedAt).slice(0, 16).replace('T', ' ')}</span> : null}
+                  {deliverable?.submittedAt ? <span className="text-slate-200/60">· submitted {String(deliverable.submittedAt).slice(0, 16).replace('T', ' ')}</span> : null}
                 </div>
-                <div className="text-[11px] text-slate-200/50">This is the formal output of the task.</div>
+
+                <div className="text-[11px] text-slate-200/70">
+                  {deliverable?.status === 'submitted'
+                    ? 'Next: reviewer should accept or request changes.'
+                    : deliverable?.status === 'changes_requested'
+                      ? 'Next: worker should revise and re-submit.'
+                      : deliverable?.status === 'accepted'
+                        ? 'Accepted deliverable (task output is complete).'
+                        : 'Draft deliverable (not yet submitted).'}
+                </div>
               </div>
 
               {deliverable?.status === 'changes_requested' && deliverable.revisionNote ? (
-                <div className="mt-3 rounded-2xl border border-amber-400/25 bg-amber-400/10 p-3 text-xs text-amber-100">
-                  <div className="font-semibold">Changes requested</div>
+                <div className="mt-3 rounded-2xl border border-amber-400/35 bg-amber-400/10 p-3 text-xs text-amber-100">
+                  <div className="font-semibold">Revision note (what to change)</div>
                   <div className="mt-1 whitespace-pre-wrap text-amber-100/90">{deliverable.revisionNote}</div>
+                </div>
+              ) : null}
+
+              {deliverable?.status === 'submitted' ? (
+                <div className="mt-3 rounded-2xl border border-sky-400/25 bg-sky-400/10 p-3 text-xs text-sky-100">
+                  Submitted for review. A reviewer should either accept this deliverable or request changes.
+                </div>
+              ) : null}
+
+              {deliverable?.status === 'accepted' ? (
+                <div className="mt-3 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3 text-xs text-emerald-100">
+                  Accepted. This task now has a completed deliverable.
                 </div>
               ) : null}
 
@@ -185,15 +214,39 @@ export default function TaskDetailPage() {
                   />
                 </label>
 
-                <label className="grid gap-1">
-                  <span className="text-[11px] text-slate-200/60">Evidence links (one per line)</span>
+                <div className="grid gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] text-slate-200/60">Evidence links (formal artifacts)</span>
+                    <span className="text-[11px] text-slate-200/50">Format: <span className="font-mono">label https://…</span> or <span className="font-mono">https://…</span></span>
+                  </div>
+
+                  {(deliverable?.evidenceLinks || []).length ? (
+                    <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                      {(deliverable?.evidenceLinks || []).map((l, idx) => (
+                        <a
+                          key={idx}
+                          href={l.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-100 hover:bg-black/30"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-semibold text-slate-50">{l.label || 'Evidence'}</div>
+                            <div className="truncate font-mono text-[11px] text-slate-200/60">{l.url}</div>
+                          </div>
+                          <div className="text-[11px] text-slate-200/50">open</div>
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
+
                   <textarea
                     className="min-h-[88px] w-full rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-slate-100 outline-none focus:border-white/20"
                     value={linksText}
                     onChange={(e) => setLinksText(e.target.value)}
                     placeholder="label https://...\nhttps://..."
                   />
-                </label>
+                </div>
 
                 <div className="flex flex-wrap gap-2">
                   <button
