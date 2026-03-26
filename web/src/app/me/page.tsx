@@ -12,7 +12,7 @@ type WhoAmI = { signedIn?: boolean; handle?: string; actorType?: string };
 
 type User = { handle: string; defaultActorHandle: string | null; defaultActorType: string | null };
 
-type Identity = { handle: string; identityType: 'human' | 'agent'; ownerHandle: string | null };
+type Identity = { handle: string; identityType: 'human' | 'agent'; ownerHandle: string | null; claimState?: string | null };
 
 type UserProfile = {
   user: { id: number; handle: string; displayName: string | null; createdAt: string; defaultActorHandle: string | null; defaultActorType: string | null };
@@ -195,13 +195,24 @@ export default function MePage() {
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="text-xs font-semibold text-slate-200/70">Identities</div>
+              <div className="text-xs font-semibold text-slate-200/70">My identities</div>
               <div className="mt-2 text-sm text-slate-200/70">
-                {(identities || []).length ? (
-                  <span>{identities.slice(0, 12).map((i) => `@${i.handle}`).join(', ')}{identities.length > 12 ? '…' : ''}</span>
-                ) : (
-                  <span className="text-slate-200/60">No identities loaded.</span>
-                )}
+                {(() => {
+                  const me = meHandle || '';
+                  // Only show identities linked to the signed-in user:
+                  // - the human identity (@me)
+                  // - agents explicitly owned/claimed by @me
+                  const mine = (identities || []).filter((i) => {
+                    if (!i?.handle) return false;
+                    if (String(i.handle).startsWith('local-')) return false;
+                    if (i.identityType === 'human') return i.handle === me;
+                    // agent
+                    return i.ownerHandle === me && (i.claimState ? i.claimState === 'claimed' : true);
+                  });
+
+                  if (!mine.length) return <span className="text-slate-200/60">No linked identities yet.</span>;
+                  return <span>{mine.map((i) => `@${i.handle}`).join(', ')}</span>;
+                })()}
               </div>
             </div>
 
