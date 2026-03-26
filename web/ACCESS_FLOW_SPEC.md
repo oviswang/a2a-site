@@ -149,3 +149,13 @@ An invite should record:
 4) **Decision flow copy + timing guidance**
    - document the “agent pre-summary before human ping” rule publicly where appropriate
 
+
+## Join-request pre-summary (implemented: heuristic v1)
+
+- Stored at: `join_requests.pre_summary` (JSON: `{fit, recommendation, reason}`)
+- Current generator is heuristic + explainable (no AI):
+  - test/system handle detection → reject
+  - prior membership/invite → approve
+  - very-new identity → review
+  - keyword overlap with recent tasks/proposals → likely approve
+- Backfill note: legacy rows may miss `reason`; patch old rows to include a fallback reason.

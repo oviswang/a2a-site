@@ -1,5 +1,6 @@
 import { getDb } from './db';
 import crypto from 'node:crypto';
+import { computeJoinRequestPreSummary } from './joinRequestSummary';
 
 export type Visibility = 'open' | 'restricted';
 export type ProposalStatus = 'needs_review' | 'approved' | 'changes_requested' | 'rejected' | 'merged';
@@ -1448,56 +1449,19 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
   ).run(id, p.id, args.actorHandle, args.actorType, now, 'pending', null, null);
   db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `@${args.actorHandle} requested access`);
 
-  // Minimal pre-summary (no AI): explainable heuristics from available context.
-  // Conservative default: unclear + review.
-  // This is a hook point for future agent-generated summaries.
-  let fit: 'likely' | 'unclear' | 'weak' = 'unclear';
-  let rec: 'approve' | 'review' | 'reject' = 'review';
-  const reasons: string[] = [];
-
-  const h = String(args.actorHandle || '').toLowerCase();
-  const pSlug = String(p.slug || '').toLowerCase();
-  const pName = String(p.name || '').toLowerCase();
-
-  // 0) obvious test/system handles
-  if (h.includes('test') || h.includes('demo') || h.includes('verify') || h.includes('authgap') || h.includes('acceptance') || h.includes('local-')) {
-    fit = 'weak';
-    rec = 'reject';
-    reasons.push('handle looks like test/system');
-  }
-
-  // 1) requester has prior relationship with this project
+  // Pre-summary (no AI): compute an explainable recommendation from lightweight signals.
   const priorMember = db
     .prepare('SELECT role FROM project_members WHERE project_id=? AND member_handle=?')
     .get(p.id, args.actorHandle) as { role: string } | undefined;
-  if (priorMember) {
-    fit = 'likely';
-    rec = 'approve';
-    reasons.push('already a member');
-  }
 
   const priorInvite = db
     .prepare("SELECT status FROM invitations WHERE project_id=? AND invitee_handle=? AND status IN ('pending','accepted')")
-    .get(p.id, args.actorHandle) as { status: string } | undefined;
-  if (priorInvite && fit !== 'weak') {
-    fit = 'likely';
-    rec = 'approve';
-    reasons.push(`prior invite (${priorInvite.status})`);
-  }
+    .get(p.id, args.actorHandle) as { status: 'pending' | 'accepted' } | undefined;
 
-  // 2) very new / empty identity heuristic
   const idRow = db
     .prepare("SELECT created_at FROM identities WHERE handle=?")
     .get(args.actorHandle) as { created_at: string } | undefined;
-  if (idRow) {
-    const ageMs = Date.now() - new Date(idRow.created_at).getTime();
-    if (ageMs < 24 * 60 * 60 * 1000 && fit !== 'weak') {
-      reasons.push('very new identity');
-      if (rec === 'approve') rec = 'review';
-    }
-  }
 
-  // 3) requester recent activity themes (lightweight): recent tasks/proposals authored/claimed by requester
   const recentTaskTitles = (db
     .prepare(
       `SELECT title FROM tasks
@@ -1505,29 +1469,27 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
        ORDER BY updated_at DESC LIMIT 5`
     )
     .all(args.actorHandle, args.actorType) as Array<{ title: string }>).
-    map((r) => String(r.title || '').toLowerCase());
+    map((r) => String(r.title || ''));
 
-  const recentProposalTitles = (db
+  const recentProposalTexts = (db
     .prepare(
       `SELECT title, summary FROM proposals
        WHERE author_handle=? AND author_type=?
        ORDER BY created_at DESC LIMIT 5`
     )
     .all(args.actorHandle, args.actorType) as Array<{ title: string; summary: string }>).
-    flatMap((r) => [String(r.title || '').toLowerCase(), String(r.summary || '').toLowerCase()]);
+    flatMap((r) => [String(r.title || ''), String(r.summary || '')]);
 
-  const blob = [pSlug, pName].join(' ') + ' ' + recentTaskTitles.join(' ') + ' ' + recentProposalTitles.join(' ');
-  // keyword overlap heuristic
-  const keywords = Array.from(new Set([pSlug, ...pName.split(/\s+/g)].filter(Boolean))).slice(0, 8);
-  const overlap = keywords.filter((k) => k.length >= 4 && blob.includes(k)).length;
-  if (overlap >= 2 && fit !== 'weak') {
-    fit = 'likely';
-    if (rec === 'review') rec = 'approve';
-    reasons.push('recent work overlaps project keywords');
-  }
+  const pre = computeJoinRequestPreSummary({
+    requesterHandle: args.actorHandle,
+    requesterType: args.actorType,
+    project: { id: p.id, slug: p.slug, name: p.name },
+    requester: { createdAt: idRow?.created_at || null },
+    prior: { alreadyMember: Boolean(priorMember), priorInviteStatus: priorInvite?.status || null },
+    recent: { taskTitles: recentTaskTitles, proposalTexts: recentProposalTexts },
+  });
 
-  if (!reasons.length) reasons.push('insufficient signals');
-  const preSummary = JSON.stringify({ fit, recommendation: rec, reason: reasons.slice(0, 2).join('; ') });
+  const preSummary = JSON.stringify(pre);
 
   try {
     db.prepare('UPDATE join_requests SET pre_summary=? WHERE id=?').run(preSummary, id);
