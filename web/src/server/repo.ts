@@ -437,7 +437,8 @@ function getProjectBySlug(slug: string) {
 
 export function listProjects() {
   ensureDogfoodA2aSiteProject();
-  ensureShowcaseDemoProject();
+  // NOTE: showcase demo project seeding disabled (cleanup task: remove demo/test artifacts from DB)
+  // ensureShowcaseDemoProject();
   ensureScenarioSeedProjects();
   ensurePhase43Enrichment();
   const db = getDb();
