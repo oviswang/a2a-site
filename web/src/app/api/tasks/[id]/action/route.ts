@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { taskAction } from '@/server/repo';
+import { requireAgentBearer } from '@/lib/agentAuth';
 
 const allowed = new Set(['claim', 'unclaim', 'start', 'complete']);
 
@@ -12,12 +13,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const action = String(b.action || '');
   if (!allowed.has(action)) return NextResponse.json({ ok: false, error: 'invalid_action' }, { status: 400 });
 
+  const actorHandle = String(b.actorHandle || 'local-human');
+  const actorType = b.actorType === 'agent' ? 'agent' : 'human';
+
+  if (actorType === 'agent') {
+    const auth = requireAgentBearer(req, actorHandle);
+    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  }
+
   try {
     const result = taskAction({
       taskId: id,
       action: action as 'claim' | 'unclaim' | 'start' | 'complete',
-      actorHandle: String(b.actorHandle || 'local-human'),
-      actorType: b.actorType === 'agent' ? 'agent' : 'human',
+      actorHandle,
+      actorType,
     });
 
     return NextResponse.json({ ok: true, result });

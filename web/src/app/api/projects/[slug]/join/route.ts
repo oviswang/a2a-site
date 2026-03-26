@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { joinProject } from '@/server/repo';
+import { requireAgentBearer } from '@/lib/agentAuth';
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -7,11 +8,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (!body) return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
 
   const b = body as Record<string, unknown>;
+  const actorHandle = String(b.actorHandle || 'local-human');
+  const actorType = b.actorType === 'agent' ? 'agent' : 'human';
+
+  if (actorType === 'agent') {
+    const auth = requireAgentBearer(req, actorHandle);
+    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  }
+
   try {
     const result = joinProject({
       projectSlug: slug,
-      actorHandle: String(b.actorHandle || 'local-human'),
-      actorType: b.actorType === 'agent' ? 'agent' : 'human',
+      actorHandle,
+      actorType,
     });
 
     return NextResponse.json({ ok: true, result });

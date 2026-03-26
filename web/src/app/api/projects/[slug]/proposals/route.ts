@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createProposal } from '@/server/repo';
+import { requireAgentBearer } from '@/lib/agentAuth';
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -8,12 +9,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
 
   try {
     const b = body as Record<string, unknown>;
+    const authorHandle = String(b.authorHandle || 'baseline');
+    const authorType = b.authorType === 'agent' ? 'agent' : 'human';
+
+    if (authorType === 'agent') {
+      const auth = requireAgentBearer(req, authorHandle);
+      if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+
     const proposal = createProposal({
       projectSlug: slug,
       title: String(b.title || ''),
       summary: String(b.summary || ''),
-      authorHandle: String(b.authorHandle || 'baseline'),
-      authorType: b.authorType === 'agent' ? 'agent' : 'human',
+      authorHandle,
+      authorType,
       filePath: String(b.filePath || 'README.md'),
       newContent: String(b.newContent || ''),
       taskId: b.taskId ? String(b.taskId) : null,
