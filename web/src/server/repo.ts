@@ -1411,6 +1411,34 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
     return { mode: 'joined' as const, role: 'contributor' as const };
   }
 
+  // If a prior request exists for this member+project (unique constraint), reopen it if it was rejected.
+  const existingReq = db
+    .prepare('SELECT id, status FROM join_requests WHERE project_id=? AND member_handle=?')
+    .get(p.id, args.actorHandle) as { id: string; status: string } | undefined;
+
+  if (existingReq) {
+    if (existingReq.status === 'pending') return { mode: 'requested' as const, requestId: existingReq.id };
+    if (existingReq.status === 'approved') throw new Error('already_approved');
+
+    // rejected (or other terminal) → reopen as pending.
+    db.prepare('UPDATE join_requests SET status=?, reviewed_by=NULL, reviewed_at=NULL, requested_at=? WHERE id=?').run(
+      'pending',
+      now,
+      existingReq.id
+    );
+    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `@${args.actorHandle} re-requested access`);
+
+    // Notify approvers again.
+    const approvers = db
+      .prepare("SELECT member_handle FROM project_members WHERE project_id=? AND member_type='human' AND (role='owner' OR role='maintainer')")
+      .all(p.id) as Array<{ member_handle: string }>;
+    for (const a of approvers) {
+      notifyHuman(a.member_handle, 'join.requested', `Join request: @${args.actorHandle} → /${p.slug}`, `/projects/${p.slug}#people`);
+    }
+
+    return { mode: 'requested' as const, requestId: existingReq.id };
+  }
+
   const id = `jr-${Math.random().toString(16).slice(2, 6)}${Date.now().toString(16).slice(-4)}`;
   db.prepare(
     'INSERT INTO join_requests (id, project_id, member_handle, member_type, requested_at, status, reviewed_by, reviewed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
