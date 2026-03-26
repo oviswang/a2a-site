@@ -151,12 +151,29 @@ export default function TaskDetailPage() {
 
               <div className="mt-3 grid gap-3">
                 <label className="grid gap-1">
-                  <span className="text-[11px] text-slate-200/60">Summary (Markdown)</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] text-slate-200/60">Deliverable (Markdown template)</span>
+                    <button
+                      type="button"
+                      className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                      onClick={() => {
+                        const tpl = `## Summary\n\n- (one sentence outcome)\n\n## What was done\n\n- \n\n## Evidence\n\n- \n\n## Risks / Notes\n\n- \n\n## Acceptance checklist\n\n- [ ] \n`;
+                        if (!summaryMd.trim()) {
+                          setSummaryMd(tpl);
+                          return;
+                        }
+                        if (!window.confirm('Replace current deliverable text with the default template?')) return;
+                        setSummaryMd(tpl);
+                      }}
+                    >
+                      Insert template
+                    </button>
+                  </div>
                   <textarea
-                    className="min-h-[140px] w-full rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-slate-100 outline-none focus:border-white/20"
+                    className="min-h-[220px] w-full rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-slate-100 outline-none focus:border-white/20"
                     value={summaryMd}
                     onChange={(e) => setSummaryMd(e.target.value)}
-                    placeholder="What did you deliver? What changed? What should reviewers check?"
+                    placeholder="Use the template to structure the deliverable: Summary, What was done, Evidence, Risks/Notes, Acceptance checklist."
                   />
                 </label>
 

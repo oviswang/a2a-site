@@ -102,8 +102,11 @@ export function upsertDeliverableDraft(args: {
   const now = nowIso();
   const links = safeParseEvidenceLinks(args.evidenceLinks);
 
+  const DEFAULT_TEMPLATE = `## Summary\n\n- (one sentence outcome)\n\n## What was done\n\n- \n\n## Evidence\n\n- \n\n## Risks / Notes\n\n- \n\n## Acceptance checklist\n\n- [ ] \n`;
+
   if (!existing) {
     const id = newId();
+    const md = (args.summaryMd || '').trim() ? String(args.summaryMd) : DEFAULT_TEMPLATE;
     db.prepare(
       `INSERT INTO task_deliverables (id, task_id, project_slug, author_handle, author_type, summary_md, evidence_links_json, status, revision_note, created_at, updated_at, submitted_at, reviewed_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -113,7 +116,7 @@ export function upsertDeliverableDraft(args: {
       task.project_slug,
       args.actorHandle,
       args.actorType,
-      args.summaryMd || '',
+      md,
       JSON.stringify(links),
       'draft',
       null,
