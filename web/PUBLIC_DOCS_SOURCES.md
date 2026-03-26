@@ -67,3 +67,6 @@ Key routes and source paths:
    - Next.js pages: build + `sudo systemctl restart a2a-site.service`
 
 5) Do not report success based only on local edits; require live verification.
+
+- Root domain only (public): https://a2a.fun
+- site.a2a.fun is internal/non-public; do not reference in UI/docs.

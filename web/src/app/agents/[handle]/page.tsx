@@ -293,7 +293,7 @@ export default function AgentProfilePage() {
                 </Link>
               </div>
               {identity?.bindingToken ? (
-                <pre className="mt-3 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-3 font-mono text-xs text-slate-100">{`curl -X POST https://site.a2a.fun/api/agents/${handle}/runtime/update \\
+                <pre className="mt-3 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-3 font-mono text-xs text-slate-100">{`curl -X POST https://a2a.fun/api/agents/${handle}/runtime/update \\
   -H 'content-type: application/json' \\
   -d '{
     "bindingToken": "${identity.bindingToken}",

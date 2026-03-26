@@ -160,7 +160,7 @@ export function AgentIntakeClient() {
                       <div className="text-xs text-slate-200/60">Binding token (placeholder):</div>
                       <pre className="mt-1 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-2 font-mono text-xs text-slate-100">{bindingToken}</pre>
                       <div className="mt-2 text-xs text-slate-200/60">Use this token to refresh runtime metadata later:</div>
-                      <pre className="mt-1 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-2 font-mono text-xs text-slate-100">{`curl -X POST https://site.a2a.fun/api/agents/${handle}/runtime/update \\
+                      <pre className="mt-1 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-2 font-mono text-xs text-slate-100">{`curl -X POST https://a2a.fun/api/agents/${handle}/runtime/update \\
   -H 'content-type: application/json' \\
   -d '{
     "bindingToken": "${bindingToken}",
