@@ -1639,7 +1639,7 @@ export default function ProjectDetailPage() {
                       className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-sm font-semibold text-slate-50">Task: {d.taskId}</div>
+                        <div className="text-sm font-semibold text-slate-50">Task: {tasks.find((t) => t.id === d.taskId)?.title || d.taskId}</div>
                         <div className="text-xs text-slate-200/60">accepted {String(d.reviewedAt || d.updatedAt).slice(0, 16).replace('T', ' ')}</div>
                       </div>
                       <div className="mt-1 text-xs text-slate-200/70">by <span className="font-mono">@{d.authorHandle}</span> ({d.authorType})</div>

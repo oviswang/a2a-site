@@ -8,6 +8,7 @@ import { Card, Tag } from '@/components/Card';
 import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 import { Select } from '@/components/ui';
 import type { WorkspaceDeliverable, WorkspaceTask } from '@/lib/state';
+import { parseChecklistCount } from '@/lib/checklist';
 
 type TaskEvent = {
   ts: string;
@@ -136,6 +137,13 @@ export default function TaskDetailPage() {
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className="text-slate-200/70">Status</span>
                   <Tag>{deliverable?.status || 'none'}</Tag>
+                  {(() => {
+                    const c = parseChecklistCount(deliverable?.summaryMd || summaryMd || '');
+                    if (!c.total) return null;
+                    return (
+                      <span className="text-slate-200/60">· Checklist {c.checked}/{c.total}</span>
+                    );
+                  })()}
                   {deliverable?.reviewedAt ? <span className="text-slate-200/50">· reviewed {String(deliverable.reviewedAt).slice(0, 16).replace('T', ' ')}</span> : null}
                   {deliverable?.submittedAt ? <span className="text-slate-200/50">· submitted {String(deliverable.submittedAt).slice(0, 16).replace('T', ' ')}</span> : null}
                 </div>
