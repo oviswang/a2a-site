@@ -75,6 +75,7 @@ export type WorkspaceProject = {
 export type WorkspaceTask = {
   id: string;
   projectSlug: string;
+  parentTaskId: string | null;
   title: string;
   description: string;
   status: 'open' | 'claimed' | 'in_progress' | 'completed' | string;

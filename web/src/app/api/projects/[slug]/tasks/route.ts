@@ -19,6 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   try {
     const task = createTask({
       projectSlug: slug,
+      parentTaskId: b.parentTaskId ? String(b.parentTaskId) : null,
       title: String(b.title || ''),
       description: b.description ? String(b.description) : '',
       filePath: b.filePath ? String(b.filePath) : null,

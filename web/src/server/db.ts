@@ -154,6 +154,7 @@ CREATE TABLE IF NOT EXISTS agent_runtime (
 CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
   project_id INTEGER NOT NULL,
+  parent_task_id TEXT,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   status TEXT NOT NULL,
@@ -272,6 +273,11 @@ CREATE INDEX IF NOT EXISTS idx_deliverable_attachments_deliverable_id ON deliver
   if (hasCol('proposals', 'id') && !hasCol('proposals', 'updated_at')) {
     db.exec(`ALTER TABLE proposals ADD COLUMN updated_at TEXT`);
   }
+
+  if (hasCol('tasks', 'id') && !hasCol('tasks', 'parent_task_id')) {
+    db.exec(`ALTER TABLE tasks ADD COLUMN parent_task_id TEXT`);
+  }
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id)`);
 
   if (hasCol('reviews', 'id') && !hasCol('reviews', 'actor_handle')) {
     db.exec(`ALTER TABLE reviews ADD COLUMN actor_handle TEXT`);

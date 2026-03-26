@@ -28,6 +28,9 @@ export default function TaskDetailPage() {
   const [events, setEvents] = useState<TaskEvent[]>([]);
   const [deliverable, setDeliverable] = useState<WorkspaceDeliverable | null>(null);
 
+  const [children, setChildren] = useState<WorkspaceTask[]>([]);
+  const [rollup, setRollup] = useState<{ total: number; open: number; inProgressOrClaimed: number; completed: number; submitted: number; changesRequested: number; accepted: number } | null>(null);
+
   const [summaryMd, setSummaryMd] = useState('');
   const [linksText, setLinksText] = useState('');
   const [revNote, setRevNote] = useState('');
@@ -72,6 +75,14 @@ export default function TaskDetailPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => setAttachments((j?.attachments || []) as any[]))
       .catch(() => void 0);
+
+    fetch(`/api/tasks/${encodeURIComponent(id)}/children`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        setChildren((j?.children || []) as WorkspaceTask[]);
+        setRollup(j?.rollup || null);
+      })
+      .catch(() => void 0);
   }, [id]);
 
   const kinds = useMemo(() => Array.from(new Set(events.map((e) => e.kind))).sort(), [events]);
@@ -86,7 +97,7 @@ export default function TaskDetailPage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title={task ? task.title : `Task ${id}`}
-          subtitle={task ? `/${task.projectSlug} · ${task.status}` : 'Loading…'}
+          subtitle={task ? `/${task.projectSlug} · ${task.status}${task.parentTaskId ? ` · child of ${task.parentTaskId}` : ''}` : 'Loading…'}
           breadcrumbs={
             <Breadcrumbs
               items={[
@@ -101,6 +112,57 @@ export default function TaskDetailPage() {
 
         {task ? (
           <>
+            {task.parentTaskId ? (
+              <Card title="Parent task">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm text-slate-200/80">This task is a child of:</div>
+                  <Link className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10" href={`/tasks/${encodeURIComponent(task.parentTaskId)}`}>
+                    Open parent {task.parentTaskId}
+                  </Link>
+                </div>
+              </Card>
+            ) : null}
+
+            {!task.parentTaskId ? (
+              <Card title="Child tasks (roll-up)">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-xs text-slate-200/70">Decompose work into child tasks and track progress here.</div>
+                  <Link className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10" href={`/projects/${task.projectSlug}#tasks`}>
+                    Create child task
+                  </Link>
+                </div>
+
+                <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/80">
+                  {rollup ? (
+                    <div className="flex flex-wrap gap-3">
+                      <span><span className="text-slate-200/60">children</span> {rollup.total}</span>
+                      <span><span className="text-slate-200/60">open</span> {rollup.open}</span>
+                      <span><span className="text-slate-200/60">in progress/claimed</span> {rollup.inProgressOrClaimed}</span>
+                      <span><span className="text-slate-200/60">completed</span> {rollup.completed}</span>
+                      <span><span className="text-slate-200/60">deliverables accepted</span> {rollup.accepted}</span>
+                      <span><span className="text-slate-200/60">under review</span> {rollup.submitted}</span>
+                      <span><span className="text-slate-200/60">changes requested</span> {rollup.changesRequested}</span>
+                    </div>
+                  ) : (
+                    <div className="text-slate-200/60">No roll-up yet.</div>
+                  )}
+                </div>
+
+                <div className="mt-3 grid gap-2">
+                  {children.map((c) => (
+                    <Link key={c.id} href={`/tasks/${encodeURIComponent(c.id)}`} className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-sm font-semibold text-slate-50">{c.title}</div>
+                        <div className="text-xs text-slate-200/60">{c.status}</div>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-200/60 font-mono">{c.id}</div>
+                    </Link>
+                  ))}
+                  {children.length === 0 ? <div className="text-xs text-slate-200/60">No child tasks yet.</div> : null}
+                </div>
+              </Card>
+            ) : null}
+
             <Card
               title="Task"
               footer={

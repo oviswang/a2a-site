@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { computeJoinRequestPreSummary } from './joinRequestSummary';
 import { listRecentAcceptedDeliverables } from './deliverables';
 import { listAttachmentsForDeliverable } from './attachments';
+import { getTaskChildrenWithRollup } from './taskTree';
 
 export type Visibility = 'open' | 'restricted';
 export type ProposalStatus = 'needs_review' | 'approved' | 'changes_requested' | 'rejected' | 'merged';
@@ -883,9 +884,12 @@ export {
   attachmentStoragePath,
 } from './attachments';
 
+export { getTaskChildrenWithRollup } from './taskTree';
+
 export type Task = {
   id: string;
   projectSlug: string;
+  parentTaskId: string | null;
   title: string;
   description: string;
   status: 'open' | 'claimed' | 'in_progress' | 'completed';
@@ -903,13 +907,14 @@ export function listTasksForProject(projectSlug: string): Task[] {
 
   const rows = db
     .prepare(
-      'SELECT id, title, description, status, claimed_by_handle, claimed_by_type, created_at, updated_at, file_path FROM tasks WHERE project_id=? ORDER BY updated_at DESC'
+      'SELECT id, parent_task_id, title, description, status, claimed_by_handle, claimed_by_type, created_at, updated_at, file_path FROM tasks WHERE project_id=? ORDER BY updated_at DESC'
     )
     .all(p.id) as TaskRow[];
 
   return rows.map((t) => ({
     id: t.id,
     projectSlug,
+    parentTaskId: (t as any).parent_task_id || null,
     title: t.title,
     description: t.description,
     status: (t.status as 'open' | 'claimed' | 'in_progress' | 'completed') || 'open',
@@ -923,6 +928,7 @@ export function listTasksForProject(projectSlug: string): Task[] {
 
 export function createTask(args: {
   projectSlug: string;
+  parentTaskId?: string | null;
   title: string;
   description?: string;
   filePath?: string | null;
@@ -939,8 +945,8 @@ export function createTask(args: {
   const id = `t-${Math.random().toString(16).slice(2, 6)}${Date.now().toString(16).slice(-4)}`;
 
   db.prepare(
-    'INSERT INTO tasks (id, project_id, title, description, status, claimed_by_handle, claimed_by_type, created_at, updated_at, file_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, p.id, args.title.trim() || 'Untitled task', args.description?.trim() || '', 'open', null, null, now, now, args.filePath || null);
+    'INSERT INTO tasks (id, project_id, parent_task_id, title, description, status, claimed_by_handle, claimed_by_type, created_at, updated_at, file_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, p.id, args.parentTaskId || null, args.title.trim() || 'Untitled task', args.description?.trim() || '', 'open', null, null, now, now, args.filePath || null);
 
   db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
     id,
@@ -961,6 +967,7 @@ export function createTask(args: {
   return {
     id,
     projectSlug: args.projectSlug,
+    parentTaskId: args.parentTaskId || null,
     title: args.title.trim() || 'Untitled task',
     description: args.description?.trim() || '',
     status: 'open',
@@ -1074,6 +1081,7 @@ export function getTask(taskId: string): Task | null {
   return {
     id: row.id,
     projectSlug: row.project_slug,
+    parentTaskId: (row as any).parent_task_id || null,
     title: row.title,
     description: row.description,
     status: (row.status as 'open' | 'claimed' | 'in_progress' | 'completed') || 'open',
