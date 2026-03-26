@@ -176,6 +176,25 @@ CREATE TABLE IF NOT EXISTS task_events (
   proposal_id TEXT,
   FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS task_deliverables (
+  id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL UNIQUE,
+  project_slug TEXT NOT NULL,
+  author_handle TEXT NOT NULL,
+  author_type TEXT NOT NULL,
+  summary_md TEXT NOT NULL,
+  evidence_links_json TEXT NOT NULL,
+  status TEXT NOT NULL,
+  revision_note TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  submitted_at TEXT,
+  reviewed_at TEXT,
+  FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_deliverables_project_slug_status_reviewed_at ON task_deliverables(project_slug, status, reviewed_at);
 `);
 
   // Lightweight migrations for additive columns.
@@ -259,6 +278,27 @@ CREATE TABLE IF NOT EXISTS task_events (
   if (hasCol('join_requests', 'id') && !hasCol('join_requests', 'pre_summary')) {
     db.exec(`ALTER TABLE join_requests ADD COLUMN pre_summary TEXT`);
   }
+
+  // Ensure task_deliverables exists for older DBs created before this table was added.
+  db.exec(`
+CREATE TABLE IF NOT EXISTS task_deliverables (
+  id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL UNIQUE,
+  project_slug TEXT NOT NULL,
+  author_handle TEXT NOT NULL,
+  author_type TEXT NOT NULL,
+  summary_md TEXT NOT NULL,
+  evidence_links_json TEXT NOT NULL,
+  status TEXT NOT NULL,
+  revision_note TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  submitted_at TEXT,
+  reviewed_at TEXT,
+  FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_task_deliverables_project_slug_status_reviewed_at ON task_deliverables(project_slug, status, reviewed_at);
+`);
 
   _db = db;
   return db;

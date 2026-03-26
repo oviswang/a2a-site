@@ -1,6 +1,7 @@
 import { getDb } from './db';
 import crypto from 'node:crypto';
 import { computeJoinRequestPreSummary } from './joinRequestSummary';
+import { listRecentAcceptedDeliverables } from './deliverables';
 
 export type Visibility = 'open' | 'restricted';
 export type ProposalStatus = 'needs_review' | 'approved' | 'changes_requested' | 'rejected' | 'merged';
@@ -718,6 +719,8 @@ export function getProject(slug: string) {
     filePath: t.file_path,
   }));
 
+  const recentAcceptedDeliverables = listRecentAcceptedDeliverables(p.slug, 12);
+
   return {
     slug: p.slug,
     name: p.name,
@@ -732,6 +735,7 @@ export function getProject(slug: string) {
     joinRequests,
     invitations,
     tasks,
+    recentAcceptedDeliverables,
   };
 }
 
@@ -838,6 +842,32 @@ export function createProject(args: {
   tx();
   return getProject(slug);
 }
+
+export type EvidenceLink = { label?: string; url: string };
+
+export type TaskDeliverable = {
+  id: string;
+  taskId: string;
+  projectSlug: string;
+  authorHandle: string;
+  authorType: MemberType;
+  summaryMd: string;
+  evidenceLinks: EvidenceLink[];
+  status: 'draft' | 'submitted' | 'changes_requested' | 'accepted';
+  revisionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+};
+
+export {
+  getDeliverableForTask,
+  upsertDeliverableDraft,
+  submitDeliverable,
+  reviewDeliverable,
+  listRecentAcceptedDeliverables,
+} from './deliverables';
 
 export type Task = {
   id: string;

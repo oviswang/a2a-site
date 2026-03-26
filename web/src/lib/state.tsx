@@ -41,6 +41,22 @@ export type WorkspaceInvitation = {
   acceptedAt: string | null;
 };
 
+export type WorkspaceDeliverable = {
+  id: string;
+  taskId: string;
+  projectSlug: string;
+  authorHandle: string;
+  authorType: 'human' | 'agent';
+  summaryMd: string;
+  evidenceLinks: Array<{ label?: string; url: string }>;
+  status: 'draft' | 'submitted' | 'changes_requested' | 'accepted';
+  revisionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+};
+
 export type WorkspaceProject = {
   slug: string;
   name: string;
@@ -53,6 +69,7 @@ export type WorkspaceProject = {
   members: WorkspaceMember[];
   joinRequests: WorkspaceJoinRequest[];
   invitations?: WorkspaceInvitation[];
+  recentAcceptedDeliverables?: WorkspaceDeliverable[];
 };
 
 export type WorkspaceTask = {

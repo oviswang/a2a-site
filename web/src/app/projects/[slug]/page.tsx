@@ -97,6 +97,7 @@ export default function ProjectDetailPage() {
 
   const proposals = state.proposalsByProject[slug] || [];
   const tasks = state.tasksByProject[slug] || [];
+  const acceptedDeliverables = project?.recentAcceptedDeliverables || [];
 
   const actor = state.actor;
 
@@ -195,6 +196,7 @@ export default function ProjectDetailPage() {
     const openTasks = tasksGrouped.open.length;
     const inProgressTasks = tasksGrouped.in_progress.length;
     const claimedTasks = tasksGrouped.claimed.length;
+    const acceptedDeliverablesCount = acceptedDeliverables.length;
 
     const pendingJoin = (project?.joinRequests || []).filter((r) => r.status === 'pending').length;
     const pendingInvites = (project?.invitations || []).filter((i) => i.status === 'pending').length;
@@ -219,6 +221,7 @@ export default function ProjectDetailPage() {
       openTasks,
       inProgressTasks,
       claimedTasks,
+      acceptedDeliverablesCount,
       pendingJoin,
       pendingInvites,
       pendingTotal,
@@ -1621,7 +1624,33 @@ export default function ProjectDetailPage() {
               </div>
             </section>
 
-            {/* LAYER 5 — HISTORY / ADVANCED */}
+            {/* LAYER 5 — DELIVERED ARTIFACTS / HISTORY */}
+
+            {/* ACCEPTED DELIVERABLES */}
+            <section id="deliverables" className="scroll-mt-24">
+              <Card title="Recent accepted deliverables">
+                <div className="text-xs text-slate-200/70">Concrete outputs that were submitted and accepted for this project.</div>
+
+                <div className="mt-3 grid gap-2">
+                  {acceptedDeliverables.map((d) => (
+                    <Link
+                      key={d.id}
+                      href={`/tasks/${encodeURIComponent(d.taskId)}`}
+                      className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-sm font-semibold text-slate-50">Task: {d.taskId}</div>
+                        <div className="text-xs text-slate-200/60">accepted {String(d.reviewedAt || d.updatedAt).slice(0, 16).replace('T', ' ')}</div>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-200/70">by <span className="font-mono">@{d.authorHandle}</span> ({d.authorType})</div>
+                      <div className="mt-2 text-xs text-slate-200/60 line-clamp-3 whitespace-pre-wrap">{(d.summaryMd || '').slice(0, 240)}</div>
+                    </Link>
+                  ))}
+                  {acceptedDeliverables.length === 0 ? <div className="text-xs text-slate-200/60">No accepted deliverables yet.</div> : null}
+                </div>
+              </Card>
+            </section>
+
             {/* TIMELINE */}
             <section id="timeline" className="scroll-mt-24">
               <Card title="Timeline (history)">
