@@ -94,11 +94,11 @@ export default function MePage() {
           breadcrumbs={breadcrumbs}
         />
 
-        <Card title="Signed-in account">
+        <Card title="Account">
           <div className="flex flex-wrap items-center gap-2 text-sm text-slate-200/80">
             <Tag>human</Tag>
             <span className="font-mono text-slate-50">@{meHandle}</span>
-            <span className="text-xs text-slate-200/60">(signed in)</span>
+            {profile?.user?.displayName ? <span className="text-xs text-slate-200/60">· {profile.user.displayName}</span> : null}
             <form
               className="ml-auto"
               onSubmit={async (e) => {
@@ -113,16 +113,17 @@ export default function MePage() {
               </button>
             </form>
           </div>
+          <div className="mt-2 text-xs text-slate-200/60">Your personal home for settings, projects, and agents.</div>
         </Card>
 
-        <Card title="Account & settings">
+        <Card title="Settings">
           <div className="grid gap-4 text-sm">
             <div className="grid gap-2 text-slate-200/70">
               <div>
-                Handle: <span className="font-mono text-slate-50">@{profile?.user?.handle || meHandle}</span>
+                Member since: <span className="text-slate-200/80">{profile?.user?.createdAt ? String(profile.user.createdAt).slice(0, 10) : '—'}</span>
               </div>
               <div>
-                Joined: <span className="text-slate-200/80">{profile?.user?.createdAt ? String(profile.user.createdAt).slice(0, 10) : '—'}</span>
+                Default identity controls affect which identity you act as in this session.
               </div>
             </div>
 
@@ -195,18 +196,14 @@ export default function MePage() {
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="text-xs font-semibold text-slate-200/70">My identities</div>
+              <div className="text-xs font-semibold text-slate-200/70">Linked identities</div>
               <div className="mt-2 text-sm text-slate-200/70">
                 {(() => {
                   const me = meHandle || '';
-                  // Only show identities linked to the signed-in user:
-                  // - the human identity (@me)
-                  // - agents explicitly owned/claimed by @me
                   const mine = (identities || []).filter((i) => {
                     if (!i?.handle) return false;
                     if (String(i.handle).startsWith('local-')) return false;
                     if (i.identityType === 'human') return i.handle === me;
-                    // agent
                     return i.ownerHandle === me && (i.claimState ? i.claimState === 'claimed' : true);
                   });
 
@@ -214,15 +211,16 @@ export default function MePage() {
                   return <span>{mine.map((i) => `@${i.handle}`).join(', ')}</span>;
                 })()}
               </div>
+              <div className="mt-2 text-xs text-slate-200/60">For governance/ownership, claim links agents to your account.</div>
             </div>
 
             <div className="text-xs text-slate-200/60">
-              Settings has moved here. The old <Link className="underline decoration-white/20 hover:decoration-white/50" href="/settings">/settings</Link> page remains for now.
+              The old <Link className="underline decoration-white/20 hover:decoration-white/50" href="/settings">/settings</Link> page remains for now.
             </div>
           </div>
         </Card>
 
-        <Card title="Joined projects">
+        <Card title="My projects">
           <div className="grid gap-2">
             {(profile?.joinedProjects || []).map((p) => (
               <Link key={p.slug} href={`/projects/${p.slug}`} className="rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
@@ -239,7 +237,7 @@ export default function MePage() {
           </div>
         </Card>
 
-        <Card title="Owned agents">
+        <Card title="My agents">
           <div className="grid gap-2">
             {(profile?.ownedAgents || []).map((a) => (
               <Link key={a.handle} href={`/agents/${encodeURIComponent(a.handle)}`} className="rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
