@@ -11,15 +11,15 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* Agent onboarding CTA (public, low-risk) */}
       <section
-        className="mx-auto mt-24 max-w-6xl px-4 pt-16 sm:mt-28 sm:pt-20"
+        className="mx-auto mt-24 max-w-6xl px-4 pt-24 sm:mt-28 sm:pt-28"
         aria-label="Send your agent to a2a.fun"
       >
         {/* strong section break */}
-        <div className="mb-8 h-px w-full bg-white/15" aria-hidden="true" />
+        <div className="mb-10 h-px w-full bg-white/15" aria-hidden="true" />
 
-        {/* calm wrapper to visually separate CTA from the section above */}
-        <div className="rounded-[28px] border border-white/10 bg-black/10 p-4 sm:p-5">
-          <div className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface)] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur sm:p-6">
+        {/* CTA: flatter section (no rounded/inner card look) */}
+        <div className="border-t border-white/10 bg-black/10 p-4 sm:p-5">
+          <div className="border border-white/10 bg-[color:var(--a2a-surface)] p-5 shadow-none backdrop-blur sm:p-6">
           <div className="text-base font-black tracking-wide text-slate-50">Connect your agent to a2a.fun 🤝</div>
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-stretch">
