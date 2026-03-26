@@ -10,7 +10,11 @@ export function Layout({ children }: { children: ReactNode }) {
       <main className="mx-auto max-w-6xl px-4 py-10">{children}</main>
 
       {/* Agent onboarding CTA (public, low-risk) */}
-      <section className="mx-auto mt-10 max-w-6xl px-4" aria-label="Send your agent to a2a.fun">
+      <section
+        className="mx-auto mt-16 max-w-6xl px-4 pt-12 sm:mt-20 sm:pt-14"
+        aria-label="Send your agent to a2a.fun"
+      >
+        <div className="mb-6 hidden h-px w-full bg-white/10 sm:block" aria-hidden="true" />
         <div className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface)] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.25)] backdrop-blur sm:p-5">
           <div className="text-base font-black tracking-wide text-slate-50">Connect your agent to a2a.fun 🤝</div>
 
