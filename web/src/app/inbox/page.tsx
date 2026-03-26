@@ -20,6 +20,15 @@ type JoinRequest = {
   project: { slug: string; name: string; visibility: 'open' | 'restricted' };
 };
 
+type Invite = {
+  id: string;
+  status: string;
+  role: string;
+  inviter: { handle: string; type: 'human' | 'agent' };
+  project: { slug: string; name: string; visibility: 'open' | 'restricted' };
+  createdAt: string;
+};
+
 export default function InboxPage() {
   const { state } = useWorkspace();
   const [items, setItems] = useState<N[]>([]);
@@ -27,6 +36,7 @@ export default function InboxPage() {
   const [toast, setToast] = useState<{ message: string; variant?: 'info' | 'success' | 'error' } | null>(null);
 
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
+  const [invites, setInvites] = useState<Invite[]>([]);
 
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('unread');
   const [kind, setKind] = useState<'all' | string>('all');
@@ -47,6 +57,16 @@ export default function InboxPage() {
       setJoinRequests((jr?.requests || []) as JoinRequest[]);
     } else {
       setJoinRequests([]);
+    }
+
+    // Invites are delivered to the invitee's Inbox (human handle or agent handle).
+    if (state.actor.handle && state.actor.handle !== 'guest' && state.actor.handle !== 'local-human') {
+      const inv = await fetch(`/api/invites?inviteeHandle=${encodeURIComponent(state.actor.handle)}`, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      setInvites((inv?.invites || []) as Invite[]);
+    } else {
+      setInvites([]);
     }
   }
 
@@ -173,6 +193,67 @@ export default function InboxPage() {
                         }}
                       >
                         Reject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null}
+
+        {invites.length ? (
+          <Card title="Invites">
+            <div className="grid gap-2">
+              {invites.map((inv) => (
+                <div key={inv.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm text-slate-50">
+                        <span className="text-slate-200/60">Invited by </span>
+                        <span className="font-mono">@{inv.inviter.handle}</span>
+                        <span className="text-slate-200/60"> as {inv.role}</span>
+                        <span className="text-slate-200/40"> → </span>
+                        <Link className="underline decoration-white/20 hover:decoration-white/50" href={`/projects/${inv.project.slug}#people`}>
+                          /{inv.project.slug}
+                        </Link>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-200/60">Project: {inv.project.name}</div>
+                      <div className="mt-1 text-xs text-slate-200/60">Created: {String(inv.createdAt).slice(0, 16).replace('T', ' ')}</div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        className="rounded-xl bg-emerald-400/15 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-400/20"
+                        onClick={async () => {
+                          const res = await fetch(`/api/invites/${encodeURIComponent(inv.id)}/respond`, {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({ action: 'accept', actorHandle: state.actor.handle, actorType: state.actor.actorType }),
+                          });
+                          const ok = res.ok;
+                          setToast(ok ? { message: 'Invite accepted.', variant: 'success' } : { message: 'Accept failed.', variant: 'error' });
+                          await refresh();
+                        }}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-xl bg-rose-500/15 px-3 py-2 text-xs font-semibold text-rose-100 hover:bg-rose-500/20"
+                        onClick={async () => {
+                          const res = await fetch(`/api/invites/${encodeURIComponent(inv.id)}/respond`, {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({ action: 'decline', actorHandle: state.actor.handle, actorType: state.actor.actorType }),
+                          });
+                          const ok = res.ok;
+                          setToast(ok ? { message: 'Invite declined.', variant: 'success' } : { message: 'Decline failed.', variant: 'error' });
+                          await refresh();
+                        }}
+                      >
+                        Decline
                       </button>
                     </div>
                   </div>

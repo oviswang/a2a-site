@@ -1504,7 +1504,7 @@ export function reviewJoinRequest(args: {
   return { ok: true };
 }
 
-export type InvitationStatus = 'pending' | 'accepted' | 'revoked';
+export type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked';
 
 export function listInvitations(projectSlug: string) {
   const db = getDb();
@@ -1530,7 +1530,7 @@ export function listInvitations(projectSlug: string) {
     handle: r.invitee_handle,
     memberType: (r.invitee_type === 'agent' ? 'agent' : 'human') as MemberType,
     role: (r.role === 'owner' ? 'owner' : r.role === 'maintainer' ? 'maintainer' : 'contributor') as MemberRole,
-    status: (r.status === 'accepted' ? 'accepted' : r.status === 'revoked' ? 'revoked' : 'pending') as InvitationStatus,
+    status: (r.status === 'accepted' ? 'accepted' : r.status === 'declined' ? 'declined' : r.status === 'revoked' ? 'revoked' : 'pending') as InvitationStatus,
     createdByHandle: r.created_by_handle,
     createdByType: (r.created_by_type === 'agent' ? 'agent' : 'human') as MemberType,
     createdAt: r.created_at,
@@ -1569,6 +1569,9 @@ export function createInvitation(args: {
 
   if (args.inviteeType === 'human') {
     notifyHuman(args.inviteeHandle, 'invite.created', `You were invited to /${p.slug} as ${args.role}`, `/projects/${p.slug}#people`);
+  } else {
+    // For agents: deliver into the agent's own inbox feed (userHandle = agent handle).
+    notifyHuman(args.inviteeHandle, 'invite.created', `Invite: /${p.slug} as ${args.role} (accept/decline in Inbox)`, `/inbox`);
   }
 
   return { ok: true };
@@ -1576,8 +1579,8 @@ export function createInvitation(args: {
 
 export function invitationAction(args: { id: string; action: 'revoke'; actorHandle: string }) {
   const db = getDb();
-  const inv = db.prepare('SELECT id, project_id, invitee_handle, status FROM invitations WHERE id=?').get(args.id) as
-    | { id: string; project_id: number; invitee_handle: string; status: string }
+  const inv = db.prepare('SELECT id, project_id, invitee_handle, invitee_type, role, status FROM invitations WHERE id=?').get(args.id) as
+    | { id: string; project_id: number; invitee_handle: string; invitee_type: string; role: string; status: string }
     | undefined;
   if (!inv) throw new Error('invite_not_found');
   if (!isProjectOwnerOrMaintainer(inv.project_id, args.actorHandle)) throw new Error('not_allowed');
@@ -1585,7 +1588,107 @@ export function invitationAction(args: { id: string; action: 'revoke'; actorHand
   const now = nowIso();
   db.prepare('UPDATE invitations SET status=? WHERE id=?').run('revoked', inv.id);
   db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(inv.project_id, now, `Invite revoked for @${inv.invitee_handle}`);
+
+  // Notify invitee (human only) that the invite was revoked.
+  if (inv.invitee_type === 'human') {
+    const slugRow = db.prepare('SELECT slug FROM projects WHERE id=?').get(inv.project_id) as { slug: string } | undefined;
+    if (slugRow) notifyHuman(inv.invitee_handle, 'invite.revoked', `Invite revoked: /${slugRow.slug}`, `/projects/${slugRow.slug}#people`);
+  }
+
   return { ok: true };
+}
+
+export function listInvitationsForInvitee(args: { inviteeHandle: string }) {
+  const db = getDb();
+  const h = normalizeUserHandle(args.inviteeHandle) || String(args.inviteeHandle || '').trim();
+  if (!h) throw new Error('invalid_invitee');
+
+  const rows = db
+    .prepare(
+      `SELECT
+         i.id AS id,
+         i.invitee_handle AS invitee_handle,
+         i.invitee_type AS invitee_type,
+         i.role AS role,
+         i.status AS status,
+         i.created_by_handle AS created_by_handle,
+         i.created_by_type AS created_by_type,
+         i.created_at AS created_at,
+         p.slug AS project_slug,
+         p.name AS project_name,
+         p.visibility AS visibility
+       FROM invitations i
+       JOIN projects p ON p.id = i.project_id
+       WHERE i.invitee_handle=?
+         AND i.status='pending'
+       ORDER BY i.created_at DESC
+       LIMIT 100`
+    )
+    .all(h) as Array<{
+    id: string;
+    invitee_handle: string;
+    invitee_type: string;
+    role: string;
+    status: string;
+    created_by_handle: string;
+    created_by_type: string;
+    created_at: string;
+    project_slug: string;
+    project_name: string;
+    visibility: string;
+  }>;
+
+  return rows.map((r) => ({
+    id: r.id,
+    status: (r.status === 'pending' ? 'pending' : 'pending') as InvitationStatus,
+    role: (r.role === 'owner' ? 'owner' : r.role === 'maintainer' ? 'maintainer' : 'contributor') as MemberRole,
+    invitee: { handle: r.invitee_handle, type: r.invitee_type === 'agent' ? 'agent' : 'human' },
+    inviter: { handle: r.created_by_handle, type: r.created_by_type === 'agent' ? 'agent' : 'human' },
+    createdAt: r.created_at,
+    project: { slug: r.project_slug, name: r.project_name, visibility: r.visibility === 'restricted' ? 'restricted' : 'open' },
+  }));
+}
+
+export function respondToInvitation(args: { id: string; action: 'accept' | 'decline'; actorHandle: string; actorType: MemberType }) {
+  const db = getDb();
+  const now = nowIso();
+
+  const inv = db
+    .prepare('SELECT id, project_id, invitee_handle, invitee_type, role, status FROM invitations WHERE id=?')
+    .get(args.id) as
+    | { id: string; project_id: number; invitee_handle: string; invitee_type: string; role: string; status: string }
+    | undefined;
+
+  if (!inv) throw new Error('invite_not_found');
+  if (inv.status !== 'pending') throw new Error('invite_not_pending');
+
+  // Only the invitee can accept/decline.
+  if (inv.invitee_handle !== args.actorHandle) throw new Error('not_invitee');
+
+  if (args.action === 'decline') {
+    db.prepare('UPDATE invitations SET status=?, accepted_at=NULL WHERE id=?').run('declined', inv.id);
+    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(inv.project_id, now, `Invite declined by @${inv.invitee_handle}`);
+    return { ok: true, status: 'declined' as const };
+  }
+
+  // accept
+  const role = (inv.role === 'owner' ? 'owner' : inv.role === 'maintainer' ? 'maintainer' : 'contributor') as MemberRole;
+  const memberType: MemberType = inv.invitee_type === 'agent' ? 'agent' : 'human';
+
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE invitations SET status=?, accepted_at=? WHERE id=?').run('accepted', now, inv.id);
+    db.prepare('INSERT OR IGNORE INTO project_members (project_id, member_handle, member_type, role, joined_at) VALUES (?, ?, ?, ?, ?)').run(
+      inv.project_id,
+      inv.invitee_handle,
+      memberType,
+      role,
+      now
+    );
+    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(inv.project_id, now, `@${inv.invitee_handle} joined (invite)`);
+  });
+
+  tx();
+  return { ok: true, status: 'accepted' as const, role };
 }
 
 export function memberAction(args: {
