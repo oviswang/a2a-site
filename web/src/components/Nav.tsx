@@ -111,7 +111,7 @@ export function Nav() {
         </div>
 
         {/* Mobile top-right: Inbox + Profile (icon buttons) */}
-        <div className="md:hidden flex items-center gap-4">
+        <div className="md:hidden flex items-center">
           <Link
             href="/inbox"
             aria-label="Inbox"
@@ -132,7 +132,7 @@ export function Nav() {
           <Link
             href={profileHref}
             aria-label="Profile"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-50 hover:bg-white/10"
+            className="ml-9 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-50 hover:bg-white/10"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="currentColor" strokeWidth="1.5" />
