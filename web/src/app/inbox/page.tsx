@@ -156,11 +156,19 @@ export default function InboxPage() {
         </div>
 
         {joinRequests.length ? (
-          <Card title="Access requests">
-            <div className="grid gap-2">
+          <div className="rounded-3xl border border-emerald-400/20 bg-emerald-400/5 p-4 backdrop-blur sm:p-5">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-50">Access requests</div>
+                <div className="mt-0.5 text-xs text-slate-200/70">Needs approval (restricted projects)</div>
+              </div>
+              <span className="rounded-full bg-emerald-400/10 px-2 py-0.5 text-xs text-emerald-100">{joinRequests.length}</span>
+            </div>
+
+            <div className="mt-3 grid gap-2">
               {joinRequests.map((jr) => (
-                <div key={jr.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                <div key={jr.id} className="rounded-2xl border border-emerald-400/20 bg-[color:var(--a2a-surface)] p-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <div className="text-sm text-slate-50">
                         <span className="font-mono">@{jr.requester.handle}</span>{' '}
@@ -170,24 +178,26 @@ export default function InboxPage() {
                           /{jr.project.slug}
                         </Link>
                       </div>
-                      <div className="mt-1 text-xs text-slate-200/60">Requested: {String(jr.requestedAt).slice(0, 16).replace('T', ' ')}</div>
-                      <div className="mt-1 text-xs text-slate-200/60">Project: {jr.project.name}</div>
+                      <div className="mt-1 text-xs text-slate-200/60">{jr.project.name} · requested {String(jr.requestedAt).slice(0, 16).replace('T', ' ')}</div>
+
                       {jr.preSummary ? (
                         <div className="mt-2 rounded-xl border border-white/10 bg-black/10 p-2 text-xs text-slate-200/70">
-                          <div>
-                            Fit: <span className="text-slate-50">{String(jr.preSummary.fit || 'unclear')}</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-slate-200/60">Fit:</span>
+                            <span className="text-slate-50">{String(jr.preSummary.fit || 'unclear')}</span>
+                            <span className="text-slate-200/40">·</span>
+                            <span className="text-slate-200/60">Recommendation:</span>
+                            <span className="text-slate-50">{String(jr.preSummary.recommendation || 'review')}</span>
                           </div>
-                          <div>
-                            Recommendation: <span className="text-slate-50">{String(jr.preSummary.recommendation || 'review')}</span>
-                          </div>
-                          {jr.preSummary.reason ? <div className="mt-1 text-slate-200/60">Reason: {String(jr.preSummary.reason)}</div> : null}
+                          {jr.preSummary.reason ? <div className="mt-1 text-slate-200/60">{String(jr.preSummary.reason)}</div> : null}
                         </div>
                       ) : null}
                     </div>
+
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        className="rounded-xl bg-emerald-400/15 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-400/20"
+                        className="rounded-xl bg-emerald-400/20 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-400/25"
                         onClick={async () => {
                           const res = await fetch(`/api/join-requests/${encodeURIComponent(jr.id)}/action`, {
                             method: 'POST',
@@ -217,20 +227,31 @@ export default function InboxPage() {
                       >
                         Reject
                       </button>
+                      <Link className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10" href={`/projects/${jr.project.slug}#people`}>
+                        Review
+                      </Link>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          </Card>
+          </div>
         ) : null}
 
         {invites.length ? (
-          <Card title="Invites">
-            <div className="grid gap-2">
+          <div className="rounded-3xl border border-sky-400/20 bg-sky-400/5 p-4 backdrop-blur sm:p-5">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-50">Invites</div>
+                <div className="mt-0.5 text-xs text-slate-200/70">Needs a response (accept/decline)</div>
+              </div>
+              <span className="rounded-full bg-sky-400/10 px-2 py-0.5 text-xs text-sky-100">{invites.length}</span>
+            </div>
+
+            <div className="mt-3 grid gap-2">
               {invites.map((inv) => (
-                <div key={inv.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                <div key={inv.id} className="rounded-2xl border border-sky-400/20 bg-[color:var(--a2a-surface)] p-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <div className="text-sm text-slate-50">
                         <span className="text-slate-200/60">Invited by </span>
@@ -241,14 +262,13 @@ export default function InboxPage() {
                           /{inv.project.slug}
                         </Link>
                       </div>
-                      <div className="mt-1 text-xs text-slate-200/60">Project: {inv.project.name}</div>
-                      <div className="mt-1 text-xs text-slate-200/60">Created: {String(inv.createdAt).slice(0, 16).replace('T', ' ')}</div>
+                      <div className="mt-1 text-xs text-slate-200/60">{inv.project.name} · invited {String(inv.createdAt).slice(0, 16).replace('T', ' ')}</div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        className="rounded-xl bg-emerald-400/15 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-400/20"
+                        className="rounded-xl bg-sky-400/20 px-3 py-2 text-xs font-semibold text-sky-100 hover:bg-sky-400/25"
                         onClick={async () => {
                           const res = await fetch(`/api/invites/${encodeURIComponent(inv.id)}/respond`, {
                             method: 'POST',
@@ -264,7 +284,7 @@ export default function InboxPage() {
                       </button>
                       <button
                         type="button"
-                        className="rounded-xl bg-rose-500/15 px-3 py-2 text-xs font-semibold text-rose-100 hover:bg-rose-500/20"
+                        className="rounded-xl bg-slate-50/10 px-3 py-2 text-xs font-semibold text-slate-50 hover:bg-slate-50/15"
                         onClick={async () => {
                           const res = await fetch(`/api/invites/${encodeURIComponent(inv.id)}/respond`, {
                             method: 'POST',
@@ -278,12 +298,15 @@ export default function InboxPage() {
                       >
                         Decline
                       </button>
+                      <Link className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10" href={`/projects/${inv.project.slug}#people`}>
+                        View
+                      </Link>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          </Card>
+          </div>
         ) : null}
 
         <Card title="Signals">
