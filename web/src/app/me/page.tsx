@@ -10,6 +10,10 @@ import { useWorkspace } from '@/lib/state';
 
 type WhoAmI = { signedIn?: boolean; handle?: string; actorType?: string };
 
+type User = { handle: string; defaultActorHandle: string | null; defaultActorType: string | null };
+
+type Identity = { handle: string; identityType: 'human' | 'agent'; ownerHandle: string | null };
+
 type UserProfile = {
   user: { id: number; handle: string; displayName: string | null; createdAt: string; defaultActorHandle: string | null; defaultActorType: string | null };
   joinedProjects: Array<{ slug: string; name: string; role: string; joinedAt: string }>;
@@ -22,6 +26,12 @@ export default function MePage() {
 
   const [who, setWho] = useState<WhoAmI | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  // Core settings content (merged into /me)
+  const [identities, setIdentities] = useState<Identity[]>([]);
+  const [defaultType, setDefaultType] = useState<'human' | 'agent'>('human');
+  const [defaultHandle, setDefaultHandle] = useState('');
+  const [msg, setMsg] = useState<string | null>(null);
 
   const signedIn = Boolean(who?.signedIn && who?.actorType === 'human' && who?.handle);
   const meHandle = signedIn ? String(who?.handle) : null;
@@ -37,9 +47,23 @@ export default function MePage() {
 
   useEffect(() => {
     if (!meHandle) return;
+
     fetch(`/api/users/${encodeURIComponent(meHandle)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => setProfile((j?.profile || null) as UserProfile | null))
+      .then((j) => {
+        const p = (j?.profile || null) as UserProfile | null;
+        setProfile(p);
+        const u = p?.user as unknown as User | undefined;
+        if (u) {
+          setDefaultType(u.defaultActorType === 'agent' ? 'agent' : 'human');
+          setDefaultHandle(u.defaultActorHandle || u.handle);
+        }
+      })
+      .catch(() => void 0);
+
+    fetch('/api/identities', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setIdentities((j?.identities || []) as Identity[]))
       .catch(() => void 0);
   }, [meHandle]);
 
@@ -91,24 +115,98 @@ export default function MePage() {
           </div>
         </Card>
 
-        <Card title="Profile">
-          <div className="grid gap-2 text-sm text-slate-200/70">
-            <div>
-              Handle: <span className="font-mono text-slate-50">@{profile?.user?.handle || meHandle}</span>
+        <Card title="Account & settings">
+          <div className="grid gap-4 text-sm">
+            <div className="grid gap-2 text-slate-200/70">
+              <div>
+                Handle: <span className="font-mono text-slate-50">@{profile?.user?.handle || meHandle}</span>
+              </div>
+              <div>
+                Joined: <span className="text-slate-200/80">{profile?.user?.createdAt ? String(profile.user.createdAt).slice(0, 10) : '—'}</span>
+              </div>
             </div>
-            <div>
-              Joined: <span className="text-slate-200/80">{profile?.user?.createdAt ? String(profile.user.createdAt).slice(0, 10) : '—'}</span>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="text-xs font-semibold text-slate-200/70">Default identity</div>
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                <label className="grid gap-1">
+                  <span className="text-xs text-slate-200/60">Type</span>
+                  <select
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                    value={defaultType}
+                    onChange={(e) => setDefaultType(e.target.value === 'agent' ? 'agent' : 'human')}
+                  >
+                    <option value="human">human</option>
+                    <option value="agent">agent</option>
+                  </select>
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-xs text-slate-200/60">Handle</span>
+                  <input
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                    value={defaultHandle}
+                    onChange={(e) => setDefaultHandle(e.target.value)}
+                    placeholder={defaultType === 'human' ? meHandle || 'me' : 'agent-handle'}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  className="rounded-xl bg-sky-400/20 px-3 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-400/25"
+                  onClick={async () => {
+                    if (!meHandle) return;
+                    setMsg(null);
+                    const res = await fetch(`/api/users/${encodeURIComponent(meHandle)}`, {
+                      method: 'PATCH',
+                      headers: { 'content-type': 'application/json' },
+                      body: JSON.stringify({ defaultActorType: defaultType, defaultActorHandle: defaultHandle }),
+                    });
+                    const j = await res.json().catch(() => null);
+                    if (!res.ok || !j?.ok) {
+                      setMsg(j?.error || 'save_failed');
+                      return;
+                    }
+                    setMsg('Saved as default.');
+                  }}
+                >
+                  Save
+                </button>
+
+                <button
+                  type="button"
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-white/10"
+                  onClick={() => {
+                    if (!defaultHandle) return;
+                    actions.setActor({ handle: defaultHandle, actorType: defaultType });
+                    setMsg('Using this identity for the current session.');
+                  }}
+                >
+                  Use now
+                </button>
+              </div>
+              {msg ? <div className="mt-2 text-xs text-slate-200/70">{msg}</div> : null}
             </div>
-            <div>
-              Default identity:{' '}
-              {profile?.user?.defaultActorHandle ? (
-                <span className="font-mono text-slate-50">
-                  @{profile.user.defaultActorHandle}
-                  <span className="text-slate-200/60"> ({profile.user.defaultActorType || 'human'})</span>
-                </span>
-              ) : (
-                <span className="text-slate-200/60">Not set</span>
-              )}
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="text-xs font-semibold text-slate-200/70">Current session</div>
+              <div className="mt-2 text-sm text-slate-200/70">
+                Acting as <span className="font-mono text-slate-50">@{state.actor.handle}</span> ({state.actor.actorType}).
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="text-xs font-semibold text-slate-200/70">Identities</div>
+              <div className="mt-2 text-sm text-slate-200/70">
+                {(identities || []).length ? (
+                  <span>{identities.slice(0, 12).map((i) => `@${i.handle}`).join(', ')}{identities.length > 12 ? '…' : ''}</span>
+                ) : (
+                  <span className="text-slate-200/60">No identities loaded.</span>
+                )}
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-200/60">
+              Settings has moved here. The old <Link className="underline decoration-white/20 hover:decoration-white/50" href="/settings">/settings</Link> page remains for now.
             </div>
           </div>
         </Card>
@@ -148,11 +246,6 @@ export default function MePage() {
           </div>
         </Card>
 
-        <Card title="Settings">
-          <div className="text-sm text-slate-200/70">
-            Settings is now part of your personal area. <Link className="underline decoration-white/20 hover:decoration-white/50" href="/settings">Open Settings</Link>.
-          </div>
-        </Card>
       </div>
     </Layout>
   );
