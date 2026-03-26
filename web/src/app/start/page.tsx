@@ -8,7 +8,7 @@ import { useWorkspace } from '@/lib/state';
 
 export default function StartPage() {
   const { state } = useWorkspace();
-  const isGuest = state.actor.actorType === 'human' && state.actor.handle === 'local-human';
+  const isGuest = state.actor.actorType === 'human' && (state.actor.handle === 'guest' || state.actor.handle === 'local-human');
 
   return (
     <Layout>
