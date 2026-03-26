@@ -9,6 +9,7 @@ import { PageHeader, Breadcrumbs } from '@/components/PageHeader';
 import { Select } from '@/components/ui';
 import type { WorkspaceDeliverable, WorkspaceTask } from '@/lib/state';
 import { parseChecklistCount } from '@/lib/checklist';
+import { fmtTs } from '@/lib/time';
 
 type TaskEvent = {
   ts: string;
@@ -161,8 +162,9 @@ export default function TaskDetailPage() {
                     if (!c.total) return null;
                     return <span className="text-slate-200/70">· Checklist {c.checked}/{c.total}</span>;
                   })()}
-                  {deliverable?.reviewedAt ? <span className="text-slate-200/60">· reviewed {String(deliverable.reviewedAt).slice(0, 16).replace('T', ' ')}</span> : null}
-                  {deliverable?.submittedAt ? <span className="text-slate-200/60">· submitted {String(deliverable.submittedAt).slice(0, 16).replace('T', ' ')}</span> : null}
+                  {deliverable?.reviewedAt ? <span className="text-slate-200/60">· reviewed {fmtTs(deliverable.reviewedAt)}</span> : null}
+                  {deliverable?.submittedAt ? <span className="text-slate-200/60">· submitted {fmtTs(deliverable.submittedAt)}</span> : null}
+                  {deliverable?.updatedAt ? <span className="text-slate-200/60">· edited {fmtTs(deliverable.updatedAt)}</span> : null}
                 </div>
 
                 <div className="text-[11px] text-slate-200/70">
@@ -178,20 +180,32 @@ export default function TaskDetailPage() {
 
               {deliverable?.status === 'changes_requested' && deliverable.revisionNote ? (
                 <div className="mt-3 rounded-2xl border border-amber-400/35 bg-amber-400/10 p-3 text-xs text-amber-100">
-                  <div className="font-semibold">Revision note (what to change)</div>
-                  <div className="mt-1 whitespace-pre-wrap text-amber-100/90">{deliverable.revisionNote}</div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-semibold">Changes requested (why it was sent back)</div>
+                    {deliverable?.reviewedAt ? <div className="text-[11px] text-amber-100/70">reviewed {fmtTs(deliverable.reviewedAt)}</div> : null}
+                  </div>
+                  <div className="mt-2 whitespace-pre-wrap text-amber-100/90">{deliverable.revisionNote}</div>
+                  <div className="mt-2 text-[11px] text-amber-100/70">Next: update the deliverable content, then re-submit for review.</div>
                 </div>
               ) : null}
 
               {deliverable?.status === 'submitted' ? (
                 <div className="mt-3 rounded-2xl border border-sky-400/25 bg-sky-400/10 p-3 text-xs text-sky-100">
-                  Submitted for review. A reviewer should either accept this deliverable or request changes.
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-semibold">Submitted for review</div>
+                    {deliverable?.submittedAt ? <div className="text-[11px] text-sky-100/70">submitted {fmtTs(deliverable.submittedAt)}</div> : null}
+                  </div>
+                  <div className="mt-1">Next: reviewer should accept or request changes.</div>
                 </div>
               ) : null}
 
               {deliverable?.status === 'accepted' ? (
                 <div className="mt-3 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3 text-xs text-emerald-100">
-                  Accepted. This task now has a completed deliverable.
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-semibold">Accepted deliverable</div>
+                    {deliverable?.reviewedAt ? <div className="text-[11px] text-emerald-100/70">accepted {fmtTs(deliverable.reviewedAt)}</div> : null}
+                  </div>
+                  <div className="mt-1">This task output is complete and accepted.</div>
                 </div>
               ) : null}
 
