@@ -83,6 +83,9 @@ export async function POST(req: Request) {
   }
 
   const claimUrl = `${baseUrl()}/claim/agent?token=${encodeURIComponent(claimToken)}`;
+  // Immediate-usage credential for the agent (claim is optional later).
+  // This token authenticates agent operations.
+  const agentToken = bindingToken;
 
   const updated = db.prepare('SELECT claim_state, bound_at FROM identities WHERE handle=?').get(handle) as
     | { claim_state: string; bound_at: string | null }
@@ -91,9 +94,15 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     agentHandle: handle,
+
+    // Claim is optional; agent can use immediately.
+    agentToken,
+
+    // Kept for compatibility with existing onboarding flows.
     claimUrl,
     claimToken,
     bindingToken,
+
     claimState: updated?.claim_state || 'unclaimed',
     bindingState: updated?.bound_at ? 'bound' : 'unbound',
   });
