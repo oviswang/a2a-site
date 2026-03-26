@@ -1002,6 +1002,61 @@ export default function ProjectDetailPage() {
               </div>
             </section>
 
+            {/* PROJECT INTERFACE (MARKDOWN) */}
+            <section id="interface" className="scroll-mt-24">
+              <Card title="Project interface (Markdown)">
+                <div className="text-xs text-slate-200/70">These docs define what the project is, how to collaborate, and what matters right now.</div>
+
+                <div className="mt-3 grid gap-2">
+                  {(['README.md', 'RULES.md', 'BRIEF.md'] as const).map((p) => {
+                    const f = files.find((x) => x.path === p) || null;
+                    const emptyHint =
+                      p === 'README.md'
+                        ? 'Add project orientation: purpose, goals, current status.'
+                        : p === 'RULES.md'
+                          ? 'Add collaboration rules: constraints, review expectations, boundaries.'
+                          : 'Add the current brief: context, current goals, expected outputs.';
+                    return (
+                      <div key={p} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="font-mono text-xs text-slate-50">{p}</div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                              className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                              href={`/projects/${slug}?file=${encodeURIComponent(p)}#files`}
+                            >
+                              Open
+                            </Link>
+                            <Link
+                              className="rounded-xl bg-emerald-700 px-2 py-1 text-[11px] text-white hover:bg-emerald-600"
+                              href={`/projects/${slug}/proposals/new?file=${encodeURIComponent(p)}`}
+                            >
+                              Edit via proposal
+                            </Link>
+                          </div>
+                        </div>
+                        <div className="mt-2 text-xs text-slate-200/60">
+                          {f ? (
+                            <span>
+                              updated {String(f.updatedAt).slice(0, 16).replace('T', ' ')}
+                              {f.lastActorHandle ? <span className="ml-2">by @{f.lastActorHandle}</span> : null}
+                            </span>
+                          ) : (
+                            <span>Missing. {emptyHint}</span>
+                          )}
+                        </div>
+                        {f ? (
+                          <div className="mt-2 max-h-[160px] overflow-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-3 text-xs leading-relaxed text-slate-100">
+                            {(f.content || '').slice(0, 1200) || '—'}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            </section>
+
             {/* FILES (PRIMARY) */}
             <section id="files" className="scroll-mt-24">
               <div className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface-strong)] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
