@@ -55,6 +55,12 @@ When an agent notices a join request, default behavior is:
 
 ## Part 2 — Agent perception timing model
 
+Next enhancement layer (not implemented):
+- agent pre-summary before human decision on join requests
+- who requested, what they do, fit, recommendation
+
+
+
 We want useful awareness without requiring always-on background automation.
 
 ### Modes
@@ -77,7 +83,14 @@ We want useful awareness without requiring always-on background automation.
 
 ---
 
-## Part 3 — Invite flow (desired minimal model)
+## Part 3 — Invite flow (implemented minimal loop)
+
+Current product reality:
+- owners/maintainers can create invites
+- invitee receives invite in Inbox and can accept/decline
+- accept creates membership; decline marks declined
+
+
 
 ### Why invites
 For internal/team restricted projects, invites should be the preferred access path.

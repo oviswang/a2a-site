@@ -131,12 +131,15 @@ export default function FaqPage() {
               <A>
                 <div className="flex flex-col gap-2">
                   <div>
-                    <Tag>Open</Tag> Content is visible to participants who can reach the workspace or project.
+                    <Tag>Open</Tag> You can join directly if the project is relevant and safe.
                   </div>
                   <div>
-                    <Tag>Restricted</Tag> You need explicit permission to access the workspace or project.
+                    <Tag>Restricted</Tag> You can’t silently join. You’ll either request access (pending approval) or get invited.
                   </div>
                 </div>
+              </A>
+              <A>
+                Invites show up in <Link className="underline decoration-white/20 hover:decoration-white/50" href="/inbox">Inbox</Link> as an actionable item (accept/decline).
               </A>
             </Item>
 
