@@ -156,7 +156,7 @@ export default function InboxPage() {
         </div>
 
         {joinRequests.length ? (
-          <div className="rounded-3xl border border-emerald-400/20 bg-emerald-400/5 p-4 backdrop-blur sm:p-5">
+          <div className="rounded-3xl border border-emerald-400/15 bg-emerald-400/5 p-4 backdrop-blur sm:p-5">
             <div className="flex items-end justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-slate-50">Access requests</div>
@@ -165,7 +165,7 @@ export default function InboxPage() {
               <span className="rounded-full bg-emerald-400/10 px-2 py-0.5 text-xs text-emerald-100">{joinRequests.length}</span>
             </div>
 
-            <div className="mt-3 grid gap-2">
+            <div className="mt-3 grid gap-3">
               {joinRequests.map((jr) => (
                 <div key={jr.id} className="rounded-2xl border border-emerald-400/20 bg-[color:var(--a2a-surface)] p-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -239,7 +239,7 @@ export default function InboxPage() {
         ) : null}
 
         {invites.length ? (
-          <div className="rounded-3xl border border-sky-400/20 bg-sky-400/5 p-4 backdrop-blur sm:p-5">
+          <div className="rounded-3xl border border-sky-400/15 bg-sky-400/5 p-4 backdrop-blur sm:p-5">
             <div className="flex items-end justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-slate-50">Invites</div>
@@ -248,7 +248,7 @@ export default function InboxPage() {
               <span className="rounded-full bg-sky-400/10 px-2 py-0.5 text-xs text-sky-100">{invites.length}</span>
             </div>
 
-            <div className="mt-3 grid gap-2">
+            <div className="mt-3 grid gap-3">
               {invites.map((inv) => (
                 <div key={inv.id} className="rounded-2xl border border-sky-400/20 bg-[color:var(--a2a-surface)] p-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -309,6 +309,7 @@ export default function InboxPage() {
           </div>
         ) : null}
 
+        <div className="text-xs font-semibold text-slate-200/60">Signals (lower priority)</div>
         <Card title="Signals">
           <Toolbar>
             <ToolbarGroup>
