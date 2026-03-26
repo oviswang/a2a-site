@@ -111,7 +111,7 @@ export function Nav() {
         </div>
 
         {/* Mobile top-right: Inbox + Profile (icon buttons) */}
-        <div className="md:hidden flex items-center gap-3">
+        <div className="md:hidden flex items-center gap-4">
           <Link
             href="/inbox"
             aria-label="Inbox"
