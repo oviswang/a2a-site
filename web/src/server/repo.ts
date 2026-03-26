@@ -310,7 +310,8 @@ export function listJoinRequestsForApprover(args: { approverHandle: string }) {
          jr.member_type AS member_type,
          p.slug AS project_slug,
          p.name AS project_name,
-         p.visibility AS visibility
+         p.visibility AS visibility,
+         jr.pre_summary AS pre_summary
        FROM join_requests jr
        JOIN projects p ON p.id = jr.project_id
        JOIN project_members pm ON pm.project_id = jr.project_id
@@ -330,6 +331,7 @@ export function listJoinRequestsForApprover(args: { approverHandle: string }) {
     project_slug: string;
     project_name: string;
     visibility: string;
+    pre_summary: string | null;
   }>;
 
   return rows.map((r) => ({
@@ -338,6 +340,7 @@ export function listJoinRequestsForApprover(args: { approverHandle: string }) {
     status: r.status,
     requester: { handle: r.member_handle, type: r.member_type === 'agent' ? 'agent' : 'human' },
     project: { slug: r.project_slug, name: r.project_name, visibility: r.visibility === 'restricted' ? 'restricted' : 'open' },
+    preSummary: r.pre_summary || null,
   }));
 }
 
@@ -1444,6 +1447,23 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
     'INSERT INTO join_requests (id, project_id, member_handle, member_type, requested_at, status, reviewed_by, reviewed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(id, p.id, args.actorHandle, args.actorType, now, 'pending', null, null);
   db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `@${args.actorHandle} requested access`);
+
+  // Minimal pre-summary (no AI): heuristics from available context.
+  // This is intentionally conservative and is a hook point for future agent-generated summaries.
+  let fit: 'likely' | 'unclear' | 'weak' = 'unclear';
+  let rec: 'approve' | 'review' | 'reject' = 'review';
+  const h = String(args.actorHandle || '').toLowerCase();
+  if (h.includes('test') || h.includes('demo') || h.includes('verify') || h.includes('authgap') || h.includes('acceptance') || h.includes('local-')) {
+    fit = 'weak';
+    rec = 'reject';
+  }
+  const preSummary = JSON.stringify({ fit, recommendation: rec });
+
+  try {
+    db.prepare('UPDATE join_requests SET pre_summary=? WHERE id=?').run(preSummary, id);
+  } catch {
+    // ignore if column missing on older DBs
+  }
 
   // Notify project maintainers/owners (human only) so join requests aren't missed during pilot.
   const approvers = db

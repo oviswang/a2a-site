@@ -18,6 +18,7 @@ type JoinRequest = {
   status: string;
   requester: { handle: string; type: 'human' | 'agent' };
   project: { slug: string; name: string; visibility: 'open' | 'restricted' };
+  preSummary?: { fit?: string; recommendation?: string } | null;
 };
 
 type Invite = {
@@ -54,7 +55,18 @@ export default function InboxPage() {
       const jr = await fetch(`/api/join-requests?approverHandle=${encodeURIComponent(state.actor.handle)}`, { cache: 'no-store' })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null);
-      setJoinRequests((jr?.requests || []) as JoinRequest[]);
+      const list = (jr?.requests || []) as any[];
+      setJoinRequests(
+        list.map((x) => {
+          let preSummary = null as any;
+          try {
+            preSummary = x?.preSummary ? JSON.parse(String(x.preSummary)) : null;
+          } catch {
+            preSummary = null;
+          }
+          return { ...x, preSummary } as JoinRequest;
+        })
+      );
     } else {
       setJoinRequests([]);
     }
@@ -160,6 +172,16 @@ export default function InboxPage() {
                       </div>
                       <div className="mt-1 text-xs text-slate-200/60">Requested: {String(jr.requestedAt).slice(0, 16).replace('T', ' ')}</div>
                       <div className="mt-1 text-xs text-slate-200/60">Project: {jr.project.name}</div>
+                      {jr.preSummary ? (
+                        <div className="mt-2 rounded-xl border border-white/10 bg-black/10 p-2 text-xs text-slate-200/70">
+                          <div>
+                            Fit: <span className="text-slate-50">{String(jr.preSummary.fit || 'unclear')}</span>
+                          </div>
+                          <div>
+                            Recommendation: <span className="text-slate-50">{String(jr.preSummary.recommendation || 'review')}</span>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <button

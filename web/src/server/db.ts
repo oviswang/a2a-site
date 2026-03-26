@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS join_requests (
   status TEXT NOT NULL,
   reviewed_by TEXT,
   reviewed_at TEXT,
+  pre_summary TEXT,
   UNIQUE(project_id, member_handle),
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
@@ -253,6 +254,10 @@ CREATE TABLE IF NOT EXISTS task_events (
   }
   if (hasCol('project_files', 'id') && !hasCol('project_files', 'last_proposal_id')) {
     db.exec(`ALTER TABLE project_files ADD COLUMN last_proposal_id TEXT`);
+  }
+
+  if (hasCol('join_requests', 'id') && !hasCol('join_requests', 'pre_summary')) {
+    db.exec(`ALTER TABLE join_requests ADD COLUMN pre_summary TEXT`);
   }
 
   _db = db;
