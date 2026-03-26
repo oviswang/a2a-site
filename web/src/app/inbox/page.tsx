@@ -18,7 +18,7 @@ type JoinRequest = {
   status: string;
   requester: { handle: string; type: 'human' | 'agent' };
   project: { slug: string; name: string; visibility: 'open' | 'restricted' };
-  preSummary?: { fit?: string; recommendation?: string } | null;
+  preSummary?: { fit?: string; recommendation?: string; reason?: string } | null;
 };
 
 type Invite = {
@@ -180,6 +180,7 @@ export default function InboxPage() {
                           <div>
                             Recommendation: <span className="text-slate-50">{String(jr.preSummary.recommendation || 'review')}</span>
                           </div>
+                          {jr.preSummary.reason ? <div className="mt-1 text-slate-200/60">Reason: {String(jr.preSummary.reason)}</div> : null}
                         </div>
                       ) : null}
                     </div>
