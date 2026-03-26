@@ -12,11 +12,21 @@ import { useWorkspace } from '@/lib/state';
 
 type N = { id: string; kind: string; text: string; link: string | null; createdAt: string; readAt: string | null };
 
+type JoinRequest = {
+  id: string;
+  requestedAt: string;
+  status: string;
+  requester: { handle: string; type: 'human' | 'agent' };
+  project: { slug: string; name: string; visibility: 'open' | 'restricted' };
+};
+
 export default function InboxPage() {
   const { state } = useWorkspace();
   const [items, setItems] = useState<N[]>([]);
   const [unread, setUnread] = useState(0);
   const [toast, setToast] = useState<{ message: string; variant?: 'info' | 'success' | 'error' } | null>(null);
+
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
 
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('unread');
   const [kind, setKind] = useState<'all' | string>('all');
@@ -28,6 +38,16 @@ export default function InboxPage() {
     const j = (await res.json()) as { unread: number; notifications: N[] };
     setUnread(j.unread || 0);
     setItems(j.notifications || []);
+
+    // Join requests actionable card feed (human owners/maintainers only).
+    if (state.actor.actorType === 'human' && state.actor.handle && state.actor.handle !== 'guest' && state.actor.handle !== 'local-human') {
+      const jr = await fetch(`/api/join-requests?approverHandle=${encodeURIComponent(state.actor.handle)}`, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      setJoinRequests((jr?.requests || []) as JoinRequest[]);
+    } else {
+      setJoinRequests([]);
+    }
   }
 
   async function markRead(id: string) {
@@ -102,6 +122,65 @@ export default function InboxPage() {
             <div className="mt-1 text-lg font-semibold text-slate-50">{counts.merged}</div>
           </div>
         </div>
+
+        {joinRequests.length ? (
+          <Card title="Access requests">
+            <div className="grid gap-2">
+              {joinRequests.map((jr) => (
+                <div key={jr.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm text-slate-50">
+                        <span className="font-mono">@{jr.requester.handle}</span>{' '}
+                        <span className="text-slate-200/60">({jr.requester.type})</span>
+                        <span className="text-slate-200/40"> → </span>
+                        <Link className="underline decoration-white/20 hover:decoration-white/50" href={`/projects/${jr.project.slug}#people`}>
+                          /{jr.project.slug}
+                        </Link>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-200/60">Requested: {String(jr.requestedAt).slice(0, 16).replace('T', ' ')}</div>
+                      <div className="mt-1 text-xs text-slate-200/60">Project: {jr.project.name}</div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        className="rounded-xl bg-emerald-400/15 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-400/20"
+                        onClick={async () => {
+                          const res = await fetch(`/api/join-requests/${encodeURIComponent(jr.id)}/action`, {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({ action: 'approve', role: 'contributor', actorHandle: state.actor.handle }),
+                          });
+                          const ok = res.ok;
+                          setToast(ok ? { message: 'Approved access.', variant: 'success' } : { message: 'Approve failed.', variant: 'error' });
+                          await refresh();
+                        }}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-xl bg-rose-500/15 px-3 py-2 text-xs font-semibold text-rose-100 hover:bg-rose-500/20"
+                        onClick={async () => {
+                          const res = await fetch(`/api/join-requests/${encodeURIComponent(jr.id)}/action`, {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({ action: 'reject', actorHandle: state.actor.handle }),
+                          });
+                          const ok = res.ok;
+                          setToast(ok ? { message: 'Rejected request.', variant: 'success' } : { message: 'Reject failed.', variant: 'error' });
+                          await refresh();
+                        }}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null}
 
         <Card title="Signals">
           <Toolbar>

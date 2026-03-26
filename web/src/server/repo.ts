@@ -294,6 +294,53 @@ export function markNotificationRead(args: { id: string; userHandle: string }) {
   return { ok: true };
 }
 
+export function listJoinRequestsForApprover(args: { approverHandle: string }) {
+  const db = getDb();
+  const approver = normalizeUserHandle(args.approverHandle);
+  if (!approver) throw new Error('invalid_approver');
+
+  // Only show requests for projects where approver is human owner/maintainer.
+  const rows = db
+    .prepare(
+      `SELECT
+         jr.id AS id,
+         jr.requested_at AS requested_at,
+         jr.status AS status,
+         jr.member_handle AS member_handle,
+         jr.member_type AS member_type,
+         p.slug AS project_slug,
+         p.name AS project_name,
+         p.visibility AS visibility
+       FROM join_requests jr
+       JOIN projects p ON p.id = jr.project_id
+       JOIN project_members pm ON pm.project_id = jr.project_id
+       WHERE pm.member_handle=?
+         AND pm.member_type='human'
+         AND (pm.role='owner' OR pm.role='maintainer')
+         AND jr.status='pending'
+       ORDER BY jr.requested_at DESC
+       LIMIT 100`
+    )
+    .all(approver) as Array<{
+    id: string;
+    requested_at: string;
+    status: string;
+    member_handle: string;
+    member_type: string;
+    project_slug: string;
+    project_name: string;
+    visibility: string;
+  }>;
+
+  return rows.map((r) => ({
+    id: r.id,
+    requestedAt: r.requested_at,
+    status: r.status,
+    requester: { handle: r.member_handle, type: r.member_type === 'agent' ? 'agent' : 'human' },
+    project: { slug: r.project_slug, name: r.project_name, visibility: r.visibility === 'restricted' ? 'restricted' : 'open' },
+  }));
+}
+
 export type SearchResults = {
   q: string;
   projects: Array<{ slug: string; name: string; summary: string }>;
