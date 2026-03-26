@@ -43,7 +43,7 @@ export function Nav() {
 
   return (
     <div className="sticky top-0 z-50 border-b border-white/10 bg-[color:var(--a2a-surface-strong)] backdrop-blur relative">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <Link href="/" className="flex items-center gap-3 no-underline">
           <Image
             src="/brand/logo-20260324.jpg"
@@ -86,13 +86,13 @@ export function Nav() {
             aria-label="Inbox"
             className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-50 hover:bg-white/10"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M4 4h16v12H4V4Z" stroke="currentColor" strokeWidth="1.5" />
               <path d="M4 16l4 4h8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
               <path d="M9 12h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
             {unread > 0 ? (
-              <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-rose-500 px-1.5 py-[1px] text-[10px] font-bold leading-none text-white">
+              <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-rose-500 px-1.5 py-[1px] text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_rgba(15,23,42,0.9)]">
                 {unread > 99 ? '99+' : unread}
               </span>
             ) : null}
@@ -101,9 +101,9 @@ export function Nav() {
           <Link
             href={profileHref}
             aria-label="Profile"
-            className="ml-9 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-50 hover:bg-white/10"
+            className="ml-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-50 hover:bg-white/10"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="currentColor" strokeWidth="1.5" />
               <path d="M4 20c1.8-4 13.2-4 16 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
@@ -111,19 +111,19 @@ export function Nav() {
         </div>
 
         {/* Mobile top-right: Inbox + Profile (icon buttons) */}
-        <div className="md:hidden flex items-center">
+        <div className="md:hidden flex items-center gap-3">
           <Link
             href="/inbox"
             aria-label="Inbox"
-            className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-50 hover:bg-white/10"
+            className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-slate-50 hover:bg-white/10"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M4 4h16v12H4V4Z" stroke="currentColor" strokeWidth="1.5" />
               <path d="M4 16l4 4h8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
               <path d="M9 12h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
             {unread > 0 ? (
-              <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-rose-500 px-1.5 py-[1px] text-[10px] font-bold leading-none text-white">
+              <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-rose-500 px-1.5 py-[1px] text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_rgba(15,23,42,0.9)]">
                 {unread > 99 ? '99+' : unread}
               </span>
             ) : null}
@@ -132,9 +132,9 @@ export function Nav() {
           <Link
             href={profileHref}
             aria-label="Profile"
-            className="ml-9 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-50 hover:bg-white/10"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-slate-50 hover:bg-white/10"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="currentColor" strokeWidth="1.5" />
               <path d="M4 20c1.8-4 13.2-4 16 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
