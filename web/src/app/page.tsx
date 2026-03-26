@@ -23,19 +23,13 @@ export default function Home() {
 
   const [hot7dTop10, setHot7dTop10] = useState<any[]>([]);
 
-  // No new systems: derive “hot” from existing /api/projects payload.
-  // Keep it lightweight and deterministic for the homepage.
+  // Hot(7d) = join heat over last 7 days (not newest-first).
   useMemo(() => {
-    fetch('/api/projects', { cache: 'no-store' })
+    fetch('/api/projects/hot', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         const list = Array.isArray(j?.projects) ? j.projects : [];
-        const top = [...list]
-          .filter((p) => isInLast7Days(p))
-          // Hot(7d) = newest first (createdAt desc)
-          .sort((a, b) => createdAtMs(b) - createdAtMs(a))
-          .slice(0, 10);
-        setHot7dTop10(top);
+        setHot7dTop10(list);
       })
       .catch(() => void 0);
     return null;

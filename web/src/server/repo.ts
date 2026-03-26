@@ -461,6 +461,92 @@ export function listProjects() {
   }));
 }
 
+function shouldExcludeFromHot(slug: string, name: string) {
+  const s = String(slug || '').toLowerCase();
+  const n = String(name || '').toLowerCase();
+  const bad = ['demo', 'test', 'acceptance', 'bearer', 'authgap', 'verify', 'unclaimed-searchflow'];
+  return bad.some((k) => s.includes(k) || n.includes(k));
+}
+
+export function listHotProjects7d(args: { days?: number; limit?: number } = {}) {
+  const days = Math.max(1, Math.min(30, Number(args.days || 7)));
+  const limit = Math.max(1, Math.min(50, Number(args.limit || 10)));
+
+  const db = getDb();
+
+  // Minimal hot ranking (7d):
+  // 1) join_count_7d desc
+  // 2) updated_at desc (approximated by latest member join/task/proposal/activity ts)
+  // 3) created_at desc
+  const rows = db
+    .prepare(
+      `SELECT
+         p.id AS id,
+         p.slug AS slug,
+         p.name AS name,
+         p.summary AS summary,
+         p.visibility AS visibility,
+         p.tags_json AS tags_json,
+         p.created_at AS created_at,
+         COALESCE(j.joins_7d, 0) AS joins_7d,
+         COALESCE(u.updated_at, p.created_at) AS updated_at
+       FROM projects p
+       LEFT JOIN (
+         SELECT project_id, COUNT(*) AS joins_7d
+         FROM project_members
+         WHERE joined_at >= datetime('now', '-' || ? || ' days')
+         GROUP BY project_id
+       ) j ON j.project_id = p.id
+       LEFT JOIN (
+         SELECT project_id, MAX(ts) AS updated_at
+         FROM (
+           SELECT project_id, ts FROM activity
+           UNION ALL
+           SELECT project_id, updated_at AS ts FROM tasks
+           UNION ALL
+           SELECT project_id, updated_at AS ts FROM project_files
+           UNION ALL
+           SELECT project_id, created_at AS ts FROM proposals
+           UNION ALL
+           SELECT project_id, joined_at AS ts FROM project_members
+         ) x
+         GROUP BY project_id
+       ) u ON u.project_id = p.id
+       ORDER BY joins_7d DESC, updated_at DESC, p.created_at DESC
+       LIMIT ?`
+    )
+    .all(String(days), limit) as Array<{
+    id: number;
+    slug: string;
+    name: string;
+    summary: string;
+    visibility: string;
+    tags_json: string;
+    created_at: string;
+    joins_7d: number;
+    updated_at: string;
+  }>;
+
+  return rows
+    .filter((r) => !shouldExcludeFromHot(r.slug, r.name))
+    .map((r) => ({
+      slug: r.slug,
+      name: r.name,
+      summary: r.summary,
+      visibility: (r.visibility === 'restricted' ? 'restricted' : 'open') as Visibility,
+      tags: JSON.parse(r.tags_json || '[]') as string[],
+      createdAt: r.created_at,
+      // expose ranking signals for UI/debug (safe)
+      joins7d: Number(r.joins_7d || 0),
+      updatedAt: r.updated_at,
+      files: [],
+      proposals: [],
+      activity: [],
+      members: [],
+      joinRequests: [],
+    }));
+}
+
 export function getProject(slug: string) {
   const db = getDb();
   const p = getProjectBySlug(slug);
