@@ -32,6 +32,10 @@ export default function TaskDetailPage() {
   const [revNote, setRevNote] = useState('');
   const [deliverableMsg, setDeliverableMsg] = useState<string | null>(null);
 
+  const [attachments, setAttachments] = useState<Array<{ id: string; name: string; mimeType: string; sizeBytes: number; createdAt: string }>>([]);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadMsg, setUploadMsg] = useState<string | null>(null);
+
   const [kind, setKind] = useState<'all' | string>('all');
   const [showAll, setShowAll] = useState(false);
 
@@ -61,6 +65,11 @@ export default function TaskDetailPage() {
           .join('\n');
         setLinksText(txt);
       })
+      .catch(() => void 0);
+
+    fetch(`/api/tasks/${encodeURIComponent(id)}/deliverable/attachments`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setAttachments((j?.attachments || []) as any[]))
       .catch(() => void 0);
   }, [id]);
 
@@ -248,6 +257,64 @@ export default function TaskDetailPage() {
                   />
                 </div>
 
+                <Card title="Attachments (optional)">
+                  <div className="text-xs text-slate-200/70">Attach real files to this deliverable. Max 10MB each.</div>
+
+                  <div className="mt-3 grid gap-2">
+                    {attachments.map((a) => (
+                      <a
+                        key={a.id}
+                        href={`/api/deliverables/attachments/${encodeURIComponent(a.id)}`}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-100 hover:bg-white/10"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-50">{a.name}</div>
+                          <div className="mt-1 truncate font-mono text-[11px] text-slate-200/60">{a.mimeType} · {Math.round((a.sizeBytes || 0) / 1024)} KB</div>
+                        </div>
+                        <div className="text-[11px] text-slate-200/60">download</div>
+                      </a>
+                    ))}
+                    {attachments.length === 0 ? <div className="text-xs text-slate-200/60">No attachments yet.</div> : null}
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <input
+                        type="file"
+                        onChange={(e) => {
+                          const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                          setUploadFile(f);
+                        }}
+                        className="text-xs text-slate-200/70"
+                      />
+                      <button
+                        type="button"
+                        disabled={!uploadFile || !deliverable}
+                        className="rounded-xl bg-sky-700 px-3 py-2 text-xs text-white hover:bg-sky-600 disabled:opacity-40"
+                        onClick={async () => {
+                          if (!uploadFile || !deliverable) return;
+                          setUploadMsg(null);
+                          const fd = new FormData();
+                          fd.set('file', uploadFile);
+                          const url = `/api/tasks/${encodeURIComponent(id)}/deliverable/attachments?actorHandle=local-human&actorType=human`;
+                          const res = await fetch(url, { method: 'POST', body: fd });
+                          const j = await res.json().catch(() => null);
+                          if (!res.ok || !j?.ok) {
+                            setUploadMsg(j?.error || 'upload_failed');
+                            return;
+                          }
+                          setUploadMsg('Uploaded.');
+                          setUploadFile(null);
+                          const rr = await fetch(`/api/tasks/${encodeURIComponent(id)}/deliverable/attachments`, { cache: 'no-store' });
+                          const jj = await rr.json().catch(() => null);
+                          setAttachments((jj?.attachments || []) as any[]);
+                        }}
+                      >
+                        Upload
+                      </button>
+                      {uploadMsg ? <span className="text-xs text-slate-200/70">{uploadMsg}</span> : null}
+                    </div>
+                  </div>
+                </Card>
+
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -269,7 +336,7 @@ export default function TaskDetailPage() {
                       const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/deliverable`, {
                         method: 'PUT',
                         headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify({ actorHandle: (task as any)?.claimedByHandle || 'local-human', actorType: 'human', summaryMd, evidenceLinks }),
+                        body: JSON.stringify({ actorHandle: 'local-human', actorType: 'human', summaryMd, evidenceLinks }),
                       });
                       const j = await res.json().catch(() => null);
                       if (!res.ok || !j?.ok) {
@@ -291,7 +358,7 @@ export default function TaskDetailPage() {
                       const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/deliverable/submit`, {
                         method: 'POST',
                         headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify({ actorHandle: (task as any)?.claimedByHandle || 'local-human', actorType: 'human' }),
+                        body: JSON.stringify({ actorHandle: 'local-human', actorType: 'human' }),
                       });
                       const j = await res.json().catch(() => null);
                       if (!res.ok || !j?.ok) {

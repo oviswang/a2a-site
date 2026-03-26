@@ -2,6 +2,7 @@ import { getDb } from './db';
 import crypto from 'node:crypto';
 import { computeJoinRequestPreSummary } from './joinRequestSummary';
 import { listRecentAcceptedDeliverables } from './deliverables';
+import { listAttachmentsForDeliverable } from './attachments';
 
 export type Visibility = 'open' | 'restricted';
 export type ProposalStatus = 'needs_review' | 'approved' | 'changes_requested' | 'rejected' | 'merged';
@@ -719,7 +720,11 @@ export function getProject(slug: string) {
     filePath: t.file_path,
   }));
 
-  const recentAcceptedDeliverables = listRecentAcceptedDeliverables(p.slug, 12);
+  const recentAcceptedDeliverables = listRecentAcceptedDeliverables(p.slug, 12).map((d) => ({
+    ...d,
+    // lightweight add-on field for UI
+    __attachmentCount: listAttachmentsForDeliverable(d.id).length,
+  }));
 
   return {
     slug: p.slug,
@@ -868,6 +873,15 @@ export {
   reviewDeliverable,
   listRecentAcceptedDeliverables,
 } from './deliverables';
+
+export {
+  listAttachmentsForTask,
+  listAttachmentsForDeliverable,
+  getAttachmentById,
+  createAttachment,
+  sanitizeFilename,
+  attachmentStoragePath,
+} from './attachments';
 
 export type Task = {
   id: string;

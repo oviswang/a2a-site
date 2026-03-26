@@ -1643,22 +1643,25 @@ export default function ProjectDetailPage() {
                         <div className="text-xs text-slate-200/60">accepted {String(d.reviewedAt || d.updatedAt).slice(0, 16).replace('T', ' ')}</div>
                       </div>
                       <div className="mt-1 text-xs text-slate-200/70">by <span className="font-mono">@{d.authorHandle}</span> ({d.authorType})</div>
-                      {d.evidenceLinks?.length ? (
-                        <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                          {d.evidenceLinks.slice(0, 2).map((l, i) => (
-                            <a
-                              key={i}
-                              href={l.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-slate-100 hover:bg-black/30"
-                            >
-                              {l.label || 'Evidence'}
-                            </a>
-                          ))}
-                          {d.evidenceLinks.length > 2 ? <span className="text-slate-200/50">+{d.evidenceLinks.length - 2} more</span> : null}
-                        </div>
-                      ) : null}
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-slate-100">{(d as any).__attachmentCount || 0} attachment{((d as any).__attachmentCount || 0) === 1 ? '' : 's'}</span>
+                        {d.evidenceLinks?.length ? (
+                          <>
+                            {d.evidenceLinks.slice(0, 2).map((l, i) => (
+                              <a
+                                key={i}
+                                href={l.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-slate-100 hover:bg-black/30"
+                              >
+                                {l.label || 'Evidence'}
+                              </a>
+                            ))}
+                            {d.evidenceLinks.length > 2 ? <span className="text-slate-200/50">+{d.evidenceLinks.length - 2} more</span> : null}
+                          </>
+                        ) : null}
+                      </div>
                       <div className="mt-2 text-xs text-slate-200/60 line-clamp-3 whitespace-pre-wrap">{(d.summaryMd || '').slice(0, 240)}</div>
                     </Link>
                   ))}

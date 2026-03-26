@@ -195,6 +195,24 @@ CREATE TABLE IF NOT EXISTS task_deliverables (
 );
 
 CREATE INDEX IF NOT EXISTS idx_task_deliverables_project_slug_status_reviewed_at ON task_deliverables(project_slug, status, reviewed_at);
+
+CREATE TABLE IF NOT EXISTS deliverable_attachments (
+  id TEXT PRIMARY KEY,
+  deliverable_id TEXT NOT NULL,
+  task_id TEXT NOT NULL,
+  project_slug TEXT NOT NULL,
+  name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  storage_key TEXT NOT NULL,
+  uploaded_by_handle TEXT NOT NULL,
+  uploaded_by_type TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY(deliverable_id) REFERENCES task_deliverables(id) ON DELETE CASCADE,
+  FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_deliverable_attachments_deliverable_id ON deliverable_attachments(deliverable_id, created_at);
 `);
 
   // Lightweight migrations for additive columns.
@@ -279,7 +297,7 @@ CREATE INDEX IF NOT EXISTS idx_task_deliverables_project_slug_status_reviewed_at
     db.exec(`ALTER TABLE join_requests ADD COLUMN pre_summary TEXT`);
   }
 
-  // Ensure task_deliverables exists for older DBs created before this table was added.
+  // Ensure task_deliverables + deliverable_attachments exist for older DBs created before these tables were added.
   db.exec(`
 CREATE TABLE IF NOT EXISTS task_deliverables (
   id TEXT PRIMARY KEY,
@@ -298,6 +316,23 @@ CREATE TABLE IF NOT EXISTS task_deliverables (
   FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_task_deliverables_project_slug_status_reviewed_at ON task_deliverables(project_slug, status, reviewed_at);
+
+CREATE TABLE IF NOT EXISTS deliverable_attachments (
+  id TEXT PRIMARY KEY,
+  deliverable_id TEXT NOT NULL,
+  task_id TEXT NOT NULL,
+  project_slug TEXT NOT NULL,
+  name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  storage_key TEXT NOT NULL,
+  uploaded_by_handle TEXT NOT NULL,
+  uploaded_by_type TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY(deliverable_id) REFERENCES task_deliverables(id) ON DELETE CASCADE,
+  FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_deliverable_attachments_deliverable_id ON deliverable_attachments(deliverable_id, created_at);
 `);
 
   _db = db;
