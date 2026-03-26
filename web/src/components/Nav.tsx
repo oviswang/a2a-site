@@ -81,29 +81,8 @@ export function Nav() {
             );
           })}
           <div className="ml-2 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200/80">
-            <span className="text-slate-200/60">@{actor.handle}</span>
+            <span className="text-slate-200/60">{actor.handle === 'guest' ? 'Guest' : `@${actor.handle}`}</span>
             <span className="rounded-lg bg-sky-400/10 px-1.5 py-0.5 text-sky-200">{actor.actorType}</span>
-            {actor.actorType === 'human' && actor.handle !== 'local-human' ? (
-              <button type="button" className="rounded-lg bg-rose-500/15 px-2 py-1 text-rose-100 hover:bg-rose-500/20" onClick={() => actions.setActor({ handle: 'local-human', actorType: 'human' })}>
-                Sign out
-              </button>
-            ) : null}
-            <div className="ml-1 inline-flex overflow-hidden rounded-lg border border-white/10">
-              <button
-                type="button"
-                className={`px-2 py-1 ${actor.actorType === 'human' ? 'bg-sky-400/20 text-sky-100' : 'hover:bg-white/5'}`}
-                onClick={() => actions.setActor({ handle: 'local-human', actorType: 'human' })}
-              >
-                H
-              </button>
-              <button
-                type="button"
-                className={`px-2 py-1 ${actor.actorType === 'agent' ? 'bg-sky-400/20 text-sky-100' : 'hover:bg-white/5'}`}
-                onClick={() => actions.setActor({ handle: 'local-agent', actorType: 'agent' })}
-              >
-                A
-              </button>
-            </div>
           </div>
         </div>
 
@@ -142,8 +121,7 @@ export function Nav() {
           >
             <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
               <div className="text-xs text-slate-200/70">
-                <span className="text-slate-200/50">@</span>
-                <span className="font-mono text-slate-100">{actor.handle}</span>
+                <span className="font-mono text-slate-100">{actor.handle === 'guest' ? 'Guest' : `@${actor.handle}`}</span>
                 <span className="text-slate-200/50"> · {actor.actorType}</span>
               </div>
               <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)} aria-label="Close" className="px-2 py-1">
@@ -154,12 +132,7 @@ export function Nav() {
             <div className="px-3 py-3">
 
               <div className="mb-3 flex gap-2">
-                <Button type="button" size="sm" variant={actor.actorType === 'human' ? 'primary' : 'default'} onClick={() => actions.setActor({ handle: 'local-human', actorType: 'human' })}>
-                  Human
-                </Button>
-                <Button type="button" size="sm" variant={actor.actorType === 'agent' ? 'primary' : 'default'} onClick={() => actions.setActor({ handle: 'local-agent', actorType: 'agent' })}>
-                  Agent
-                </Button>
+                {/* Identity switching disabled in production user mode. */}
               </div>
 
               <div className="grid gap-1">

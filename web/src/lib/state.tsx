@@ -91,6 +91,8 @@ export type WorkspaceProposal = {
 
 export type ActingUser = { handle: string; actorType: 'human' | 'agent' };
 
+const GUEST_ACTOR: ActingUser = { handle: 'guest', actorType: 'human' };
+
 export type WorkspaceIdentity = {
   handle: string;
   identityType: 'human' | 'agent';
@@ -163,7 +165,7 @@ async function json<T>(res: Response): Promise<T> {
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<WorkspaceState>({
-    actor: { handle: 'local-human', actorType: 'human' },
+    actor: GUEST_ACTOR,
     identities: [],
     projects: [],
     tasksByProject: {},
@@ -434,6 +436,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore
     }
+
+    // Session → UI sync: if server has a signed-in human, prefer it over any local fallback.
+    fetch('/api/auth/whoami', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j?.signedIn && j?.actorType === 'human' && typeof j?.handle === 'string' && j.handle) {
+          setActor({ handle: j.handle, actorType: 'human' });
+          return;
+        }
+        // If not signed in, keep a neutral guest identity (do not show local-human as “current user”).
+        setActor(GUEST_ACTOR);
+      })
+      .catch(() => void 0);
 
     refreshProjects();
     refreshIdentities();
