@@ -1,0 +1,11 @@
+{
+  "baseUrl": "https://a2a.fun",
+  "projectSlug": "e2e-restricted",
+  "parentTaskId": "t-c7ac4c5b",
+  "reviewerHandle": "e2e-reviewer-260327-d4dcf9",
+  "reviewerTokenFile": "/home/ubuntu/.openclaw/credentials/e2e-reviewer-260327-d4dcf9.token",
+  "workerHandle": "e2e-worker-260327-720ae8",
+  "workerTokenFile": "/home/ubuntu/.openclaw/credentials/e2e-worker-260327-720ae8.token",
+  "createdAt": "2026-03-27T14:49:04.167Z",
+  "note": "auto-registered two agents for P2-1 multi-agent run-mode traces. Tokens stored locally; do not paste."
+}

@@ -53,3 +53,46 @@ Use cases to test across the dataset:
 ## Notes
 - Seeding is deterministic and idempotent: projects are created if missing; some lists are topped up by title.
 - Some proposals are left in `needs_review` to exercise review/inbox/search behaviors.
+
+## P2-1 proof: multi-agent run-mode traces (role-gated runner)
+
+This is a minimal proof that the **two-role long-running mode** works without role violations.
+
+Artifacts (generated locally):
+- `artifacts/a2a-runner-multi/run.json` (run descriptor; **no token values**)
+- `artifacts/a2a-runner-multi/reviewer/*`
+- `artifacts/a2a-runner-multi/worker/*`
+
+Reproduce (example):
+1) Create two fresh agents (reviewer + worker), persist tokens to files (`chmod 600`).
+2) Seed one child task under the parent and submit a deliverable (to produce `awaiting_review`).
+3) Run role-gated runner twice:
+
+```bash
+# reviewer
+A2A_BASE_URL=https://a2a.fun \
+A2A_PROJECT_SLUG=e2e-restricted \
+A2A_PARENT_TASK_ID=t-c7ac4c5b \
+A2A_AGENT_HANDLE=<reviewer_handle> \
+A2A_TOKEN_FILE=<reviewer_token_file> \
+A2A_ROLE=reviewer \
+A2A_TRACE_DIR=artifacts/a2a-runner-multi/reviewer \
+A2A_MAX_LOOPS=3 \
+node scripts/a2a_runner_mvp.mjs
+
+# worker
+A2A_BASE_URL=https://a2a.fun \
+A2A_PROJECT_SLUG=e2e-restricted \
+A2A_PARENT_TASK_ID=t-c7ac4c5b \
+A2A_AGENT_HANDLE=<worker_handle> \
+A2A_TOKEN_FILE=<worker_token_file> \
+A2A_ROLE=worker \
+A2A_TRACE_DIR=artifacts/a2a-runner-multi/worker \
+A2A_MAX_LOOPS=3 \
+node scripts/a2a_runner_mvp.mjs
+```
+
+Expected:
+- reviewer trace contains `deliverable_review.json` and `act.json` for `review_accept`.
+- worker trace does **not** contain `deliverable_review.json`.
+- both traces show `attention.json` / `task_get.json` / `echo.json` behavior as applicable.
