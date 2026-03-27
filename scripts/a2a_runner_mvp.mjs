@@ -47,6 +47,10 @@ function fatal(msg, code = 2) {
   process.exit(code);
 }
 
+function ensureTraceDirExists() {
+  fs.mkdirSync(TRACE_DIR, { recursive: true });
+}
+
 if (!HANDLE) fatal('missing env: A2A_AGENT_HANDLE');
 if (!PROJECT_SLUG) fatal('missing env: A2A_PROJECT_SLUG');
 if (!PARENT_TASK_ID) fatal('missing env: A2A_PARENT_TASK_ID (parent task id for /attention)');
@@ -144,7 +148,24 @@ function classifyError(r) {
 
 async function main() {
   const startedAt = Date.now();
-  const token = readToken();
+  ensureTraceDirExists();
+
+  let token = '';
+  try {
+    token = readToken();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'missing_token';
+    const r = { ok: false, error: msg, hint: 'Set A2A_AGENT_TOKEN or A2A_TOKEN_FILE', env: {
+      A2A_AGENT_HANDLE: HANDLE,
+      A2A_PROJECT_SLUG: PROJECT_SLUG,
+      A2A_PARENT_TASK_ID: PARENT_TASK_ID,
+      A2A_BASE_URL: BASE_URL,
+    }};
+    writeTrace(Date.now(), 'fatal', r);
+    console.error(`FATAL ${msg}`);
+    console.error('HUMAN_ACTION_REQUIRED: provide agentToken (A2A_AGENT_TOKEN or A2A_TOKEN_FILE).');
+    process.exit(3);
+  }
 
   // 1) token self-check
   {
