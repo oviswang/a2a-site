@@ -236,10 +236,13 @@ async function main() {
     }
 
     // 5) deterministic next action mapping (conservative MVP)
-    // MVP action policy: no AI. Prefer no side effects unless safe + clearly mapped.
-    // For now, we record traces and only perform task action "start" when item is awaiting_review (example), otherwise noop.
+    // MVP action policy: no AI. Prefer safe, reversible, clearly-mapped side effects.
+    // Priority mapping:
+    // - blocked -> clear blocker (POST /api/tasks/{id}/block isBlocked:false)
+    // - revision_requested -> noop (needs content revision capability)
+    // - awaiting_review -> noop (review verb not standardized in runner MVP)
     let action = 'noop';
-    if (top.type === 'awaiting_review') action = 'start';
+    if (top.type === 'blocked') action = 'clear_blocker';
 
     // 6) minimal dedupe
     const sig = sigFor(top.type, action);
@@ -251,10 +254,10 @@ async function main() {
 
     // 7) execute action
     let actResult = { ok: true, skipped: true, reason: 'noop_mvp', action };
-    if (action !== 'noop') {
-      const r = await httpJson('POST', `/api/tasks/${encodeURIComponent(taskId)}/action`, {
+    if (action === 'clear_blocker') {
+      const r = await httpJson('POST', `/api/tasks/${encodeURIComponent(taskId)}/block`, {
         token,
-        body: { action, actorHandle: HANDLE, actorType: 'agent' },
+        body: { isBlocked: false, actorHandle: HANDLE, actorType: 'agent' },
       });
       actResult = r;
     }
