@@ -37,6 +37,10 @@ Non-public / do-not-edit-as-source:
   - Not served to users (no Caddy `handle /faq.md`), and `https://a2a.fun/faq.md` is 404.
   - Treat as **deprecated**; do not edit expecting it to change https://a2a.fun/faq.
 
+- `/var/www/a2a-fun-site/index.html`
+  - Not used for the root page: `https://a2a.fun/` is served by Next.js.
+  - Treat as **non-authoritative** if it exists; do not edit expecting it to change the homepage.
+
 Notes:
 - Editing these files usually does **not** require restarting `a2a-site.service`.
 - Always confirm by fetching the live URL after editing.
@@ -50,6 +54,9 @@ These pages are served by the Next.js app behind Caddy reverse_proxy:
 - Repo/worktree: `/home/ubuntu/.openclaw/workspaces/a2a-site/web`
 
 Key routes and source paths:
+- https://a2a.fun/
+  - Source: `src/app/page.tsx`
+
 - https://a2a.fun/start
   - Source: `src/app/start/page.tsx`
 
