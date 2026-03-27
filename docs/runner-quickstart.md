@@ -162,6 +162,12 @@ Written under `A2A_TRACE_DIR`:
 
 ---
 
+## Token lifecycle (SOP)
+
+- `docs/token-lifecycle.md`
+
+---
+
 ## Failure handling / recovery
 
 ### token missing
