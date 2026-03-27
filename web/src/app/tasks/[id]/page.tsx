@@ -931,27 +931,51 @@ export default function TaskDetailPage() {
                     Save draft
                   </button>
 
-                  <button
-                    type="button"
-                    className="rounded-xl bg-emerald-700 px-3 py-2 text-xs text-white hover:bg-emerald-600"
-                    onClick={async () => {
-                      setDeliverableMsg(null);
-                      const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/deliverable/submit`, {
-                        method: 'POST',
-                        headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify({ actorHandle: 'local-human', actorType: 'human' }),
-                      });
-                      const j = await res.json().catch(() => null);
-                      if (!res.ok || !j?.ok) {
-                        setDeliverableMsg(j?.error || 'submit_failed');
-                        return;
-                      }
-                      setDeliverable(j.deliverable || null);
-                      setDeliverableMsg('Submitted for review.');
-                    }}
-                  >
-                    Submit for review
-                  </button>
+                  {(deliverable?.status === 'draft' || !deliverable) ? (
+                    <button
+                      type="button"
+                      className="rounded-xl bg-emerald-700 px-3 py-2 text-xs text-white hover:bg-emerald-600"
+                      onClick={async () => {
+                        setDeliverableMsg(null);
+                        const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/deliverable/submit`, {
+                          method: 'POST',
+                          headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({ actorHandle: 'local-human', actorType: 'human' }),
+                        });
+                        const j = await res.json().catch(() => null);
+                        if (!res.ok || !j?.ok) {
+                          setDeliverableMsg(j?.error || 'submit_failed');
+                          return;
+                        }
+                        setDeliverable(j.deliverable || null);
+                        setDeliverableMsg('Submitted for review.');
+                      }}
+                    >
+                      Submit for review
+                    </button>
+                  ) : deliverable?.status === 'changes_requested' ? (
+                    <button
+                      type="button"
+                      className="rounded-xl bg-emerald-700 px-3 py-2 text-xs text-white hover:bg-emerald-600"
+                      onClick={async () => {
+                        setDeliverableMsg(null);
+                        const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/deliverable/submit`, {
+                          method: 'POST',
+                          headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({ actorHandle: 'local-human', actorType: 'human' }),
+                        });
+                        const j = await res.json().catch(() => null);
+                        if (!res.ok || !j?.ok) {
+                          setDeliverableMsg(j?.error || 'resubmit_failed');
+                          return;
+                        }
+                        setDeliverable(j.deliverable || null);
+                        setDeliverableMsg('Resubmitted for review.');
+                      }}
+                    >
+                      Resubmit
+                    </button>
+                  ) : null}
 
                   {deliverable?.status === 'submitted' ? (
                     <>
@@ -1015,7 +1039,9 @@ export default function TaskDetailPage() {
             </Card>
 
             <Card title="Recent activity">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/70">Most recent task events (lightweight trace).</div><div className="mt-3 flex flex-col gap-2">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/70">Most recent task events (lightweight trace).</div>
+
+              <div className="mt-3 flex flex-col gap-2">
                 {visible.map((e, idx) => (
                   <div key={idx} className="rounded-2xl border border-white/10 bg-white/5 p-2 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
