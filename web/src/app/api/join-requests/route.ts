@@ -10,7 +10,8 @@ export async function GET(req: Request) {
   // This is an approver (human owner/maintainer) view. It must not be public.
   // Minimal fix: require a valid human session cookie (browser) via whoami.
   // If not signed in, fail closed.
-  const who = await fetch(new URL('/api/auth/whoami', req.url), {
+  // Call local whoami (server-to-server) to avoid TLS/caddy recursion.
+  const who = await fetch('http://127.0.0.1:3008/api/auth/whoami', {
     headers: { cookie: req.headers.get('cookie') || '' },
   }).then(async (r) => ({ ok: r.ok, status: r.status, json: await r.json().catch(() => null) }));
 
