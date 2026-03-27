@@ -101,6 +101,62 @@ export default function TaskDetailPage() {
       .sort((a, b) => String((b.d as any)?.reviewedAt || (b.d as any)?.updatedAt || '').localeCompare(String((a.d as any)?.reviewedAt || (a.d as any)?.updatedAt || '')));
   }, [children, childDeliverables]);
 
+  const attention = useMemo(() => {
+    const items: Array<{
+      t: WorkspaceTask;
+      type: 'blocked' | 'changes_requested' | 'awaiting_review';
+      reason: string | null;
+      ts: string | null;
+    }> = [];
+
+    for (const t of children) {
+      if ((t as any).isBlocked) {
+        items.push({
+          t,
+          type: 'blocked',
+          reason: ((t as any).blockedReason as string | null) || null,
+          ts: (t as any).updatedAt || null,
+        });
+        continue;
+      }
+      const d = childDeliverables[t.id];
+      if (d?.status === 'changes_requested') {
+        items.push({
+          t,
+          type: 'changes_requested',
+          reason: (d.revisionNote || '').trim() ? d.revisionNote : null,
+          ts: (d.reviewedAt || d.updatedAt || null) as any,
+        });
+        continue;
+      }
+      if (d?.status === 'submitted') {
+        items.push({
+          t,
+          type: 'awaiting_review',
+          reason: null,
+          ts: (d.submittedAt || d.updatedAt || null) as any,
+        });
+      }
+    }
+
+    const priority = (x: (typeof items)[number]) => (x.type === 'blocked' ? 0 : x.type === 'changes_requested' ? 1 : 2);
+    const byTsDesc = (a: string | null, b: string | null) => String(b || '').localeCompare(String(a || '')); 
+    items.sort((a, b) => {
+      const pa = priority(a);
+      const pb = priority(b);
+      if (pa !== pb) return pa - pb;
+      return byTsDesc(a.ts, b.ts);
+    });
+
+    const counts = {
+      blocked: items.filter((x) => x.type === 'blocked').length,
+      awaitingReview: items.filter((x) => x.type === 'awaiting_review').length,
+      changesRequested: items.filter((x) => x.type === 'changes_requested').length,
+    };
+
+    return { items, counts };
+  }, [children, childDeliverables]);
+
   const reviewSignals = useMemo(() => {
     const submitted: Array<{ t: WorkspaceTask; d: WorkspaceDeliverable }> = [];
     const changesRequested: Array<{ t: WorkspaceTask; d: WorkspaceDeliverable }> = [];
@@ -153,6 +209,53 @@ export default function TaskDetailPage() {
 
             {!task.parentTaskId ? (
               <>
+                <Card title="Needs attention">
+                  <div className="text-xs text-slate-200/70">Coordination summary for this parent task.</div>
+
+                  <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/80">
+                    <div className="flex flex-wrap gap-3">
+                      <span>
+                        <span className="text-slate-200/60">blocked</span> {attention.counts.blocked}
+                      </span>
+                      <span>
+                        <span className="text-slate-200/60">awaiting review</span> {attention.counts.awaitingReview}
+                      </span>
+                      <span>
+                        <span className="text-slate-200/60">changes requested</span> {attention.counts.changesRequested}
+                      </span>
+                    </div>
+                  </div>
+
+                  {attention.items.length ? (
+                    <div className="mt-3 grid gap-2">
+                      {attention.items.slice(0, 8).map(({ t, type, reason, ts }) => {
+                        const label = type === 'awaiting_review' ? 'awaiting review' : type === 'changes_requested' ? 'changes requested' : 'blocked';
+                        const badge =
+                          type === 'blocked'
+                            ? 'border-rose-400/20 bg-rose-400/10 hover:bg-rose-400/15'
+                            : type === 'changes_requested'
+                              ? 'border-amber-400/20 bg-amber-400/10 hover:bg-amber-400/15'
+                              : 'border-sky-400/20 bg-sky-400/10 hover:bg-sky-400/15';
+                        return (
+                          <Link key={`${type}:${t.id}`} href={`/tasks/${encodeURIComponent(t.id)}`} className={`block rounded-2xl border p-3 ${badge}`}>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="text-sm font-semibold text-slate-50">{t.title || t.id}</div>
+                              <div className="text-xs text-slate-200/70">{label}</div>
+                            </div>
+                            <div className="mt-1 text-xs text-slate-200/60">
+                              <span className="font-mono">{t.id}</span>
+                              {ts ? <span className="ml-2">· {fmtTs(ts)}</span> : null}
+                            </div>
+                            {reason ? <div className="mt-2 text-xs text-slate-200/70"><span className="text-slate-200/50">note</span> {reason}</div> : null}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/60">No immediate attention needed.</div>
+                  )}
+                </Card>
+
                 <Card title="Child tasks (roll-up)">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-xs text-slate-200/70">Decompose work into child tasks and track progress here.</div>
@@ -736,31 +839,8 @@ export default function TaskDetailPage() {
               </div>
             </Card>
 
-            <Card title="Timeline">
-              <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-                <div className="flex flex-wrap items-end gap-2">
-                  <label className="grid gap-1">
-                    <span className="text-[11px] text-slate-200/60">Kind</span>
-                    <Select value={kind} onChange={(e) => setKind(e.target.value || 'all')}>
-                      <option value="all">all</option>
-                      {kinds.map((k) => (
-                        <option key={k} value={k}>
-                          {k}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-                  <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">
-                    <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-                    show all
-                  </label>
-                </div>
-                <div className="text-xs text-slate-200/60">
-                  {visible.length} shown · {events.length} total
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-col gap-2">
+            <Card title="Recent activity">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/70">Most recent task events (lightweight trace).</div><div className="mt-3 flex flex-col gap-2">
                 {visible.map((e, idx) => (
                   <div key={idx} className="rounded-2xl border border-white/10 bg-white/5 p-2 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -780,7 +860,7 @@ export default function TaskDetailPage() {
                     {e.note ? <div className="mt-1 text-xs text-slate-200/70">{e.note}</div> : null}
                   </div>
                 ))}
-                {events.length === 0 ? <div className="text-sm text-slate-200/60">No events yet</div> : null}
+                {events.length === 0 ? <div className="text-sm text-slate-200/60">No recent activity yet</div> : null}
               </div>
             </Card>
           </>
