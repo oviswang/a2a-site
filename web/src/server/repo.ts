@@ -1135,6 +1135,50 @@ export function listTaskEvents(taskId: string): TaskEvent[] {
   }));
 }
 
+export function listRecentTaskEventsForTasks(taskIds: string[], limit = 20): Array<TaskEvent & { taskId: string }> {
+  if (!taskIds.length) return [];
+  const db = getDb();
+
+  const out: Array<TaskEvent & { taskId: string }> = [];
+  const chunkSize = 80;
+
+  for (let i = 0; i < taskIds.length; i += chunkSize) {
+    const chunk = taskIds.slice(i, i + chunkSize);
+    const qs = chunk.map(() => '?').join(',');
+    const sql =
+      'SELECT task_id, ts, actor_handle, actor_type, kind, note, proposal_id FROM task_events ' +
+      'WHERE task_id IN (' + qs + ') ORDER BY ts DESC LIMIT ?';
+
+    const rows = db
+      .prepare(sql)
+      .all(...chunk, limit) as Array<{
+      task_id: string;
+      ts: string;
+      actor_handle: string | null;
+      actor_type: string | null;
+      kind: string;
+      note: string | null;
+      proposal_id: string | null;
+    }>;
+
+    for (const r of rows) {
+      out.push({
+        taskId: r.task_id,
+        ts: r.ts,
+        actorHandle: r.actor_handle,
+        actorType: r.actor_type === 'agent' ? 'agent' : r.actor_type === 'human' ? 'human' : null,
+        kind: r.kind,
+        note: r.note,
+        proposalId: r.proposal_id,
+      });
+    }
+  }
+
+  out.sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+  return out.slice(0, limit);
+}
+
+
 export function createProposal(args: {
   projectSlug: string;
   title: string;

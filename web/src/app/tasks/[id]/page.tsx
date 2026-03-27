@@ -31,6 +31,7 @@ export default function TaskDetailPage() {
   const [children, setChildren] = useState<WorkspaceTask[]>([]);
   const [rollup, setRollup] = useState<{ total: number; open: number; inProgressOrClaimed: number; completed: number; submitted: number; changesRequested: number; accepted: number; noAcceptedResult?: number; noDeliverableOrNotSubmitted?: number } | null>(null);
   const [childDeliverables, setChildDeliverables] = useState<Record<string, WorkspaceDeliverable | null>>({});
+  const [childFeed, setChildFeed] = useState<Array<{ taskId: string; ts: string; actorHandle: string | null; actorType: 'human' | 'agent' | null; kind: string; note: string | null; proposalId: string | null }>>([]);
 
   const [summaryMd, setSummaryMd] = useState('');
   const [linksText, setLinksText] = useState('');
@@ -84,6 +85,11 @@ export default function TaskDetailPage() {
         setRollup(j?.rollup || null);
         setChildDeliverables((j?.deliverablesByTaskId || {}) as Record<string, WorkspaceDeliverable | null>);
       })
+      .catch(() => void 0);
+
+    fetch(`/api/tasks/${encodeURIComponent(id)}/children/events?limit=15`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setChildFeed((j?.events || []) as any[]))
       .catch(() => void 0);
   }, [id]);
 
@@ -256,7 +262,46 @@ export default function TaskDetailPage() {
                   )}
                 </Card>
 
-                <Card title="Child tasks (roll-up)">
+                                <Card title="Recent coordination">
+                  <div className="text-xs text-slate-200/70">Most recent coordination events across child tasks.</div>
+
+                  {childFeed.length ? (
+                    <div className="mt-3 grid gap-2">
+                      {childFeed.slice(0, 10).map((e, idx) => {
+                        const k = String(e.kind || '');
+                        const label =
+                          k === 'blocked.set'
+                            ? 'Child blocked'
+                            : k === 'blocked.cleared'
+                              ? 'Child blocker cleared'
+                              : k === 'deliverable.submitted'
+                                ? 'Deliverable submitted'
+                                : k === 'deliverable.changes_requested'
+                                  ? 'Changes requested'
+                                  : k === 'deliverable.accepted'
+                                    ? 'Deliverable accepted'
+                                    : k;
+                        return (
+                          <Link key={idx} href={`/tasks/${encodeURIComponent((e as any).taskId)}`} className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="text-sm font-semibold text-slate-50">{label}</div>
+                              <div className="text-xs text-slate-200/60">{fmtTs(e.ts)}</div>
+                            </div>
+                            <div className="mt-1 text-xs text-slate-200/60">
+                              <span className="font-mono">{(e as any).taskId}</span>
+                              <span className="ml-2">· {e.actorHandle ? `@${e.actorHandle}` : 'system'} {e.actorType ? `(${e.actorType})` : ''}</span>
+                            </div>
+                            {e.note ? <div className="mt-2 text-xs text-slate-200/70"><span className="text-slate-200/50">note</span> {e.note}</div> : null}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/60">No recent child coordination events.</div>
+                  )}
+                </Card>
+
+<Card title="Child tasks (roll-up)">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-xs text-slate-200/70">Decompose work into child tasks and track progress here.</div>
                     <Link
@@ -846,7 +891,17 @@ export default function TaskDetailPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-mono text-[11px] text-slate-200/50">{String(e.ts).slice(0, 16).replace('T', ' ')}</span>
-                        <Tag>{e.kind}</Tag>
+                        <Tag>{
+                      (() => {
+                        const k = String(e.kind || '');
+                        if (k === 'blocked.set') return 'Blocked';
+                        if (k === 'blocked.cleared') return 'Blocker cleared';
+                        if (k === 'deliverable.submitted') return 'Deliverable submitted for review';
+                        if (k === 'deliverable.changes_requested') return 'Changes requested';
+                        if (k === 'deliverable.accepted') return 'Deliverable accepted';
+                        return k;
+                      })()
+                    }</Tag>
                         <span className="text-[11px] text-slate-200/60">
                           {e.actorHandle ? `@${e.actorHandle}` : 'system'} {e.actorType ? `(${e.actorType})` : ''}
                         </span>
@@ -857,7 +912,11 @@ export default function TaskDetailPage() {
                         </Link>
                       ) : null}
                     </div>
-                    {e.note ? <div className="mt-1 text-xs text-slate-200/70">{e.note}</div> : null}
+                    {e.note ? (
+                      <div className="mt-1 text-xs text-slate-200/70">
+                        <span className="text-slate-200/50">note</span> {e.note}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
                 {events.length === 0 ? <div className="text-sm text-slate-200/60">No recent activity yet</div> : null}

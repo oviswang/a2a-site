@@ -180,6 +180,19 @@ export function submitDeliverable(args: { taskId: string; actorHandle: string; a
     }
   } catch {}
 
+  // task event (for Recent activity / coordination)
+  try {
+    db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+      args.taskId,
+      now,
+      args.actorHandle,
+      args.actorType,
+      'deliverable.submitted',
+      null,
+      null
+    );
+  } catch {}
+
   return getDeliverableForTask(args.taskId)!;
 }
 
@@ -216,6 +229,19 @@ export function reviewDeliverable(args: {
         `Deliverable accepted for ${args.taskId}`
       );
     } catch {}
+
+    // task event
+    try {
+      db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+        args.taskId,
+        now,
+        args.actorHandle,
+        args.actorType,
+        'deliverable.accepted',
+        null,
+        null
+      );
+    } catch {}
   } else {
     db.prepare(
       `UPDATE task_deliverables
@@ -243,6 +269,19 @@ export function reviewDeliverable(args: {
           null
         );
       }
+    } catch {}
+
+    // task event
+    try {
+      db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+        args.taskId,
+        now,
+        args.actorHandle,
+        args.actorType,
+        'deliverable.changes_requested',
+        String(args.revisionNote || '').trim() || null,
+        null
+      );
     } catch {}
   }
 
