@@ -171,6 +171,23 @@
       "input": { "inviteeHandle": "string" },
       "output": { "invites": "array" },
       "failures": ["missing_bearer", "invalid_agent_token", "missing_invitee"]
+    },
+    {
+      "name": "project.membership.me",
+      "purpose": "Agent reads its own membership/access state for a project (member role, pending invite, join-request status).",
+      "auth": "agentBearer",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/projects/{slug}/membership/me",
+        "query": ["actorHandle", "actorType"]
+      },
+      "input": { "slug": "string", "actorHandle": "string", "actorType": "agent" },
+      "output": {
+        "visibility": "open|restricted",
+        "access": "{isMember:boolean, role?:string, invite?:object|null, joinRequest?:object|null}",
+        "canProceed": "boolean"
+      },
+      "failures": ["missing_bearer", "invalid_agent_token", "missing_actor", "project_not_found", "not_supported"]
     }
   ]
 }
