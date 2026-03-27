@@ -258,22 +258,32 @@ async function main() {
     // Priority mapping:
     // - blocked -> clear blocker (POST /api/tasks/{id}/block isBlocked:false)
     // - revision_requested -> revise + resubmit (PUT /deliverable then POST /deliverable/submit)
-    // - awaiting_review -> noop (review verb not standardized in runner MVP)
+    // - awaiting_review -> review_accept (deliverable.review(accept))
     let action = 'noop';
     if (top.type === 'blocked') action = 'clear_blocker';
     if (top.type === 'revision_requested') action = 'revise_resubmit';
+    if (top.type === 'awaiting_review') action = 'review_accept';
 
     // 6) minimal dedupe
-    // For revision_requested we dedupe by (taskId + normalized revisionNote).
-    let revisionSig = '';
+    // - revision_requested: dedupe by (taskId + normalized revisionNote)
+    // - awaiting_review: dedupe by (taskId + submittedAt)
+    let sigExtra = '';
+
     if (action === 'revise_resubmit') {
       const d0 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {});
       writeTrace(Date.now(), 'deliverable_get', d0);
       const note = d0.json?.deliverable?.revisionNote;
-      revisionSig = normalizeNote(note);
+      sigExtra = normalizeNote(note);
     }
 
-    const sig = sigFor(top.type, action, revisionSig);
+    if (action === 'review_accept') {
+      const d0 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {});
+      writeTrace(Date.now(), 'deliverable_get', d0);
+      const del = d0.json?.deliverable;
+      sigExtra = del?.submittedAt ? String(del.submittedAt) : `status:${String(del?.status || 'none')}`;
+    }
+
+    const sig = sigFor(top.type, action, sigExtra);
     if (st.lastByTask[taskId] === sig) {
       console.log(`[loop ${loops}] dedupe: skip ${sig} task=${taskId}`);
       await sleep(POLL_MS);
@@ -310,9 +320,7 @@ async function main() {
             actorHandle: HANDLE,
             actorType: 'agent',
             summaryMd: newSummary,
-            evidenceLinks: [
-              { label: 'placeholder', url: `${BASE_URL}/tasks/${taskId}` },
-            ],
+            evidenceLinks: [{ label: 'placeholder', url: `${BASE_URL}/tasks/${taskId}` }],
           },
         });
         writeTrace(Date.now(), 'deliverable_put', put);
@@ -329,6 +337,32 @@ async function main() {
           actResult = sub;
           writeTrace(Date.now(), 'act', actResult);
         }
+      }
+    }
+
+    if (action === 'review_accept') {
+      // Minimal, deterministic review policy:
+      // - only accept if deliverable.status === 'submitted'
+      // - otherwise noop with explicit reason
+      const d1 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {});
+      writeTrace(Date.now(), 'deliverable_get_2', d1);
+      const del = d1.json?.deliverable;
+      const status = String(del?.status || '');
+
+      if (!d1.ok || !del) {
+        actResult = { ok: false, error: 'deliverable_missing', status: d1.status, json: d1.json, action };
+        writeTrace(Date.now(), 'act', actResult);
+      } else if (status !== 'submitted') {
+        actResult = { ok: true, skipped: true, reason: 'noop_not_submitted', deliverableStatus: status, action };
+        writeTrace(Date.now(), 'act', actResult);
+      } else {
+        const review = await httpJson('POST', `/api/tasks/${encodeURIComponent(taskId)}/deliverable/review`, {
+          token,
+          body: { actorHandle: HANDLE, actorType: 'agent', action: 'accept' },
+        });
+        writeTrace(Date.now(), 'deliverable_review', review);
+        actResult = review;
+        writeTrace(Date.now(), 'act', actResult);
       }
     }
 
