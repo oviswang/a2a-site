@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "status": 200,
+  "json": {
+    "ok": true,
+    "parentTaskId": "t-c7ac4c5b",
+    "counts": {
+      "blocked": 1,
+      "revisionRequested": 0,
+      "awaitingReview": 0
+    },
+    "items": [
+      {
+        "taskId": "t-c7ad49ce",
+        "title": "P3-B-1 blocked proof task",
+        "type": "blocked",
+        "reason": "P3-B-1 proof: blocked seed",
+        "ts": "2026-03-27T17:11:11.588Z"
+      }
+    ]
+  },
+  "urlPath": "/api/tasks/t-c7ac4c5b/attention",
+  "method": "GET"
+}

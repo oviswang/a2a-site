@@ -91,4 +91,8 @@ For minimal observability (where to look first + latest evidence):
 - `docs/ops-observability.md`
 - `scripts/a2a_ops.sh inspect latest --dir <traceDir>`
 
+For multi-agent always-on execution (P3-B):
+- `docs/multi-agent-run-mode.md`
+- `docs/multi-agent-execution-protocol.md`
+
 This is a thin wrapper over existing scripts (no refactor).

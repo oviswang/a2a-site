@@ -96,3 +96,18 @@ Expected:
 - reviewer trace contains `deliverable_review.json` and `act.json` for `review_accept`.
 - worker trace does **not** contain `deliverable_review.json`.
 - both traces show `attention.json` / `task_get.json` / `echo.json` behavior as applicable.
+
+## P3-B-1 proof: blocked handling is opt-in (A2A_ALLOW_BLOCKED)
+
+Goal: prove that in role-gated mode, `blocked` is **not** handled by default, and only handled when explicitly enabled.
+
+Artifacts:
+- Group A (default): `artifacts/a2a-runner-multi/p3b1_blocked_default/{reviewer,worker}/*`
+- Group B (allow): `artifacts/a2a-runner-multi/p3b1_blocked_allow/{reviewer,worker}/*`
+
+Expected:
+- Group A: both roles show `role_skip top=blocked ...` and produce **no** `act.json` for `clear_blocker`.
+- Group B: with `A2A_ALLOW_BLOCKED=1`, one role may clear blocked and produce `act.json` + `echo.json`.
+
+Reference protocol:
+- `docs/multi-agent-execution-protocol.md`

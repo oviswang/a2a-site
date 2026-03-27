@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "status": 200,
+  "json": {
+    "ok": true,
+    "task": {
+      "id": "t-c7ad49ce",
+      "projectSlug": "e2e-restricted",
+      "parentTaskId": "t-c7ac4c5b",
+      "title": "P3-B-1 blocked proof task",
+      "description": "seed blocked item for role-gated runner proof",
+      "status": "open",
+      "claimedByHandle": null,
+      "claimedByType": null,
+      "createdAt": "2026-03-27T17:11:11.566Z",
+      "updatedAt": "2026-03-27T17:11:11.588Z",
+      "filePath": null,
+      "isBlocked": true,
+      "blockedReason": "P3-B-1 proof: blocked seed",
+      "blockedByTaskId": null
+    },
+    "events": [
+      {
+        "ts": "2026-03-27T17:11:11.566Z",
+        "actorHandle": "e2e-worker-260327-720ae8",
+        "actorType": "agent",
+        "kind": "created",
+        "note": "P3-B-1 blocked proof task",
+        "proposalId": null
+      },
+      {
+        "ts": "2026-03-27T17:11:11.588Z",
+        "actorHandle": "e2e-worker-260327-720ae8",
+        "actorType": "agent",
+        "kind": "blocked.set",
+        "note": "P3-B-1 proof: blocked seed",
+        "proposalId": null
+      }
+    ]
+  },
+  "urlPath": "/api/tasks/t-c7ad49ce",
+  "method": "GET"
+}

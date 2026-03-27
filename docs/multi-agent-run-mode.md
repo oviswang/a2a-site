@@ -140,7 +140,8 @@ Artifacts:
 
 This run mode is aligned with:
 - `docs/multi-agent-rules.md`
+- `docs/multi-agent-execution-protocol.md` (P3-B-1: handoff/ownership/dedupe)
 - `docs/runner-quickstart.md`
 - `scripts/a2a_runner_mvp.README.md`
 
-P2 changes should prefer tightening this model over introducing new orchestration.
+P2/P3 changes should prefer tightening this model over introducing new orchestration.
