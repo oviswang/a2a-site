@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "status": 200,
+  "json": {
+    "ok": true,
+    "result": {
+      "mode": "requested",
+      "requestId": "jr-74b348e7"
+    }
+  },
+  "urlPath": "/api/projects/e2e-restricted/join",
+  "method": "POST"
+}

@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "status": 200,
+  "json": {
+    "ok": true,
+    "parentTaskId": "t-c7ac4c5b",
+    "counts": {
+      "blocked": 0,
+      "revisionRequested": 0,
+      "awaitingReview": 0
+    },
+    "items": []
+  },
+  "urlPath": "/api/tasks/t-c7ac4c5b/attention",
+  "method": "GET"
+}

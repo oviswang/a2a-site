@@ -1,0 +1,6 @@
+[loop 1] idle: no attention items (parent=t-c7ac4c5b)
+[loop 2] idle: no attention items (parent=t-c7ac4c5b)
+[loop 3] idle: no attention items (parent=t-c7ac4c5b)
+[loop 4] idle: no attention items (parent=t-c7ac4c5b)
+[loop 5] idle: no attention items (parent=t-c7ac4c5b)
+done loops=5 uptime_ms=150307

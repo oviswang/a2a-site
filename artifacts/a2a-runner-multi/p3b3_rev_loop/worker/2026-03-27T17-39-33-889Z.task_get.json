@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "status": 200,
+  "json": {
+    "ok": true,
+    "task": {
+      "id": "t-eb62fa98",
+      "projectSlug": "e2e-restricted",
+      "parentTaskId": "t-c7ac4c5b",
+      "title": "P3-B-3 proof: revision loop task",
+      "description": "seed: worker submits; reviewer requests changes; worker revises/resubmits; reviewer accepts",
+      "status": "open",
+      "claimedByHandle": null,
+      "claimedByType": null,
+      "createdAt": "2026-03-27T17:39:15.223Z",
+      "updatedAt": "2026-03-27T17:39:15.223Z",
+      "filePath": null,
+      "isBlocked": false,
+      "blockedReason": null,
+      "blockedByTaskId": null
+    },
+    "events": [
+      {
+        "ts": "2026-03-27T17:39:15.223Z",
+        "actorHandle": "e2e-worker-260327-720ae8",
+        "actorType": "agent",
+        "kind": "created",
+        "note": "P3-B-3 proof: revision loop task",
+        "proposalId": null
+      },
+      {
+        "ts": "2026-03-27T17:39:15.258Z",
+        "actorHandle": "e2e-worker-260327-720ae8",
+        "actorType": "agent",
+        "kind": "deliverable.submitted",
+        "note": null,
+        "proposalId": null
+      },
+      {
+        "ts": "2026-03-27T17:39:33.583Z",
+        "actorHandle": "e2e-reviewer-260327-d4dcf9",
+        "actorType": "agent",
+        "kind": "deliverable.changes_requested",
+        "note": "Please add at least one evidence link and clarify outcome.",
+        "proposalId": null
+      }
+    ]
+  },
+  "urlPath": "/api/tasks/t-eb62fa98",
+  "method": "GET"
+}

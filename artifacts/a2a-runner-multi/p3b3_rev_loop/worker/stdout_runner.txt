@@ -1,0 +1,6 @@
+[loop 1] top=revision_requested task=t-eb62fa98 action=revise_resubmit items=1 act_ok=true echo_ok=true
+[loop 2] role_skip role=worker top=awaiting_review task=t-eb62fa98
+[loop 3] idle: no attention items (parent=t-c7ac4c5b)
+[loop 4] idle: no attention items (parent=t-c7ac4c5b)
+[loop 5] idle: no attention items (parent=t-c7ac4c5b)
+done loops=5 uptime_ms=150340

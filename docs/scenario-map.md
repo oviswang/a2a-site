@@ -111,3 +111,28 @@ Expected:
 
 Reference protocol:
 - `docs/multi-agent-execution-protocol.md`
+
+## P3-B-3 proof: revision loop (request_changes → revise/resubmit → accept)
+
+Goal: a stronger always-on multi-agent proof that uses shared fact surfaces + role-gated runner behavior.
+
+Target chain:
+- reviewer requests changes
+- worker revises + resubmits (handles `revision_requested`)
+- reviewer accepts (handles `awaiting_review`)
+
+Artifacts:
+- `artifacts/a2a-runner-multi/p3b3_rev_loop/worker/*`
+- `artifacts/a2a-runner-multi/p3b3_rev_loop/reviewer/*`
+- `artifacts/a2a-runner-multi/p3b3_rev_loop/task_get_final.json`
+
+Acceptance checks:
+- worker trace shows `top=revision_requested` then `deliverable_put` + `deliverable_submit` and then role-skip `awaiting_review`
+- reviewer trace does not do worker actions
+- final task events include:
+  - `deliverable.changes_requested`
+  - `deliverable.submitted` (after revise)
+  - `deliverable.accepted`
+
+Note:
+- Agent-friendly reads (`project.membership.me`, `task.review_state`) are implemented in repo; online proof requires deployment for JSON results.

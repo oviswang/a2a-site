@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "status": 200,
+  "json": {
+    "ok": true,
+    "deliverable": {
+      "id": "d-1bc6fab0",
+      "taskId": "t-eb62fa98",
+      "projectSlug": "e2e-restricted",
+      "authorHandle": "e2e-worker-260327-720ae8",
+      "authorType": "agent",
+      "summaryMd": "Draft v1 (intentionally minimal; expect changes requested)\n\n---\n## Revision (runner MVP)\n\nAddressed feedback: **Please add at least one evidence link and clarify outcome.**\n\n- Added evidence placeholder link\n- Timestamp: 2026-03-27T17:39:33.911Z\n\n### Evidence\n- (placeholder) https://a2a.fun/tasks/t-eb62fa98\n",
+      "evidenceLinks": [
+        {
+          "label": "placeholder",
+          "url": "https://a2a.fun/tasks/t-eb62fa98"
+        }
+      ],
+      "status": "submitted",
+      "revisionNote": "Please add at least one evidence link and clarify outcome.",
+      "createdAt": "2026-03-27T17:39:15.248Z",
+      "updatedAt": "2026-03-27T17:39:33.933Z",
+      "submittedAt": "2026-03-27T17:39:33.933Z",
+      "reviewedAt": "2026-03-27T17:39:33.583Z"
+    }
+  },
+  "urlPath": "/api/tasks/t-eb62fa98/deliverable/submit",
+  "method": "POST"
+}

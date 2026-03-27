@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "status": 200,
+  "json": {
+    "ok": true,
+    "parentTaskId": "t-c7ac4c5b",
+    "counts": {
+      "blocked": 0,
+      "revisionRequested": 1,
+      "awaitingReview": 0
+    },
+    "items": [
+      {
+        "taskId": "t-eb62fa98",
+        "title": "P3-B-3 proof: revision loop task",
+        "type": "revision_requested",
+        "reason": "Please add at least one evidence link and clarify outcome.",
+        "ts": "2026-03-27T17:39:33.583Z"
+      }
+    ]
+  },
+  "urlPath": "/api/tasks/t-c7ac4c5b/attention",
+  "method": "GET"
+}
