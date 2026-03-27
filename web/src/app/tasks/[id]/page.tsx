@@ -736,12 +736,116 @@ export default function TaskDetailPage() {
 
                 <div className="text-[11px] text-slate-200/70">
                   {deliverable?.status === 'submitted'
-                    ? 'Next: reviewer should accept or request changes.'
+                    ? 'Next: accept or request changes.'
                     : deliverable?.status === 'changes_requested'
-                      ? 'Next: worker should revise and re-submit.'
+                      ? 'Next: revise and resubmit.'
                       : deliverable?.status === 'accepted'
                         ? 'Accepted deliverable (task output is complete).'
                         : 'Draft deliverable (not yet submitted).'}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {(deliverable?.status === 'draft' || !deliverable) ? (
+                    <button
+                      type="button"
+                      className="rounded-xl bg-emerald-700 px-3 py-2 text-xs text-white hover:bg-emerald-600"
+                      onClick={async () => {
+                        setDeliverableMsg(null);
+                        const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/deliverable/submit`, {
+                          method: 'POST',
+                          headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({ actorHandle: 'local-human', actorType: 'human' }),
+                        });
+                        const j = await res.json().catch(() => null);
+                        if (!res.ok || !j?.ok) {
+                          setDeliverableMsg(j?.error || 'submit_failed');
+                          return;
+                        }
+                        setDeliverable(j.deliverable || null);
+                        setDeliverableMsg('Submitted for review.');
+                      }}
+                    >
+                      Submit
+                    </button>
+                  ) : null}
+
+                  {deliverable?.status === 'changes_requested' ? (
+                    <button
+                      type="button"
+                      className="rounded-xl bg-emerald-700 px-3 py-2 text-xs text-white hover:bg-emerald-600"
+                      onClick={async () => {
+                        setDeliverableMsg(null);
+                        const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/deliverable/submit`, {
+                          method: 'POST',
+                          headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({ actorHandle: 'local-human', actorType: 'human' }),
+                        });
+                        const j = await res.json().catch(() => null);
+                        if (!res.ok || !j?.ok) {
+                          setDeliverableMsg(j?.error || 'resubmit_failed');
+                          return;
+                        }
+                        setDeliverable(j.deliverable || null);
+                        setDeliverableMsg('Resubmitted for review.');
+                      }}
+                    >
+                      Resubmit
+                    </button>
+                  ) : null}
+
+                  {deliverable?.status === 'submitted' ? (
+                    <>
+                      <button
+                        type="button"
+                        className="rounded-xl bg-emerald-700 px-3 py-2 text-xs text-white hover:bg-emerald-600"
+                        onClick={async () => {
+                          setDeliverableMsg(null);
+                          const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/deliverable/review`, {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({ action: 'accept', actorHandle: 'local-human', actorType: 'human' }),
+                          });
+                          const j = await res.json().catch(() => null);
+                          if (!res.ok || !j?.ok) {
+                            setDeliverableMsg(j?.error || 'accept_failed');
+                            return;
+                          }
+                          setDeliverable(j.deliverable || null);
+                          setDeliverableMsg('Accepted.');
+                        }}
+                      >
+                        Accept
+                      </button>
+
+                      <button
+                        type="button"
+                        className="rounded-xl bg-amber-700 px-3 py-2 text-xs text-white hover:bg-amber-600"
+                        onClick={async () => {
+                          const note = window.prompt('Revision note (required):', revNote || '') || '';
+                          setRevNote(note);
+                          if (!note.trim()) {
+                            setDeliverableMsg('revision_note_required');
+                            return;
+                          }
+                          setDeliverableMsg(null);
+                          const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/deliverable/review`, {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({ action: 'request_changes', revisionNote: note, actorHandle: 'local-human', actorType: 'human' }),
+                          });
+                          const j = await res.json().catch(() => null);
+                          if (!res.ok || !j?.ok) {
+                            setDeliverableMsg(j?.error || 'request_changes_failed');
+                            return;
+                          }
+                          setDeliverable(j.deliverable || null);
+                          setDeliverableMsg('Changes requested.');
+                        }}
+                      >
+                        Request changes
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </div>
 
@@ -1012,11 +1116,16 @@ export default function TaskDetailPage() {
                           type="button"
                           className="rounded-xl bg-amber-700 px-3 py-2 text-xs text-white hover:bg-amber-600"
                           onClick={async () => {
+                            const note = revNote.trim();
+                            if (!note) {
+                              setDeliverableMsg('revision_note_required');
+                              return;
+                            }
                             setDeliverableMsg(null);
                             const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/deliverable/review`, {
                               method: 'POST',
                               headers: { 'content-type': 'application/json' },
-                              body: JSON.stringify({ action: 'request_changes', revisionNote: revNote, actorHandle: 'local-human', actorType: 'human' }),
+                              body: JSON.stringify({ action: 'request_changes', revisionNote: note, actorHandle: 'local-human', actorType: 'human' }),
                             });
                             const j = await res.json().catch(() => null);
                             if (!res.ok || !j?.ok) {
