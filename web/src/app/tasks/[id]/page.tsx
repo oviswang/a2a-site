@@ -243,7 +243,14 @@ export default function TaskDetailPage() {
                   {attention.items.length ? (
                     <div className="mt-3 grid gap-2">
                       {attention.items.slice(0, 8).map(({ t, type, reason, ts }) => {
-                        const label = type === 'awaiting_review' ? 'awaiting review' : type === 'changes_requested' ? 'changes requested' : 'blocked';
+                        const label =
+                          type === 'awaiting_review'
+                            ? 'Awaiting your review'
+                            : type === 'changes_requested'
+                              ? 'Revision requested'
+                              : (t as any).blockedByTaskId
+                                ? `Blocked by ${(t as any).blockedByTaskId}`
+                                : 'Needs unblock';
                         const badge =
                           type === 'blocked'
                             ? 'border-rose-400/20 bg-rose-400/10 hover:bg-rose-400/15'
@@ -271,7 +278,7 @@ export default function TaskDetailPage() {
                 </Card>
 
                                 <Card title="Recent coordination">
-                  <div className="text-xs text-slate-200/70">Most recent coordination events across child tasks.</div>
+                  <div className="text-xs text-slate-200/70">Most recent child events (what likely needs action next).</div>
 
                   {childFeed.length ? (
                     <div className="mt-3 grid gap-2">
@@ -279,15 +286,15 @@ export default function TaskDetailPage() {
                         const k = String(e.kind || '');
                         const label =
                           k === 'blocked.set'
-                            ? 'Child blocked'
+                            ? 'Child task blocked'
                             : k === 'blocked.cleared'
-                              ? 'Child blocker cleared'
+                              ? 'Blocker cleared on child task'
                               : k === 'deliverable.submitted'
-                                ? 'Deliverable submitted'
+                                ? 'Child deliverable ready to review'
                                 : k === 'deliverable.changes_requested'
-                                  ? 'Changes requested'
+                                  ? 'Child deliverable needs revision'
                                   : k === 'deliverable.accepted'
-                                    ? 'Deliverable accepted'
+                                    ? 'Child deliverable accepted'
                                     : k;
                         return (
                           <Link key={idx} href={`/tasks/${encodeURIComponent((e as any).taskId)}`} className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
@@ -360,10 +367,10 @@ export default function TaskDetailPage() {
                         <span className="text-slate-200/60">accepted</span> {rollup.accepted}
                       </span>
                       <span>
-                        <span className="text-slate-200/60">under review</span> {rollup.submitted}
+                        <span className="text-slate-200/60">awaiting review</span> {rollup.submitted}
                       </span>
                       <span>
-                        <span className="text-slate-200/60">changes requested</span> {rollup.changesRequested}
+                        <span className="text-slate-200/60">revision requested</span> {rollup.changesRequested}
                       </span>
                       {typeof rollup.noDeliverableOrNotSubmitted === 'number' ? (
                         <span>
@@ -404,7 +411,7 @@ export default function TaskDetailPage() {
                       ))}
 
                     {children.filter((c) => (c as any).isBlocked).length === 0 ? (
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/60">No blocked child tasks.</div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/60">No blockers right now.</div>
                     ) : null}
                   </div>
                 </div>
