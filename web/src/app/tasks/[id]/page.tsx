@@ -532,9 +532,10 @@ export default function TaskDetailPage() {
 
               <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-xs font-semibold text-slate-200/70">Blocker signal</div>
+                  <div className="text-xs font-semibold text-slate-200/70">Current blocker</div>
                   {task.isBlocked ? <Tag>blocked</Tag> : <Tag>not blocked</Tag>}
                 </div>
+                <div className="mt-1 text-[11px] text-slate-200/55">What is currently blocking this task?</div>
 
                 {task.isBlocked ? (
                   <div className="mt-2 grid gap-2 text-xs text-slate-200/70">
@@ -903,11 +904,11 @@ export default function TaskDetailPage() {
               {deliverable?.status === 'changes_requested' && deliverable.revisionNote ? (
                 <div className="mt-3 rounded-2xl border border-amber-400/35 bg-amber-400/10 p-3 text-xs text-amber-100">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="font-semibold">Changes requested (why it was sent back)</div>
+                    <div className="font-semibold">Review feedback (changes requested)</div>
                     {deliverable?.reviewedAt ? <div className="text-[11px] text-amber-100/70">reviewed {fmtTs(deliverable.reviewedAt)}</div> : null}
                   </div>
                   <div className="mt-2 whitespace-pre-wrap text-amber-100/90">{deliverable.revisionNote}</div>
-                  <div className="mt-2 text-[11px] text-amber-100/70">Next: update the deliverable content, then re-submit for review.</div>
+                  <div className="mt-2 text-[11px] text-amber-100/70">This is the current reviewer feedback. Update the deliverable, then re-submit.</div>
                 </div>
               ) : null}
 
