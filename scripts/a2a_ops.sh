@@ -19,6 +19,7 @@ Usage:
   scripts/a2a_ops.sh run [runner-args]
   scripts/a2a_ops.sh scenario [phase12]
   scripts/a2a_ops.sh check [publication]
+  scripts/a2a_ops.sh inspect latest --dir <traceDir>
 
 Commands:
   run:
@@ -45,12 +46,90 @@ Examples:
 
   # check
   scripts/a2a_ops.sh check publication
+
+  # inspect (latest evidence)
+  scripts/a2a_ops.sh inspect latest --dir artifacts/a2a-runner
 USAGE
 }
 
 case "$cmd" in
   run)
     exec node scripts/a2a_runner_mvp.mjs "$@"
+    ;;
+
+  inspect)
+    sub=${1:-}
+    shift || true
+    if [[ "$sub" != "latest" ]]; then
+      echo "Usage: scripts/a2a_ops.sh inspect latest --dir <traceDir>" >&2
+      exit 2
+    fi
+    # Do NOT shift again here; we need to parse --dir from remaining args.
+    dir=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --dir)
+          dir=${2:-}
+          shift 2
+          ;;
+        *)
+          echo "Unknown arg: $1" >&2
+          exit 2
+          ;;
+      esac
+    done
+    if [[ -z "$dir" ]]; then
+      echo "Missing --dir" >&2
+      exit 2
+    fi
+    if [[ ! -d "$dir" ]]; then
+      echo "Trace dir not found: $dir" >&2
+      exit 2
+    fi
+
+    echo "inspect.latest dir=$dir"
+
+    # list latest few trace files (ignore state.json)
+    ls -1t "$dir" | egrep -v '^state\.json$' | head -n 12 | sed 's/^/file: /'
+
+    latest=$(ls -1t "$dir" | egrep -E '\.json$' | head -n 1 || true)
+    if [[ -z "$latest" ]]; then
+      echo "no json traces found" >&2
+      exit 0
+    fi
+
+    echo "--- latest_json=$dir/$latest"
+    # print minimal summary fields from the trace shape {ok,status,json,urlPath,method}
+    python3 - "$dir/$latest" <<'PY'
+import json,sys
+p=sys.argv[1]
+try:
+  j=json.load(open(p,'r',encoding='utf-8'))
+except Exception as e:
+  print('parse_failed',e)
+  raise SystemExit(0)
+
+print('ok:', j.get('ok'))
+print('status:', j.get('status'))
+print('method:', j.get('method'))
+print('urlPath:', j.get('urlPath'))
+body=j.get('json')
+if isinstance(body, dict):
+  # common keys
+  for k in ['error','mode','requestId','parentTaskId']:
+    if k in body:
+      print(f'{k}:', body.get(k))
+  if 'counts' in body:
+    print('counts:', body.get('counts'))
+  if 'items' in body and isinstance(body.get('items'), list):
+    items=body.get('items')
+    print('items_len:', len(items))
+    if items:
+      top=items[0]
+      print('top_item:', {k: top.get(k) for k in ['type','taskId','title','reason','ts'] if isinstance(top, dict)})
+PY
+
+    exit 0
     ;;
 
   scenario)

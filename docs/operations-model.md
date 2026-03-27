@@ -87,4 +87,8 @@ For failure recovery and troubleshooting:
 For check & regression cadence:
 - `docs/ops-check-strategy.md`
 
+For minimal observability (where to look first + latest evidence):
+- `docs/ops-observability.md`
+- `scripts/a2a_ops.sh inspect latest --dir <traceDir>`
+
 This is a thin wrapper over existing scripts (no refactor).
