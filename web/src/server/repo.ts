@@ -1385,7 +1385,7 @@ export function proposalAction(args: {
       if (prRow.author_type === 'human') notifyHuman(prRow.author_handle, 'proposal.approved', `Your proposal ${args.id} was approved`, link);
       else {
         const ow = getIdentity(prRow.author_handle)?.ownerHandle;
-        if (ow) notifyHuman(ow, 'proposal.approved', `Your agent’s proposal ${args.id} was approved`, link);
+        if (ow) notifyHuman(ow, 'proposal.approved', `Your agent's proposal ${args.id} was approved`, link);
       }
     }
 
@@ -1408,7 +1408,7 @@ export function proposalAction(args: {
       if (prRow.author_type === 'human') notifyHuman(prRow.author_handle, 'proposal.changes_requested', `Changes requested on your proposal ${args.id}`, link);
       else {
         const ow = getIdentity(prRow.author_handle)?.ownerHandle;
-        if (ow) notifyHuman(ow, 'proposal.changes_requested', `Changes requested on your agent’s proposal ${args.id}`, link);
+        if (ow) notifyHuman(ow, 'proposal.changes_requested', `Changes requested on your agent's proposal ${args.id}`, link);
       }
     }
 
@@ -1456,7 +1456,7 @@ export function proposalAction(args: {
       if (prRow.author_type === 'human') notifyHuman(prRow.author_handle, 'proposal.merged', `Your proposal ${args.id} was merged`, link);
       else {
         const ow = getIdentity(prRow.author_handle)?.ownerHandle;
-        if (ow) notifyHuman(ow, 'proposal.merged', `Your agent’s proposal ${args.id} was merged`, link);
+        if (ow) notifyHuman(ow, 'proposal.merged', `Your agent's proposal ${args.id} was merged`, link);
       }
 
       if (prRow.task_id) {
@@ -1564,6 +1564,22 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
   ).run(id, p.id, args.actorHandle, args.actorType, now, 'pending', null, null);
   db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `@${args.actorHandle} requested access`);
 
+  // task event (best-effort): link project-level join_request into a parent task stream
+  try {
+    const root = db.prepare('SELECT id FROM tasks WHERE project_id=? AND parent_task_id IS NULL ORDER BY created_at ASC LIMIT 1').get(p.id) as { id: string } | undefined;
+    if (root?.id) {
+      db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+        root.id,
+        now,
+        args.actorHandle,
+        args.actorType,
+        'join_request.created',
+        `jr:${id} @${args.actorHandle}`,
+        null
+      );
+    }
+  } catch {}
+
   // Pre-summary (no AI): compute an explainable recommendation from lightweight signals.
   const priorMember = db
     .prepare('SELECT role FROM project_members WHERE project_id=? AND member_handle=?')
@@ -1651,6 +1667,31 @@ export function reviewJoinRequest(args: {
         now
       );
       db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(r.project_id, now, `Access approved for @${r.member_handle}`);
+
+      // best-effort task event
+      try {
+        const root = db.prepare('SELECT id FROM tasks WHERE project_id=? AND parent_task_id IS NULL ORDER BY created_at ASC LIMIT 1').get(r.project_id) as { id: string } | undefined;
+        if (root?.id) {
+          db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+            root.id,
+            now,
+            args.actorHandle,
+            'human',
+            'join_request.approved',
+            `jr:${r.id} @${r.member_handle}`,
+            null
+          );
+          db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+            root.id,
+            now,
+            r.member_handle,
+            (r.member_type === 'agent' ? 'agent' : 'human'),
+            'membership.joined',
+            `@${r.member_handle} (${r.member_type}) via join_request`,
+            null
+          );
+        }
+      } catch {}
       if (r.member_type !== 'agent') {
         const slugRow = db.prepare('SELECT slug FROM projects WHERE id=?').get(r.project_id) as { slug: string } | undefined;
         if (slugRow) notifyHuman(r.member_handle, 'join.approved', `Your access request was approved for /${slugRow.slug}`, `/projects/${slugRow.slug}`);
@@ -1660,6 +1701,22 @@ export function reviewJoinRequest(args: {
     if (args.action === 'reject') {
       db.prepare('UPDATE join_requests SET status=?, reviewed_by=?, reviewed_at=? WHERE id=?').run('rejected', args.actorHandle, now, r.id);
       db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(r.project_id, now, `Access rejected for @${r.member_handle}`);
+
+      // best-effort task event
+      try {
+        const root = db.prepare('SELECT id FROM tasks WHERE project_id=? AND parent_task_id IS NULL ORDER BY created_at ASC LIMIT 1').get(r.project_id) as { id: string } | undefined;
+        if (root?.id) {
+          db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+            root.id,
+            now,
+            args.actorHandle,
+            'human',
+            'join_request.rejected',
+            `jr:${r.id} @${r.member_handle}`,
+            null
+          );
+        }
+      } catch {}
       if (r.member_type !== 'agent') {
         const slugRow = db.prepare('SELECT slug FROM projects WHERE id=?').get(r.project_id) as { slug: string } | undefined;
         if (slugRow) notifyHuman(r.member_handle, 'join.rejected', `Your access request was rejected for /${slugRow.slug}`, `/projects/${slugRow.slug}`);
@@ -1733,6 +1790,22 @@ export function createInvitation(args: {
     now,
     `Invited @${args.inviteeHandle} (${args.inviteeType}) as ${args.role}`
   );
+
+  // best-effort task event
+  try {
+    const root = db.prepare('SELECT id FROM tasks WHERE project_id=? AND parent_task_id IS NULL ORDER BY created_at ASC LIMIT 1').get(p.id) as { id: string } | undefined;
+    if (root?.id) {
+      db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+        root.id,
+        now,
+        args.actorHandle,
+        args.actorType,
+        'invite.created',
+        `inv:${id} @${args.inviteeHandle}`,
+        null
+      );
+    }
+  } catch {}
 
   if (args.inviteeType === 'human') {
     notifyHuman(args.inviteeHandle, 'invite.created', `You were invited to /${p.slug} as ${args.role}`, `/projects/${p.slug}#people`);
@@ -1835,6 +1908,23 @@ export function respondToInvitation(args: { id: string; action: 'accept' | 'decl
   if (args.action === 'decline') {
     db.prepare('UPDATE invitations SET status=?, accepted_at=NULL WHERE id=?').run('declined', inv.id);
     db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(inv.project_id, now, `Invite declined by @${inv.invitee_handle}`);
+
+    // best-effort task event
+    try {
+      const root = db.prepare('SELECT id FROM tasks WHERE project_id=? AND parent_task_id IS NULL ORDER BY created_at ASC LIMIT 1').get(inv.project_id) as { id: string } | undefined;
+      if (root?.id) {
+        db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+          root.id,
+          now,
+          args.actorHandle,
+          args.actorType,
+          'invite.declined',
+          `inv:${inv.id} @${inv.invitee_handle}`,
+          null
+        );
+      }
+    } catch {}
+
     return { ok: true, status: 'declined' as const };
   }
 
@@ -1852,6 +1942,31 @@ export function respondToInvitation(args: { id: string; action: 'accept' | 'decl
       now
     );
     db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(inv.project_id, now, `@${inv.invitee_handle} joined (invite)`);
+
+    // best-effort task events
+    try {
+      const root = db.prepare('SELECT id FROM tasks WHERE project_id=? AND parent_task_id IS NULL ORDER BY created_at ASC LIMIT 1').get(inv.project_id) as { id: string } | undefined;
+      if (root?.id) {
+        db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+          root.id,
+          now,
+          args.actorHandle,
+          args.actorType,
+          'invite.accepted',
+          `inv:${inv.id} @${inv.invitee_handle}`,
+          null
+        );
+        db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+          root.id,
+          now,
+          inv.invitee_handle,
+          memberType,
+          'membership.joined',
+          `@${inv.invitee_handle} (${memberType}) via invite`,
+          null
+        );
+      }
+    } catch {}
   });
 
   tx();
@@ -1887,6 +2002,22 @@ export function memberAction(args: {
   if (args.action === 'remove') {
     db.prepare('DELETE FROM project_members WHERE project_id=? AND member_handle=? AND member_type=?').run(p.id, args.memberHandle, args.memberType);
     db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `Member removed: @${args.memberHandle}`);
+
+    // best-effort task event
+    try {
+      const root = db.prepare('SELECT id FROM tasks WHERE project_id=? AND parent_task_id IS NULL ORDER BY created_at ASC LIMIT 1').get(p.id) as { id: string } | undefined;
+      if (root?.id) {
+        db.prepare('INSERT INTO task_events (task_id, ts, actor_handle, actor_type, kind, note, proposal_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+          root.id,
+          now,
+          args.actorHandle,
+          'human',
+          'membership.removed',
+          `@${args.memberHandle} (${args.memberType})`,
+          null
+        );
+      }
+    } catch {}
   }
 
   return { ok: true };
@@ -2213,7 +2344,7 @@ function ensureDogfoodA2aSiteProject() {
   if (!existing) return;
   const pid = existing.id;
 
-  // Ensure DECISIONS.md isn’t empty.
+  // Ensure DECISIONS.md isn't empty.
   const now = nowIso();
   const dec = db
     .prepare('SELECT content FROM project_files WHERE project_id=? AND path=?')
@@ -2400,7 +2531,7 @@ function ensureShowcaseDemoProject() {
   const pr = createProposal({
     projectSlug: slug,
     title: 'Clarify quickstart verification',
-    summary: 'Add explicit “verify signature + sidecar + text_complete” steps.',
+    summary: 'Add explicit "verify signature + sidecar + text_complete" steps.',
     authorHandle: 'demo_ext_agent_showcase',
     authorType: 'agent',
     filePath: 'docs/quickstart.md',
@@ -2826,7 +2957,7 @@ function ensureScenarioSeedProjects() {
         { path: 'RUN_LOG.md', content: '# Run log\n\n- (empty)\n' },
       ],
       extraTasks: [
-        { title: 'Define eval rubric', description: 'What does “good agent output” mean?', filePath: 'SPEC.md' },
+        { title: 'Define eval rubric', description: 'What does "good agent output" mean?', filePath: 'SPEC.md' },
         { title: 'Log one agent run', description: 'Write a short run log entry.', filePath: 'RUN_LOG.md', actor: { handle: 'seed_agent_builder', type: 'agent' } },
       ],
       proposals: [
@@ -2852,7 +2983,7 @@ function ensureScenarioSeedProjects() {
     {
       slug: 'cn-product-build',
       name: '产品迭代 · 结算体验优化',
-      summary: '产品研发项目：围绕结算流程优化、埋点与回归验证。',
+      summary: '产品研发项目:围绕结算流程优化、埋点与回归验证。',
       visibility: 'open',
       template: 'product',
       owner: 'seed_bella',
@@ -2864,23 +2995,23 @@ function ensureScenarioSeedProjects() {
         { handle: 'oc_agent_checkout', displayName: '外部代理 · CheckoutBot', runtime: { capabilities: ['tasks', 'proposals', 'review'], note: '来自 OpenClaw 的外部代理示例' } },
       ],
       extraFiles: [
-        { path: 'PRD.md', content: '# PRD\n\n## 背景\n结算转化率下滑，需要梳理关键摩擦点。\n\n## 目标\n- 降低支付失败率\n- 提升填写效率\n\n## 约束\n- 不改支付供应商\n' },
+        { path: 'PRD.md', content: '# PRD\n\n## 背景\n结算转化率下滑,需要梳理关键摩擦点。\n\n## 目标\n- 降低支付失败率\n- 提升填写效率\n\n## 约束\n- 不改支付供应商\n' },
         { path: 'METRICS.md', content: '# 指标与埋点\n\n- 下单成功率\n- 支付失败分布\n- 表单完成耗时\n' },
       ],
       extraTasks: [
-        { title: '梳理结算关键路径', description: '列出关键页面与字段，标注潜在摩擦点。', filePath: 'PRD.md' },
+        { title: '梳理结算关键路径', description: '列出关键页面与字段,标注潜在摩擦点。', filePath: 'PRD.md' },
         { title: '补齐埋点定义', description: '在 METRICS.md 中补齐事件名、属性与采样策略。', filePath: 'METRICS.md', actor: { handle: 'seed_agent_ops', type: 'agent' } },
       ],
       proposals: [
-        { title: 'PRD 增加非目标与风险', summary: '补充非目标/风险，避免范围蔓延。', filePath: 'PRD.md', author: { handle: 'oc_agent_checkout', type: 'agent' }, flow: 'request_changes_loop' },
-        { title: '完善指标口径说明', summary: '把“成功率/失败率”口径写清楚。', filePath: 'METRICS.md', author: { handle: 'seed_alex', type: 'human' }, flow: 'needs_review' },
+        { title: 'PRD 增加非目标与风险', summary: '补充非目标/风险,避免范围蔓延。', filePath: 'PRD.md', author: { handle: 'oc_agent_checkout', type: 'agent' }, flow: 'request_changes_loop' },
+        { title: '完善指标口径说明', summary: '把"成功率/失败率"口径写清楚。', filePath: 'METRICS.md', author: { handle: 'seed_alex', type: 'human' }, flow: 'needs_review' },
       ],
-      decisions: ['优先保证关键路径稳定，再做微优化。', '所有改动必须可回滚并可度量。'],
+      decisions: ['优先保证关键路径稳定,再做微优化。', '所有改动必须可回滚并可度量。'],
     },
     {
       slug: 'cn-research-spec',
       name: '研究专项 · 竞品协作流程对比',
-      summary: '研究/规格项目：对比 3 个协作产品的任务-提案-评审闭环。',
+      summary: '研究/规格项目:对比 3 个协作产品的任务-提案-评审闭环。',
       visibility: 'open',
       template: 'research',
       owner: 'seed_dana',
@@ -2889,7 +3020,7 @@ function ensureScenarioSeedProjects() {
         { handle: 'seed_agent_research', type: 'agent', role: 'contributor' },
       ],
       extraFiles: [
-        { path: '竞品清单.md', content: '# 竞品清单\n\n- A：看板 + PR\n- B：任务 + 评审\n- C：知识库 + 讨论\n' },
+        { path: '竞品清单.md', content: '# 竞品清单\n\n- A:看板 + PR\n- B:任务 + 评审\n- C:知识库 + 讨论\n' },
         { path: '观察记录.md', content: '# 观察记录\n\n## 入口\n- \n\n## 评审\n- \n' },
       ],
       extraTasks: [
@@ -2897,15 +3028,15 @@ function ensureScenarioSeedProjects() {
         { title: '补齐观察记录', description: '把关键截图/步骤写进 观察记录.md。', filePath: '观察记录.md', actor: { handle: 'seed_agent_research', type: 'agent' } },
       ],
       proposals: [
-        { title: 'SPEC 增加评估标准', summary: '把“好用”的标准写成可验证条目。', filePath: 'SPEC.md', author: { handle: 'seed_dana', type: 'human' }, flow: 'merge' },
+        { title: 'SPEC 增加评估标准', summary: '把"好用"的标准写成可验证条目。', filePath: 'SPEC.md', author: { handle: 'seed_dana', type: 'human' }, flow: 'merge' },
         { title: '新增竞品入口小结', summary: '补充竞品入口体验小结。', filePath: '观察记录.md', author: { handle: 'seed_agent_research', type: 'agent' }, flow: 'needs_review' },
       ],
-      decisions: ['研究输出必须落到一页可执行建议。', '避免“泛泛而谈”，只记录可复现步骤。'],
+      decisions: ['研究输出必须落到一页可执行建议。', '避免"泛泛而谈",只记录可复现步骤。'],
     },
     {
       slug: 'cn-content-workflow',
       name: '内容工作流 · 教程系列制作',
-      summary: '内容/创作项目：选题-大纲-初稿-审稿-发布清单。',
+      summary: '内容/创作项目:选题-大纲-初稿-审稿-发布清单。',
       visibility: 'open',
       template: 'general',
       owner: 'seed_chris',
@@ -2914,23 +3045,23 @@ function ensureScenarioSeedProjects() {
         { handle: 'seed_bella', type: 'human', role: 'contributor' },
       ],
       extraFiles: [
-        { path: '选题池.md', content: '# 选题池\n\n- 入门：协作闭环是什么\n- 进阶：提案评审怎么做\n' },
+        { path: '选题池.md', content: '# 选题池\n\n- 入门:协作闭环是什么\n- 进阶:提案评审怎么做\n' },
         { path: '发布清单.md', content: '# 发布清单\n\n- 标题检查\n- 目录\n- 术语统一\n- 链接检查\n' },
       ],
       extraTasks: [
-        { title: '写第一篇大纲', description: '把结构写清楚：背景→步骤→常见坑。', filePath: '选题池.md' },
-        { title: '审阅发布清单', description: '删除冗余项，保留可执行检查。', filePath: '发布清单.md' },
+        { title: '写第一篇大纲', description: '把结构写清楚:背景→步骤→常见坑。', filePath: '选题池.md' },
+        { title: '审阅发布清单', description: '删除冗余项,保留可执行检查。', filePath: '发布清单.md' },
       ],
       proposals: [
-        { title: '发布清单加入“截图一致性”', summary: '补充截图与文案一致性检查。', filePath: '发布清单.md', author: { handle: 'seed_bella', type: 'human' }, flow: 'merge' },
-        { title: '选题池增加“FAQ 结构”', summary: '给每篇文章预留 FAQ 段落。', filePath: '选题池.md', author: { handle: 'seed_chris', type: 'human' }, flow: 'needs_review' },
+        { title: '发布清单加入"截图一致性"', summary: '补充截图与文案一致性检查。', filePath: '发布清单.md', author: { handle: 'seed_bella', type: 'human' }, flow: 'merge' },
+        { title: '选题池增加"FAQ 结构"', summary: '给每篇文章预留 FAQ 段落。', filePath: '选题池.md', author: { handle: 'seed_chris', type: 'human' }, flow: 'needs_review' },
       ],
       decisions: ['内容评审优先看结构与可执行性。', '发布清单宁少勿多。'],
     },
     {
       slug: 'cn-community-restricted',
-      name: '社群运营 · 事件处置（受限）',
-      summary: '社群运营：投诉工单、处置流程、对外话术。',
+      name: '社群运营 · 事件处置(受限)',
+      summary: '社群运营:投诉工单、处置流程、对外话术。',
       visibility: 'restricted',
       template: 'general',
       owner: 'seed_alex',
@@ -2939,23 +3070,23 @@ function ensureScenarioSeedProjects() {
         { handle: 'seed_agent_ops', type: 'agent', role: 'contributor' },
       ],
       extraFiles: [
-        { path: '处置流程.md', content: '# 处置流程\n\n## 分级\n- P0：安全/合规\n- P1：高风险舆情\n- P2：一般投诉\n\n## 时限\n- P0：15 分钟内响应\n' },
+        { path: '处置流程.md', content: '# 处置流程\n\n## 分级\n- P0:安全/合规\n- P1:高风险舆情\n- P2:一般投诉\n\n## 时限\n- P0:15 分钟内响应\n' },
         { path: '对外话术.md', content: '# 对外话术\n\n- 感谢反馈\n- 说明处理进度\n- 给出下一步时间点\n' },
       ],
       extraTasks: [
         { title: '补齐 P0 升级路径', description: '明确谁负责、怎么升级、何时关单。', filePath: '处置流程.md' },
-        { title: '话术去模板化', description: '减少套话，提升信息密度。', filePath: '对外话术.md', actor: { handle: 'seed_agent_reviewer', type: 'agent' } },
+        { title: '话术去模板化', description: '减少套话,提升信息密度。', filePath: '对外话术.md', actor: { handle: 'seed_agent_reviewer', type: 'agent' } },
       ],
       proposals: [
-        { title: '处置流程增加“复盘模板”', summary: '补充复盘模板与记录字段。', filePath: '处置流程.md', author: { handle: 'seed_agent_ops', type: 'agent' }, flow: 'request_changes_loop' },
-        { title: '对外话术补充“边界说明”', summary: '写清楚可承诺与不可承诺内容。', filePath: '对外话术.md', author: { handle: 'seed_alex', type: 'human' }, flow: 'needs_review' },
+        { title: '处置流程增加"复盘模板"', summary: '补充复盘模板与记录字段。', filePath: '处置流程.md', author: { handle: 'seed_agent_ops', type: 'agent' }, flow: 'request_changes_loop' },
+        { title: '对外话术补充"边界说明"', summary: '写清楚可承诺与不可承诺内容。', filePath: '对外话术.md', author: { handle: 'seed_alex', type: 'human' }, flow: 'needs_review' },
       ],
-      decisions: ['受限项目：对外话术必须由负责人审核。', 'P0 事件先止血再优化。'],
+      decisions: ['受限项目:对外话术必须由负责人审核。', 'P0 事件先止血再优化。'],
     },
     {
       slug: 'cn-client-secure',
-      name: '客户交付 · 需求与验收（受限）',
-      summary: '客户项目：需求澄清、验收标准、里程碑与交付清单。',
+      name: '客户交付 · 需求与验收(受限)',
+      summary: '客户项目:需求澄清、验收标准、里程碑与交付清单。',
       visibility: 'restricted',
       template: 'product',
       owner: 'seed_owner',
@@ -2972,19 +3103,19 @@ function ensureScenarioSeedProjects() {
         { path: '里程碑.md', content: '# 里程碑\n\n- M1\n- M2\n- M3\n' },
       ],
       extraTasks: [
-        { title: '补齐验收标准细则', description: '把“可验证”写到每条验收标准里。', filePath: '验收标准.md' },
+        { title: '补齐验收标准细则', description: '把"可验证"写到每条验收标准里。', filePath: '验收标准.md' },
         { title: '梳理里程碑风险', description: '标注依赖与潜在延误点。', filePath: '里程碑.md' },
       ],
       proposals: [
-        { title: '验收标准增加“回归范围”', summary: '补充回归范围与测试环境说明。', filePath: '验收标准.md', author: { handle: 'oc_agent_client', type: 'agent' }, flow: 'request_changes_loop' },
-        { title: '需求澄清加入“非目标”', summary: '明确不做什么，减少扯皮。', filePath: '需求澄清.md', author: { handle: 'seed_bella', type: 'human' }, flow: 'needs_review' },
+        { title: '验收标准增加"回归范围"', summary: '补充回归范围与测试环境说明。', filePath: '验收标准.md', author: { handle: 'oc_agent_client', type: 'agent' }, flow: 'request_changes_loop' },
+        { title: '需求澄清加入"非目标"', summary: '明确不做什么,减少扯皮。', filePath: '需求澄清.md', author: { handle: 'seed_bella', type: 'human' }, flow: 'needs_review' },
       ],
-      decisions: ['受限项目：所有对外承诺必须可追溯到文件。', '验收标准优先写“怎么验证”。'],
+      decisions: ['受限项目:所有对外承诺必须可追溯到文件。', '验收标准优先写"怎么验证"。'],
     },
     {
       slug: 'cn-consulting-restricted',
-      name: '咨询项目 · 访谈纪要（受限）',
-      summary: '咨询/研究：访谈问题、纪要、结论与下一步建议。',
+      name: '咨询项目 · 访谈纪要(受限)',
+      summary: '咨询/研究:访谈问题、纪要、结论与下一步建议。',
       visibility: 'restricted',
       template: 'research',
       owner: 'seed_dana',
@@ -2996,24 +3127,24 @@ function ensureScenarioSeedProjects() {
         { handle: 'oc_agent_notes', displayName: '外部代理 · NotesBot', runtime: { capabilities: ['tasks', 'proposals'], note: '访谈纪要整理代理' } },
       ],
       extraFiles: [
-        { path: '访谈问题.md', content: '# 访谈问题\n\n- 现有流程最痛的点？\n- 现有协作方式的失败模式？\n' },
+        { path: '访谈问题.md', content: '# 访谈问题\n\n- 现有流程最痛的点?\n- 现有协作方式的失败模式?\n' },
         { path: '访谈纪要.md', content: '# 访谈纪要\n\n## 受访者 A\n- \n' },
         { path: '结论与建议.md', content: '# 结论与建议\n\n- \n' },
       ],
       extraTasks: [
-        { title: '整理纪要结构', description: '统一纪要结构：背景→关键语录→结论。', filePath: '访谈纪要.md', actor: { handle: 'oc_agent_notes', type: 'agent' } },
-        { title: '输出 3 条可执行建议', description: '写成“动作 + 预期结果 + 验证方式”。', filePath: '结论与建议.md' },
+        { title: '整理纪要结构', description: '统一纪要结构:背景→关键语录→结论。', filePath: '访谈纪要.md', actor: { handle: 'oc_agent_notes', type: 'agent' } },
+        { title: '输出 3 条可执行建议', description: '写成"动作 + 预期结果 + 验证方式"。', filePath: '结论与建议.md' },
       ],
       proposals: [
-        { title: '纪要增加“关键语录”段', summary: '补充关键语录结构，方便复核。', filePath: '访谈纪要.md', author: { handle: 'oc_agent_notes', type: 'agent' }, flow: 'merge' },
-        { title: '建议增加“验证方式”', summary: '每条建议补充验证方式。', filePath: '结论与建议.md', author: { handle: 'seed_dana', type: 'human' }, flow: 'needs_review' },
+        { title: '纪要增加"关键语录"段', summary: '补充关键语录结构,方便复核。', filePath: '访谈纪要.md', author: { handle: 'oc_agent_notes', type: 'agent' }, flow: 'merge' },
+        { title: '建议增加"验证方式"', summary: '每条建议补充验证方式。', filePath: '结论与建议.md', author: { handle: 'seed_dana', type: 'human' }, flow: 'needs_review' },
       ],
-      decisions: ['受限项目：访谈内容不可外泄。', '建议必须可验证、可执行。'],
+      decisions: ['受限项目:访谈内容不可外泄。', '建议必须可验证、可执行。'],
     },
     {
       slug: 'cn-ops-proc',
-      name: '内部流程 · 发布与回滚（受限）',
-      summary: '内部流程项目：发布流程、回滚、值班交接与事故复盘。',
+      name: '内部流程 · 发布与回滚(受限)',
+      summary: '内部流程项目:发布流程、回滚、值班交接与事故复盘。',
       visibility: 'restricted',
       template: 'general',
       owner: 'seed_alex',
@@ -3031,15 +3162,15 @@ function ensureScenarioSeedProjects() {
         { title: '完善值班交接清单', description: '交接必须包含监控/报警/进行中变更。', filePath: '发布流程.md', actor: { handle: 'seed_agent_ops', type: 'agent' } },
       ],
       proposals: [
-        { title: '回滚预案补充“沟通模板”', summary: '加入对内/对外沟通模板。', filePath: '回滚预案.md', author: { handle: 'seed_agent_ops', type: 'agent' }, flow: 'merge' },
-        { title: '事故复盘增加“预防措施”', summary: '明确预防措施与负责人。', filePath: '事故复盘.md', author: { handle: 'seed_alex', type: 'human' }, flow: 'needs_review' },
+        { title: '回滚预案补充"沟通模板"', summary: '加入对内/对外沟通模板。', filePath: '回滚预案.md', author: { handle: 'seed_agent_ops', type: 'agent' }, flow: 'merge' },
+        { title: '事故复盘增加"预防措施"', summary: '明确预防措施与负责人。', filePath: '事故复盘.md', author: { handle: 'seed_alex', type: 'human' }, flow: 'needs_review' },
       ],
-      decisions: ['受限项目：发布与回滚流程必须统一版本。', '所有事故复盘必须产出行动项。'],
+      decisions: ['受限项目:发布与回滚流程必须统一版本。', '所有事故复盘必须产出行动项。'],
     },
     {
       slug: 'cn-agent-heavy',
       name: '代理实验室 · 多代理协作实验',
-      summary: '代理密集项目：多代理分工（写作/审阅/研究/运维）与合并策略。',
+      summary: '代理密集项目:多代理分工(写作/审阅/研究/运维)与合并策略。',
       visibility: 'open',
       template: 'product',
       owner: 'seed_owner',
@@ -3060,10 +3191,10 @@ function ensureScenarioSeedProjects() {
         { title: '记录一次协作运行', description: '把输入/输出/复盘写入运行记录。', filePath: '运行记录.md', actor: { handle: 'oc_agent_lab', type: 'agent' } },
       ],
       proposals: [
-        { title: '实验设计补充“失败模式”', summary: '列出最可能失败的 3 种模式及应对。', filePath: '实验设计.md', author: { handle: 'oc_agent_lab', type: 'agent' }, flow: 'merge' },
+        { title: '实验设计补充"失败模式"', summary: '列出最可能失败的 3 种模式及应对。', filePath: '实验设计.md', author: { handle: 'oc_agent_lab', type: 'agent' }, flow: 'merge' },
         { title: '运行记录增加模板', summary: '加入运行记录模板字段。', filePath: '运行记录.md', author: { handle: 'seed_agent_reviewer', type: 'agent' }, flow: 'needs_review' },
       ],
-      decisions: ['多代理协作优先保证可追溯。', '合并前必须明确“谁负责最终决策”。'],
+      decisions: ['多代理协作优先保证可追溯。', '合并前必须明确"谁负责最终决策"。'],
     },
   ];
 
@@ -3331,7 +3462,7 @@ function ensurePhase43Enrichment() {
       const pp = isCn ? `docs/说明-${String(i).padStart(2, '0')}.md` : `docs/note-${String(i).padStart(2, '0')}.md`;
       if (existingPaths.has(pp)) continue;
       const content = isCn
-        ? `# 说明 ${i}\n\n- 背景：${p.name}\n- 目标：${p.summary}\n- 备注：按需补充\n`
+        ? `# 说明 ${i}\n\n- 背景:${p.name}\n- 目标:${p.summary}\n- 备注:按需补充\n`
         : `# Note ${i}\n\n- Context: ${p.name}\n- Goal: ${p.summary}\n- Notes: add details as needed\n`;
       ensureProjectFile(p.id, pp, content);
       existingPaths.add(pp);
@@ -3341,7 +3472,7 @@ function ensurePhase43Enrichment() {
     // Decisions: uneven targets.
     const decisionTarget = tier === 'overloaded' ? 5 : tier === 'medium' ? 4 : tier === 'light' ? 3 : 2;
     const decisions = isCn
-      ? ['先把关键路径跑通，再做体验细节。', '提案优先小改动（单文件）。', '所有关键改动必须可回滚。', '通知要“可行动”。', '移动端优先保证可读与可点击。']
+      ? ['先把关键路径跑通,再做体验细节。', '提案优先小改动(单文件)。', '所有关键改动必须可回滚。', '通知要"可行动"。', '移动端优先保证可读与可点击。']
       : ['Prefer small, reviewable proposals.', 'Keep operational wording consistent.', 'Make changes measurable.', 'Notifications should be actionable.', 'Mobile readability is first-class.'];
     ensureDecisionBullets(p.id, decisions.slice(0, decisionTarget));
 
@@ -3423,7 +3554,7 @@ function ensurePhase43Enrichment() {
           actorType: author.type,
           summary: (isCn ? '已按要求补充' : 'Updated per request') + ` (${i})`,
           newContent: isCn
-            ? `# ${p.name}\n\n- 提案 ${i}\n- 已补充：可验证标准\n`
+            ? `# ${p.name}\n\n- 提案 ${i}\n- 已补充:可验证标准\n`
             : `# ${p.name}\n\n- Proposal ${i}\n- Added: verifiable criteria\n`,
           note: isCn ? '根据 request changes 更新。' : 'Updated per request changes.',
         });
@@ -3472,7 +3603,7 @@ function ensurePhase43Enrichment() {
 
     // Notifications: global top-up (organic-ish).
     if (unreadNotificationCount('seed_owner') < 120) {
-      notifyHuman('seed_owner', 'seed.info', isCn ? `项目更新：/${p.slug}（用于密度测试）` : `Update: /${p.slug} (density seed)`, `/projects/${p.slug}`);
+      notifyHuman('seed_owner', 'seed.info', isCn ? `项目更新:/${p.slug}(用于密度测试)` : `Update: /${p.slug} (density seed)`, `/projects/${p.slug}`);
     }
   }
 
