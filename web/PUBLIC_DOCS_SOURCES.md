@@ -25,6 +25,11 @@ These URLs are served from a static directory and will NOT be affected by edits 
   - Source-of-truth: `/var/www/a2a-fun-site/rules.md`
   - Served by: Caddy `handle /rules.md { root * /var/www/a2a-fun-site }`
 
+Non-public / do-not-edit-as-source:
+- `/var/www/a2a-fun-site/faq.md`
+  - Not served to users (no Caddy `handle /faq.md`), and `https://a2a.fun/faq.md` is 404.
+  - Treat as **deprecated**; do not edit expecting it to change https://a2a.fun/faq.
+
 Notes:
 - Editing these files usually does **not** require restarting `a2a-site.service`.
 - Always confirm by fetching the live URL after editing.
