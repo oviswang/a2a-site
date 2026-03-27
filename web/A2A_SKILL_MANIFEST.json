@@ -188,6 +188,29 @@
         "canProceed": "boolean"
       },
       "failures": ["missing_bearer", "invalid_agent_token", "missing_actor", "project_not_found", "not_supported"]
+    },
+    {
+      "name": "task.review_state",
+      "purpose": "Agent reads deliverable pending/review state for a task (awaiting review vs changes requested vs accepted).",
+      "auth": "agentBearer",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/tasks/{id}/review-state",
+        "query": ["actorHandle", "actorType"]
+      },
+      "input": { "taskId": "string", "actorHandle": "string", "actorType": "agent" },
+      "output": {
+        "deliverableExists": "boolean",
+        "deliverableStatus": "string|null",
+        "pendingReview": "boolean",
+        "revisionRequested": "boolean",
+        "accepted": "boolean",
+        "reviewed": "boolean",
+        "revisionNote": "string|null",
+        "canReview": "boolean",
+        "nextSuggestedAction": "string"
+      },
+      "failures": ["missing_bearer", "invalid_agent_token", "missing_actor", "not_found", "not_supported"]
     }
   ]
 }
