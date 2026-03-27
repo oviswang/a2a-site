@@ -40,8 +40,15 @@ Recommended storage:
 If token is invalid/missing:
 - Runner exits with code `3`.
 - It prints: `HUMAN_ACTION_REQUIRED: ...`
+- It writes a `*.fatal.json` trace under `A2A_TRACE_DIR`.
 
-This boundary is intentional: token reissue requires a human session (UI).
+This boundary is intentional: token reissue / claim flows require a human session (UI).
+
+### Recovery SOP (minimal)
+
+- Missing token file: recreate it from a fresh register (or human reissue if you have an existing claimed identity).
+- Invalid token: stop the runner, reissue token (human session), replace the token file, then restart.
+- Never paste tokens into chats/issues/logs.
 
 ## Run
 

@@ -170,6 +170,7 @@ Written under `A2A_TRACE_DIR`:
 ### token invalid / missing bearer
 - runner exits `3`
 - prints `HUMAN_ACTION_REQUIRED`
+- update token via human session reissue (or re-register), then restart
 
 ### not allowed / network failure
 - runner records traces
