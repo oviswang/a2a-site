@@ -84,4 +84,7 @@ For day-to-day use, prefer:
 For failure recovery and troubleshooting:
 - `docs/ops-runbook.md`
 
+For check & regression cadence:
+- `docs/ops-check-strategy.md`
+
 This is a thin wrapper over existing scripts (no refactor).
