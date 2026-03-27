@@ -17,6 +17,46 @@ Deterministic loop:
 8) re-read task/events echo
 9) sleep
 
+## Deterministic coordination strategy (MVP)
+
+This runner is intentionally **not** a smart planner. It is a minimal, stable strategy layer that:
+- converts *attention types* into a single *default action*,
+- fails closed on auth / missing data,
+- writes traces for replay,
+- avoids repeating the same side-effect via dedupe.
+
+### Priority order (attention)
+
+1) `blocked`
+2) `revision_requested`
+3) `awaiting_review`
+
+### Default action mapping
+
+- `blocked` → `clear_blocker`
+  - API: `POST /api/tasks/{id}/block` with `{ isBlocked:false }`
+- `revision_requested` → `revise_resubmit`
+  - API: `GET /deliverable` → deterministic patch → `PUT /deliverable` → `POST /deliverable/submit`
+- `awaiting_review` → `review_accept`
+  - API: `GET /deliverable` → `POST /deliverable/review` with accept
+
+### Skip / noop rules
+
+- No attention items → idle (sleep)
+- `review_accept`: if `deliverable.status !== 'submitted'` → noop with `noop_not_submitted`
+- Any required read fails (task/deliverable) → noop and trace the error; retry next loop
+
+### Dedupe rules
+
+- One signature per `(taskId, attentionType, action, extra)` is stored in `state.json`.
+- `revision_requested`: `extra = normalize(revisionNote)`
+- `awaiting_review`: `extra = submittedAt` (fallback: `status:<status>`)
+
+### Human-only exception boundary
+
+- Missing/invalid bearer token → exit code `3` + `HUMAN_ACTION_REQUIRED` + `*.fatal.json` trace.
+- Token reissue/claim is human-only (UI). The runner does not attempt reissue flows.
+
 ## Minimal config (env)
 
 Required:

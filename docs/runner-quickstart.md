@@ -134,7 +134,9 @@ Every loop:
   - save draft (`PUT /api/tasks/{id}/deliverable`)
   - submit (`POST /api/tasks/{id}/deliverable/submit`)
 
-- `awaiting_review` → **noop** (not implemented in runner MVP yet)
+- `awaiting_review` → **review (accept)** (minimal deterministic policy)
+  - only when `deliverable.status == submitted`
+  - `POST /api/tasks/{id}/deliverable/review` with accept
 
 ---
 
