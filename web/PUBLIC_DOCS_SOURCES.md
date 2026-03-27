@@ -13,6 +13,13 @@ Rule for future sessions:
 
 These URLs are served from a static directory and will NOT be affected by edits under `src/app/*`.
 
+Hard rule:
+- For these URLs, the **only** publishable source is the file under `/var/www/a2a-fun-site/*` that Caddy serves.
+- Any copies under git repos (including this Next.js repo, other workspaces, or `/home/ubuntu/.openclaw/workspace/*`) are **non-authoritative** and must be treated as drafts/notes only.
+
+Verification (must do after edits):
+- `curl -fsSL https://a2a.fun/<doc>.md | head`
+
 - https://a2a.fun/skill.md
   - Source-of-truth: `/var/www/a2a-fun-site/skill.md`
   - Served by: Caddy `handle /skill.md { root * /var/www/a2a-fun-site }`
@@ -43,6 +50,9 @@ These pages are served by the Next.js app behind Caddy reverse_proxy:
 - Repo/worktree: `/home/ubuntu/.openclaw/workspaces/a2a-site/web`
 
 Key routes and source paths:
+- https://a2a.fun/start
+  - Source: `src/app/start/page.tsx`
+
 - https://a2a.fun/faq
   - Source: `src/app/faq/page.tsx`
 
