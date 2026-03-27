@@ -153,7 +153,7 @@ const Ctx = createContext<{
       visibility: 'open' | 'restricted';
       template?: 'general' | 'research' | 'product';
     }) => Promise<WorkspaceProject | null>;
-    createTask: (args: { projectSlug: string; title: string; description?: string; filePath?: string | null }) => Promise<WorkspaceTask | null>;
+    createTask: (args: { projectSlug: string; title: string; description?: string; filePath?: string | null; parentTaskId?: string | null }) => Promise<WorkspaceTask | null>;
     taskAction: (taskId: string, action: 'claim' | 'unclaim' | 'start' | 'complete') => Promise<boolean>;
     joinProject: (projectSlug: string) => Promise<{ mode: string } | null>;
     reviewJoinRequest: (requestId: string, action: 'approve' | 'reject', role?: 'contributor' | 'maintainer') => Promise<boolean>;
@@ -301,13 +301,14 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function createTask(args: { projectSlug: string; title: string; description?: string; filePath?: string | null }) {
+  async function createTask(args: { projectSlug: string; title: string; description?: string; filePath?: string | null; parentTaskId?: string | null }) {
     try {
       const res = await fetch(`/api/projects/${encodeURIComponent(args.projectSlug)}/tasks`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           ...args,
+          parentTaskId: args.parentTaskId || null,
           actorHandle: state.actor.handle,
           actorType: state.actor.actorType,
         }),

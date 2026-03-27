@@ -29,7 +29,8 @@ export default function TaskDetailPage() {
   const [deliverable, setDeliverable] = useState<WorkspaceDeliverable | null>(null);
 
   const [children, setChildren] = useState<WorkspaceTask[]>([]);
-  const [rollup, setRollup] = useState<{ total: number; open: number; inProgressOrClaimed: number; completed: number; submitted: number; changesRequested: number; accepted: number } | null>(null);
+  const [rollup, setRollup] = useState<{ total: number; open: number; inProgressOrClaimed: number; completed: number; submitted: number; changesRequested: number; accepted: number; noAcceptedResult?: number; noDeliverableOrNotSubmitted?: number } | null>(null);
+  const [childDeliverables, setChildDeliverables] = useState<Record<string, WorkspaceDeliverable | null>>({});
 
   const [summaryMd, setSummaryMd] = useState('');
   const [linksText, setLinksText] = useState('');
@@ -81,6 +82,7 @@ export default function TaskDetailPage() {
       .then((j) => {
         setChildren((j?.children || []) as WorkspaceTask[]);
         setRollup(j?.rollup || null);
+        setChildDeliverables((j?.deliverablesByTaskId || {}) as Record<string, WorkspaceDeliverable | null>);
       })
       .catch(() => void 0);
   }, [id]);
@@ -91,6 +93,28 @@ export default function TaskDetailPage() {
     const list = kind === 'all' ? events : events.filter((e) => e.kind === kind);
     return showAll ? list : list.slice(Math.max(0, list.length - 25));
   }, [events, kind, showAll]);
+
+  const acceptedChildren = useMemo(() => {
+    return children
+      .map((t) => ({ t, d: childDeliverables[t.id] || null }))
+      .filter((x) => x.d && x.d.status === 'accepted')
+      .sort((a, b) => String((b.d as any)?.reviewedAt || (b.d as any)?.updatedAt || '').localeCompare(String((a.d as any)?.reviewedAt || (a.d as any)?.updatedAt || '')));
+  }, [children, childDeliverables]);
+
+  const reviewSignals = useMemo(() => {
+    const submitted: Array<{ t: WorkspaceTask; d: WorkspaceDeliverable }> = [];
+    const changesRequested: Array<{ t: WorkspaceTask; d: WorkspaceDeliverable }> = [];
+    for (const t of children) {
+      const d = childDeliverables[t.id];
+      if (!d) continue;
+      if (d.status === 'submitted') submitted.push({ t, d });
+      if (d.status === 'changes_requested') changesRequested.push({ t, d });
+    }
+    return {
+      submitted: submitted.sort((a, b) => String(b.d.submittedAt || b.d.updatedAt).localeCompare(String(a.d.submittedAt || a.d.updatedAt))),
+      changesRequested: changesRequested.sort((a, b) => String(b.d.reviewedAt || b.d.updatedAt).localeCompare(String(a.d.reviewedAt || a.d.updatedAt))),
+    };
+  }, [children, childDeliverables]);
 
   return (
     <Layout>
@@ -124,13 +148,17 @@ export default function TaskDetailPage() {
             ) : null}
 
             {!task.parentTaskId ? (
-              <Card title="Child tasks (roll-up)">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-xs text-slate-200/70">Decompose work into child tasks and track progress here.</div>
-                  <Link className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10" href={`/projects/${task.projectSlug}#tasks`}>
-                    Create child task
-                  </Link>
-                </div>
+              <>
+                <Card title="Child tasks (roll-up)">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs text-slate-200/70">Decompose work into child tasks and track progress here.</div>
+                    <Link
+                      className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                      href={`/projects/${task.projectSlug}?parentTaskId=${encodeURIComponent(id)}#tasks-create`}
+                    >
+                      Create child task
+                    </Link>
+                  </div>
 
                 <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/80">
                   {rollup ? (
@@ -161,6 +189,79 @@ export default function TaskDetailPage() {
                   {children.length === 0 ? <div className="text-xs text-slate-200/60">No child tasks yet.</div> : null}
                 </div>
               </Card>
+
+              <Card title="Work results (child deliverables)">
+                <div className="text-xs text-slate-200/70">Aggregated deliverables from child tasks. Deterministic view; no auto-generated parent summary.</div>
+
+                <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/80">
+                  {rollup ? (
+                    <div className="flex flex-wrap gap-3">
+                      <span>
+                        <span className="text-slate-200/60">accepted</span> {rollup.accepted}
+                      </span>
+                      <span>
+                        <span className="text-slate-200/60">under review</span> {rollup.submitted}
+                      </span>
+                      <span>
+                        <span className="text-slate-200/60">changes requested</span> {rollup.changesRequested}
+                      </span>
+                      {typeof rollup.noDeliverableOrNotSubmitted === 'number' ? (
+                        <span>
+                          <span className="text-slate-200/60">no deliverable / not submitted</span> {rollup.noDeliverableOrNotSubmitted}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="text-slate-200/60">No aggregation yet.</div>
+                  )}
+                </div>
+
+                {reviewSignals.submitted.length || reviewSignals.changesRequested.length ? (
+                  <div className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div className="text-xs font-semibold text-slate-200/70">Latest active review signals</div>
+                    {reviewSignals.submitted.slice(0, 5).map(({ t, d }) => (
+                      <Link key={t.id} href={`/tasks/${encodeURIComponent(t.id)}`} className="block rounded-2xl border border-sky-400/20 bg-sky-400/10 p-3 hover:bg-sky-400/15">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm font-semibold text-slate-50">{t.title || t.id}</div>
+                          <div className="text-xs text-slate-200/70">submitted · @{d.authorHandle}</div>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-200/60">{d.submittedAt ? `submitted ${fmtTs(d.submittedAt)}` : `updated ${fmtTs(d.updatedAt)}`}</div>
+                      </Link>
+                    ))}
+                    {reviewSignals.changesRequested.slice(0, 5).map(({ t, d }) => (
+                      <Link key={t.id} href={`/tasks/${encodeURIComponent(t.id)}`} className="block rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 hover:bg-amber-400/15">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm font-semibold text-slate-50">{t.title || t.id}</div>
+                          <div className="text-xs text-slate-200/70">changes requested · @{d.authorHandle}</div>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-200/60">{d.reviewedAt ? `reviewed ${fmtTs(d.reviewedAt)}` : `updated ${fmtTs(d.updatedAt)}`}</div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+
+                <div className="mt-3 grid gap-2">
+                  {acceptedChildren.slice(0, 5).map(({ t, d }) => {
+                    const md = String(d?.summaryMd || '').trim();
+                    const snippet = md ? md.split('\n').slice(0, 6).join('\n') : '';
+                    return (
+                      <Link key={t.id} href={`/tasks/${encodeURIComponent(t.id)}`} className="block rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3 hover:bg-emerald-400/15">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm font-semibold text-slate-50">{t.title || t.id}</div>
+                          <div className="text-xs text-slate-200/70">accepted · @{d?.authorHandle}</div>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-200/60">{(d?.reviewedAt || d?.updatedAt) ? `accepted ${fmtTs((d?.reviewedAt || d?.updatedAt) as string)}` : ''}</div>
+                        {snippet ? <pre className="mt-2 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-3 text-[11px] leading-relaxed text-slate-100">{snippet}</pre> : null}
+                      </Link>
+                    );
+                  })}
+
+                  {acceptedChildren.length === 0 ? (
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/60">No accepted child deliverables yet. When a child task deliverable is accepted, it will appear here.</div>
+                  ) : null}
+                </div>
+              </Card>
+            </>
             ) : null}
 
             <Card

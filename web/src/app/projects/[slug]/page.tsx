@@ -42,6 +42,7 @@ export default function ProjectDetailPage() {
 
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
+  const [taskParentId, setTaskParentId] = useState<string | null>(null);
   const [joinMsg, setJoinMsg] = useState<string | null>(null);
 
   // Operational filters/sorts (client-side)
@@ -75,6 +76,21 @@ export default function ProjectDetailPage() {
     setExpandFiles(false);
     setExpandPeople(false);
     setExpandTimeline(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  useEffect(() => {
+    const pid = sp.get('parentTaskId');
+    if (pid && String(pid).trim()) {
+      setTaskParentId(String(pid));
+      setExpandTasks(true);
+      // Nudge into create area if present
+      setTimeout(() => {
+        try {
+          document.getElementById('tasks-create')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch {}
+      }, 50);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
@@ -670,22 +686,55 @@ export default function ProjectDetailPage() {
                         onChange={(e) => setTaskTitle(e.target.value)}
                         placeholder="Task title"
                       />
+                      {taskParentId ? (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs text-slate-100">
+                          <div>
+                            Creating <span className="font-semibold">child task</span> of <span className="font-mono">{taskParentId}</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                            onClick={() => {
+                              setTaskParentId(null);
+                              const next = new URLSearchParams(sp.toString());
+                              next.delete('parentTaskId');
+                              router.replace(`/projects/${slug}?${next.toString()}#tasks-create`);
+                            }}
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      ) : null}
                       <textarea
                         className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
                         rows={3}
                         value={taskDesc}
                         onChange={(e) => setTaskDesc(e.target.value)}
-                        placeholder="Optional description"
+                        placeholder={taskParentId ? 'Optional description (child task)' : 'Optional description'}
                       />
                       <button
                         type="button"
                         className="w-fit rounded-2xl bg-sky-400/20 px-3 py-2 text-sm text-sky-100 hover:bg-sky-400/25"
                         onClick={async () => {
                           if (!taskTitle.trim()) return;
-                          await actions.createTask({ projectSlug: slug, title: taskTitle, description: taskDesc, filePath: selectedFile?.path || null });
+                          const created = await actions.createTask({
+                            projectSlug: slug,
+                            title: taskTitle,
+                            description: taskDesc,
+                            filePath: selectedFile?.path || null,
+                            parentTaskId: taskParentId,
+                          } as any);
                           setTaskTitle('');
                           setTaskDesc('');
                           await actions.loadProject(slug);
+
+                          if (taskParentId) {
+                            // Preserve parent context: go back to the parent task page.
+                            router.push(`/tasks/${encodeURIComponent(taskParentId)}`);
+                          } else if (created?.id) {
+                            // Stay in context: open the task.
+                            router.push(`/tasks/${encodeURIComponent(created.id)}`);
+                          }
                         }}
                       >
                         Add task

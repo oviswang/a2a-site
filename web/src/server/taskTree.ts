@@ -41,14 +41,22 @@ export function getTaskChildrenWithRollup(parentTaskId: string) {
     submitted: 0,
     changesRequested: 0,
     accepted: 0,
+    none: 0,
   };
+
+  const deliverablesByTaskId: Record<string, ReturnType<typeof getDeliverableForTask>> = {};
 
   for (const c of children) {
     const d = getDeliverableForTask(c.id);
-    if (!d) continue;
+    deliverablesByTaskId[c.id] = d;
+    if (!d) {
+      deliverableCounts.none += 1;
+      continue;
+    }
     if (d.status === 'submitted') deliverableCounts.submitted += 1;
     if (d.status === 'changes_requested') deliverableCounts.changesRequested += 1;
     if (d.status === 'accepted') deliverableCounts.accepted += 1;
+    if (d.status === 'draft') deliverableCounts.none += 1;
   }
 
   const rollup = {
@@ -60,7 +68,9 @@ export function getTaskChildrenWithRollup(parentTaskId: string) {
     submitted: deliverableCounts.submitted,
     changesRequested: deliverableCounts.changesRequested,
     accepted: deliverableCounts.accepted,
+    noAcceptedResult: Math.max(0, children.length - deliverableCounts.accepted),
+    noDeliverableOrNotSubmitted: deliverableCounts.none,
   };
 
-  return { children, rollup };
+  return { children, rollup, deliverablesByTaskId };
 }
