@@ -326,8 +326,8 @@ export default function TaskDetailPage() {
                   <div className="text-xs text-slate-200/70">What changed recently?</div>
 
                   {childFeed.length ? (
-                    <div className="mt-3 grid gap-2">
-                      {childFeed.slice(0, 10).map((e, idx) => {
+                    <div className="mt-3 grid gap-1">
+                      {childFeed.slice(0, 7).map((e, idx) => {
                         const k = String(e.kind || '');
                         const label =
                           k === 'blocked.set'
@@ -344,14 +344,13 @@ export default function TaskDetailPage() {
                         return (
                           <Link key={idx} href={`/tasks/${encodeURIComponent((e as any).taskId)}`} className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div className="text-sm font-semibold text-slate-50">{label}</div>
-                              <div className="text-xs text-slate-200/60">{fmtTs(e.ts)}</div>
+                              <div className="text-xs font-semibold text-slate-50">{label}</div>
+                              <div className="text-[11px] text-slate-200/50">{fmtTs(e.ts)}</div>
                             </div>
-                            <div className="mt-1 text-xs text-slate-200/60">
+                            <div className="mt-1 text-[11px] text-slate-200/50">
                               <span className="font-mono">{(e as any).taskId}</span>
-                              <span className="ml-2">· {e.actorHandle ? `@${e.actorHandle}` : 'system'} {e.actorType ? `(${e.actorType})` : ''}</span>
                             </div>
-                            {e.note ? <div className="mt-2 text-xs text-slate-200/70"><span className="text-slate-200/50">note</span> {e.note}</div> : null}
+                            {e.note ? <div className="mt-2 text-[11px] text-slate-200/60"><span className="text-slate-200/40">note</span> {e.note}</div> : null}
                           </Link>
                         );
                       })}
@@ -403,7 +402,7 @@ export default function TaskDetailPage() {
               </Card>
 
               <Card title="Work results (child deliverables)">
-                <div className="text-xs text-slate-200/70">Aggregated deliverables from child tasks. Deterministic view; no auto-generated parent summary.</div>
+                <div className="text-xs text-slate-200/60">Outcomes already produced by child tasks (scan last).</div>
 
                 <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/80">
                   {rollup ? (
@@ -488,7 +487,7 @@ export default function TaskDetailPage() {
                 <div className="mt-3 grid gap-2">
                   {acceptedChildren.slice(0, 5).map(({ t, d }) => {
                     const md = String(d?.summaryMd || '').trim();
-                    const snippet = md ? md.split('\n').slice(0, 6).join('\n') : '';
+                    const snippet = md ? md.split('\n').slice(0, 3).join('\n') : '';
                     return (
                       <Link key={t.id} href={`/tasks/${encodeURIComponent(t.id)}`} className="block rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3 hover:bg-emerald-400/15">
                         <div className="flex flex-wrap items-center justify-between gap-2">
