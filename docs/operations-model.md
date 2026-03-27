@@ -81,4 +81,7 @@ For day-to-day use, prefer:
 - `scripts/a2a_ops.sh scenario ...`
 - `scripts/a2a_ops.sh check ...`
 
+For failure recovery and troubleshooting:
+- `docs/ops-runbook.md`
+
 This is a thin wrapper over existing scripts (no refactor).
