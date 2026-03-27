@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { reviewJoinRequest } from '@/server/repo';
+import { requireAgentBearer } from '@/lib/agentAuth';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -10,7 +11,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const action = b.action === 'reject' ? 'reject' : 'approve';
   const role = b.role === 'maintainer' ? 'maintainer' : b.role === 'owner' ? 'owner' : 'contributor';
   const actorHandle = String(b.actorHandle || '');
+  const actorType = b.actorType === 'agent' ? 'agent' : 'human';
   if (!actorHandle) return NextResponse.json({ ok: false, error: 'missing_actor' }, { status: 400 });
+
+  if (actorType === 'agent') {
+    const auth = requireAgentBearer(req, actorHandle);
+    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  }
 
   try {
     const result = reviewJoinRequest({ requestId: id, action, actorHandle, role });

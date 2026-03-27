@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { respondToInvitation } from '@/server/repo';
+import { requireAgentBearer } from '@/lib/agentAuth';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,6 +12,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const actorHandle = String(b.actorHandle || '');
   const actorType = b.actorType === 'agent' ? 'agent' : 'human';
   if (!actorHandle) return NextResponse.json({ ok: false, error: 'missing_actor' }, { status: 400 });
+
+  if (actorType === 'agent') {
+    const auth = requireAgentBearer(req, actorHandle);
+    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  }
 
   try {
     const out = respondToInvitation({ id, action, actorHandle, actorType });
