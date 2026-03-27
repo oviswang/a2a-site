@@ -137,8 +137,26 @@ function saveState(st) {
   fs.writeFileSync(path.join(TRACE_DIR, 'state.json'), JSON.stringify(st, null, 2));
 }
 
-function sigFor(itemType, action) {
-  return `${itemType}:${action}`;
+function sigFor(itemType, action, extra = '') {
+  return `${itemType}:${action}${extra ? ':' + extra : ''}`;
+}
+
+function normalizeNote(s) {
+  return String(s || '').trim().replace(/\s+/g, ' ').slice(0, 160);
+}
+
+function makeDeterministicPatch({ revisionNote, baseUrl, taskId }) {
+  const note = normalizeNote(revisionNote);
+  const ts = new Date().toISOString();
+  return (
+    `\n\n---\n` +
+    `## Revision (runner MVP)\n\n` +
+    `Addressed feedback: **${note || 'n/a'}**\n\n` +
+    `- Added evidence placeholder link\n` +
+    `- Timestamp: ${ts}\n\n` +
+    `### Evidence\n` +
+    `- (placeholder) ${baseUrl}/tasks/${taskId}\n`
+  );
 }
 
 function classifyError(r) {
@@ -239,13 +257,23 @@ async function main() {
     // MVP action policy: no AI. Prefer safe, reversible, clearly-mapped side effects.
     // Priority mapping:
     // - blocked -> clear blocker (POST /api/tasks/{id}/block isBlocked:false)
-    // - revision_requested -> noop (needs content revision capability)
+    // - revision_requested -> revise + resubmit (PUT /deliverable then POST /deliverable/submit)
     // - awaiting_review -> noop (review verb not standardized in runner MVP)
     let action = 'noop';
     if (top.type === 'blocked') action = 'clear_blocker';
+    if (top.type === 'revision_requested') action = 'revise_resubmit';
 
     // 6) minimal dedupe
-    const sig = sigFor(top.type, action);
+    // For revision_requested we dedupe by (taskId + normalized revisionNote).
+    let revisionSig = '';
+    if (action === 'revise_resubmit') {
+      const d0 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {});
+      writeTrace(Date.now(), 'deliverable_get', d0);
+      const note = d0.json?.deliverable?.revisionNote;
+      revisionSig = normalizeNote(note);
+    }
+
+    const sig = sigFor(top.type, action, revisionSig);
     if (st.lastByTask[taskId] === sig) {
       console.log(`[loop ${loops}] dedupe: skip ${sig} task=${taskId}`);
       await sleep(POLL_MS);
@@ -253,15 +281,56 @@ async function main() {
     }
 
     // 7) execute action
+    // Note: action may involve multiple calls; we record each step into traces.
     let actResult = { ok: true, skipped: true, reason: 'noop_mvp', action };
+
     if (action === 'clear_blocker') {
       const r = await httpJson('POST', `/api/tasks/${encodeURIComponent(taskId)}/block`, {
         token,
         body: { isBlocked: false, actorHandle: HANDLE, actorType: 'agent' },
       });
       actResult = r;
+      writeTrace(Date.now(), 'act', actResult);
     }
-    writeTrace(Date.now(), 'act', actResult);
+
+    if (action === 'revise_resubmit') {
+      // read deliverable (already fetched above as d0, but re-fetch to keep step traces clean)
+      const d1 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {});
+      writeTrace(Date.now(), 'deliverable_get_2', d1);
+      if (!d1.ok || !d1.json?.deliverable) {
+        actResult = { ok: false, error: 'deliverable_missing', status: d1.status, json: d1.json, action };
+        writeTrace(Date.now(), 'act', actResult);
+      } else {
+        const del = d1.json.deliverable;
+        const patch = makeDeterministicPatch({ revisionNote: del.revisionNote, baseUrl: BASE_URL, taskId });
+        const newSummary = String(del.summaryMd || '') + patch;
+        const put = await httpJson('PUT', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {
+          token,
+          body: {
+            actorHandle: HANDLE,
+            actorType: 'agent',
+            summaryMd: newSummary,
+            evidenceLinks: [
+              { label: 'placeholder', url: `${BASE_URL}/tasks/${taskId}` },
+            ],
+          },
+        });
+        writeTrace(Date.now(), 'deliverable_put', put);
+
+        if (!put.ok) {
+          actResult = put;
+          writeTrace(Date.now(), 'act', actResult);
+        } else {
+          const sub = await httpJson('POST', `/api/tasks/${encodeURIComponent(taskId)}/deliverable/submit`, {
+            token,
+            body: { actorHandle: HANDLE, actorType: 'agent' },
+          });
+          writeTrace(Date.now(), 'deliverable_submit', sub);
+          actResult = sub;
+          writeTrace(Date.now(), 'act', actResult);
+        }
+      }
+    }
 
     // 8) echo: re-read task
     const echo = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}`, {});
