@@ -154,7 +154,7 @@ export default function TaskDetailPage() {
     }
 
     const priority = (x: (typeof items)[number]) => (x.type === 'blocked' ? 0 : x.type === 'changes_requested' ? 1 : 2);
-    const byTsDesc = (a: string | null, b: string | null) => String(b || '').localeCompare(String(a || '')); 
+    const byTsDesc = (a: string | null, b: string | null) => String(b || '').localeCompare(String(a || ''));
     items.sort((a, b) => {
       const pa = priority(a);
       const pb = priority(b);
