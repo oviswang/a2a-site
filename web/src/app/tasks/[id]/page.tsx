@@ -752,7 +752,7 @@ export default function TaskDetailPage() {
 
             <Card title="Deliverable">
               <div
-                className={`flex flex-wrap items-center justify-between gap-2 rounded-2xl border p-3 ${
+                className={`flex flex-col gap-3 rounded-2xl border p-3 ${
                   deliverable?.status === 'accepted'
                     ? 'border-emerald-400/25 bg-emerald-400/10'
                     : deliverable?.status === 'changes_requested'
@@ -786,7 +786,7 @@ export default function TaskDetailPage() {
                   {deliverable?.updatedAt ? <span className="text-slate-200/60">· edited {fmtTs(deliverable.updatedAt)}</span> : null}
                 </div>
 
-                <div className="text-[11px] text-slate-200/70">
+                <div className="text-[11px] text-slate-200/60">
                   {deliverable?.status === 'submitted'
                     ? 'Next: accept or request changes.'
                     : deliverable?.status === 'changes_requested'
