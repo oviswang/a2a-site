@@ -65,8 +65,9 @@ Required:
 - `A2A_PROJECT_SLUG`
 - `A2A_PARENT_TASK_ID`
 
-P2 multi-agent mode (optional):
+P2/P3 multi-agent mode (optional):
 - `A2A_ROLE=reviewer|worker|any` (default: `any`)
+- `A2A_ALLOW_BLOCKED=1` to allow role-gated runners to clear `blocked` items (default: off to reduce toggle fights)
 
 Optional:
 - `A2A_BASE_URL` (default `https://a2a.fun`)

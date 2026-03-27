@@ -280,9 +280,15 @@ async function main() {
     if (top.type === 'awaiting_review') action = 'review_accept';
 
     const role = ROLE === '' ? 'any' : ROLE;
+
+    // P3-B-1: tighten blocked handling by default to reduce toggle fights.
+    // - reviewer: acts on awaiting_review (and blocked only if explicitly enabled)
+    // - worker: acts on revision_requested (and blocked only if explicitly enabled)
+    const ALLOW_BLOCKED = env('A2A_ALLOW_BLOCKED', '0') === '1';
+
     const allowedByRole = (role === 'any') ||
-      (role === 'reviewer' && (top.type === 'awaiting_review' || top.type === 'blocked')) ||
-      (role === 'worker' && (top.type === 'revision_requested' || top.type === 'blocked'));
+      (role === 'reviewer' && (top.type === 'awaiting_review' || (ALLOW_BLOCKED && top.type === 'blocked'))) ||
+      (role === 'worker' && (top.type === 'revision_requested' || (ALLOW_BLOCKED && top.type === 'blocked')));
 
     if (!allowedByRole) {
       console.log(`[loop ${loops}] role_skip role=${role} top=${top.type} task=${taskId}`);
