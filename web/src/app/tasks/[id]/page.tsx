@@ -1199,28 +1199,25 @@ export default function TaskDetailPage() {
             </Card>
 
             <Card title="Recent activity">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/70">Most recent task events (lightweight trace).</div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/60">Background history (most recent first).</div>
 
-              <div className="mt-3 flex flex-col gap-2">
+              <div className="mt-3 flex flex-col gap-1">
                 {visible.map((e, idx) => (
                   <div key={idx} className="rounded-2xl border border-white/10 bg-white/5 p-2 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-mono text-[11px] text-slate-200/50">{String(e.ts).slice(0, 16).replace('T', ' ')}</span>
                         <Tag>{
-                      (() => {
-                        const k = String(e.kind || '');
-                        if (k === 'blocked.set') return 'Blocked';
-                        if (k === 'blocked.cleared') return 'Blocker cleared';
-                        if (k === 'deliverable.submitted') return 'Deliverable submitted for review';
-                        if (k === 'deliverable.changes_requested') return 'Changes requested';
-                        if (k === 'deliverable.accepted') return 'Deliverable accepted';
-                        return k;
-                      })()
-                    }</Tag>
-                        <span className="text-[11px] text-slate-200/60">
-                          {e.actorHandle ? `@${e.actorHandle}` : 'system'} {e.actorType ? `(${e.actorType})` : ''}
-                        </span>
+                          (() => {
+                            const k = String(e.kind || '');
+                            if (k === 'blocked.set') return 'Blocked';
+                            if (k === 'blocked.cleared') return 'Blocker cleared';
+                            if (k === 'deliverable.submitted') return 'Deliverable submitted for review';
+                            if (k === 'deliverable.changes_requested') return 'Changes requested';
+                            if (k === 'deliverable.accepted') return 'Deliverable accepted';
+                            return k;
+                          })()
+                        }</Tag>
                       </div>
                       {e.proposalId ? (
                         <Link className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100 hover:bg-white/10" href={`/proposals/${e.proposalId}/review`}>
