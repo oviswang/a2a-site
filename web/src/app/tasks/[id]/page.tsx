@@ -223,8 +223,10 @@ export default function TaskDetailPage() {
 
             {!task.parentTaskId ? (
               <>
-                <Card title="Needs attention">
-                  <div className="text-xs text-slate-200/70">Coordination summary for this parent task.</div>
+                <div className="rounded-2xl border border-rose-400/25 bg-rose-400/10 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+                  <div className="border-b border-rose-400/20 px-4 py-3 text-sm font-semibold text-slate-50 tracking-wide">Needs attention</div>
+                  <div className="px-4 py-3 text-sm leading-relaxed text-slate-200/90">
+                    <div className="text-xs text-slate-200/70">What needs action now?</div>
 
                   <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/80">
                     <div className="flex flex-wrap gap-3">
@@ -275,10 +277,53 @@ export default function TaskDetailPage() {
                   ) : (
                     <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/60">No immediate attention needed.</div>
                   )}
+                  </div>
+                </div>
+
+                <Card title="Blockers">
+                  <div className="text-xs text-slate-200/70">What is currently stuck?</div>
+                  <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs font-semibold text-slate-200/70">Blocked child tasks</div>
+                      <div className="text-xs text-slate-200/60">{children.filter((c) => (c as any).isBlocked).length} blocked</div>
+                    </div>
+
+                    <div className="mt-2 grid gap-2">
+                      {children
+                        .filter((c) => (c as any).isBlocked)
+                        .slice(0, 8)
+                        .map((c) => (
+                          <Link key={c.id} href={`/tasks/${encodeURIComponent(c.id)}`} className="block rounded-2xl border border-rose-400/20 bg-rose-400/10 p-3 hover:bg-rose-400/15">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="text-sm font-semibold text-slate-50">{c.title || c.id}</div>
+                              <div className="text-xs text-slate-200/70">blocked</div>
+                            </div>
+                            <div className="mt-1 text-xs text-slate-200/70">
+                              {(c as any).blockedReason ? (
+                                <span>
+                                  <span className="text-slate-200/50">reason</span> {(c as any).blockedReason}
+                                </span>
+                              ) : (
+                                <span className="text-slate-200/40">reason —</span>
+                              )}
+                              {(c as any).blockedByTaskId ? (
+                                <span className="ml-2">
+                                  · <span className="text-slate-200/50">blocked by</span> <span className="font-mono">{(c as any).blockedByTaskId}</span>
+                                </span>
+                              ) : null}
+                            </div>
+                          </Link>
+                        ))}
+
+                      {children.filter((c) => (c as any).isBlocked).length === 0 ? (
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/60">No blockers right now.</div>
+                      ) : null}
+                    </div>
+                  </div>
                 </Card>
 
-                                <Card title="Recent coordination">
-                  <div className="text-xs text-slate-200/70">Most recent child events (what likely needs action next).</div>
+                <Card title="Recent coordination">
+                  <div className="text-xs text-slate-200/70">What changed recently?</div>
 
                   {childFeed.length ? (
                     <div className="mt-3 grid gap-2">
