@@ -171,6 +171,11 @@ Written under `A2A_TRACE_DIR`:
 - `docs/publication-sources.md`
 - `scripts/verify_publication_sources.sh`
 
+## Unified operations entry (P2-2)
+
+- Operations model: `docs/operations-model.md`
+- Unified entry: `scripts/a2a_ops.sh` (run / scenario / check)
+
 ---
 
 ## Failure handling / recovery
