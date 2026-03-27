@@ -84,6 +84,11 @@ export type WorkspaceTask = {
   createdAt: string;
   updatedAt: string;
   filePath: string | null;
+
+  // coordination-only blocker signal
+  isBlocked?: boolean;
+  blockedReason?: string | null;
+  blockedByTaskId?: string | null;
 };
 
 export type WorkspaceProposal = {
@@ -172,6 +177,7 @@ const Ctx = createContext<{
       note?: string
     ) => Promise<WorkspaceProposal | null>;
     loadProposal: (id: string) => Promise<WorkspaceProposal | null>;
+    setTaskBlocked: (args: { taskId: string; isBlocked: boolean; blockedReason?: string | null; blockedByTaskId?: string | null }) => Promise<WorkspaceTask | null>;
   };
 } | null>(null);
 
@@ -336,6 +342,26 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function setTaskBlocked(args: { taskId: string; isBlocked: boolean; blockedReason?: string | null; blockedByTaskId?: string | null }) {
+    try {
+      const res = await fetch(`/api/tasks/${encodeURIComponent(args.taskId)}/block`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          isBlocked: !!args.isBlocked,
+          blockedReason: args.blockedReason || null,
+          blockedByTaskId: args.blockedByTaskId || null,
+          actorHandle: state.actor.handle,
+          actorType: state.actor.actorType,
+        }),
+      });
+      const data = await json<{ ok: boolean; task: WorkspaceTask }>(res);
+      return data.task;
+    } catch {
+      return null;
+    }
+  }
+
   async function joinProject(projectSlug: string) {
     try {
       const res = await fetch(`/api/projects/${encodeURIComponent(projectSlug)}/join`, {
@@ -485,6 +511,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       createProject,
       createTask,
       taskAction,
+      setTaskBlocked,
       joinProject,
       reviewJoinRequest,
       createProposal,

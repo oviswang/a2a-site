@@ -898,6 +898,11 @@ export type Task = {
   createdAt: string;
   updatedAt: string;
   filePath: string | null;
+
+  // coordination-only blocker signal
+  isBlocked: boolean;
+  blockedReason: string | null;
+  blockedByTaskId: string | null;
 };
 
 export function listTasksForProject(projectSlug: string): Task[] {
@@ -907,7 +912,7 @@ export function listTasksForProject(projectSlug: string): Task[] {
 
   const rows = db
     .prepare(
-      'SELECT id, parent_task_id, title, description, status, claimed_by_handle, claimed_by_type, created_at, updated_at, file_path FROM tasks WHERE project_id=? ORDER BY updated_at DESC'
+      'SELECT id, parent_task_id, title, description, status, claimed_by_handle, claimed_by_type, created_at, updated_at, file_path, is_blocked, blocked_reason, blocked_by_task_id FROM tasks WHERE project_id=? ORDER BY updated_at DESC'
     )
     .all(p.id) as TaskRow[];
 
@@ -923,6 +928,9 @@ export function listTasksForProject(projectSlug: string): Task[] {
     createdAt: t.created_at,
     updatedAt: t.updated_at,
     filePath: t.file_path,
+    isBlocked: !!(t as any).is_blocked,
+    blockedReason: (t as any).blocked_reason || null,
+    blockedByTaskId: (t as any).blocked_by_task_id || null,
   }));
 }
 
@@ -976,6 +984,9 @@ export function createTask(args: {
     createdAt: now,
     updatedAt: now,
     filePath: args.filePath || null,
+    isBlocked: false,
+    blockedReason: null,
+    blockedByTaskId: null,
   };
 }
 
@@ -1056,7 +1067,8 @@ export function getTask(taskId: string): Task | null {
   const db = getDb();
   const row = db
     .prepare(
-      `SELECT t.id, t.title, t.description, t.status, t.claimed_by_handle, t.claimed_by_type, t.created_at, t.updated_at, t.file_path,
+      `SELECT t.id, t.parent_task_id, t.title, t.description, t.status, t.claimed_by_handle, t.claimed_by_type, t.created_at, t.updated_at, t.file_path,
+              t.is_blocked, t.blocked_reason, t.blocked_by_task_id,
               p.slug as project_slug
        FROM tasks t
        JOIN projects p ON p.id = t.project_id
@@ -1065,6 +1077,7 @@ export function getTask(taskId: string): Task | null {
     .get(taskId) as
     | {
         id: string;
+        parent_task_id: string | null;
         title: string;
         description: string;
         status: string;
@@ -1073,6 +1086,9 @@ export function getTask(taskId: string): Task | null {
         created_at: string;
         updated_at: string;
         file_path: string | null;
+        is_blocked: number;
+        blocked_reason: string | null;
+        blocked_by_task_id: string | null;
         project_slug: string;
       }
     | undefined;
@@ -1090,6 +1106,9 @@ export function getTask(taskId: string): Task | null {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     filePath: row.file_path,
+    isBlocked: !!row.is_blocked,
+    blockedReason: row.blocked_reason || null,
+    blockedByTaskId: row.blocked_by_task_id || null,
   };
 }
 

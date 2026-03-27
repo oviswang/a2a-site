@@ -15,6 +15,9 @@ function taskFromRow(row: any): Task {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     filePath: row.file_path,
+    isBlocked: !!row.is_blocked,
+    blockedReason: row.blocked_reason || null,
+    blockedByTaskId: row.blocked_by_task_id || null,
   };
 }
 
@@ -23,6 +26,7 @@ export function listTaskChildren(parentTaskId: string): Task[] {
   const rows = db
     .prepare(
       `SELECT t.id, t.parent_task_id, t.title, t.description, t.status, t.claimed_by_handle, t.claimed_by_type, t.created_at, t.updated_at, t.file_path,
+              t.is_blocked, t.blocked_reason, t.blocked_by_task_id,
               p.slug as project_slug
        FROM tasks t
        JOIN projects p ON p.id=t.project_id

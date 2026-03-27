@@ -279,6 +279,19 @@ CREATE INDEX IF NOT EXISTS idx_deliverable_attachments_deliverable_id ON deliver
   }
   db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id)`);
 
+  // Blocker signal (coordination-only; do not overload status machine)
+  if (hasCol('tasks', 'id') && !hasCol('tasks', 'is_blocked')) {
+    db.exec(`ALTER TABLE tasks ADD COLUMN is_blocked INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (hasCol('tasks', 'id') && !hasCol('tasks', 'blocked_reason')) {
+    db.exec(`ALTER TABLE tasks ADD COLUMN blocked_reason TEXT`);
+  }
+  if (hasCol('tasks', 'id') && !hasCol('tasks', 'blocked_by_task_id')) {
+    db.exec(`ALTER TABLE tasks ADD COLUMN blocked_by_task_id TEXT`);
+  }
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_is_blocked ON tasks(is_blocked)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_blocked_by_task_id ON tasks(blocked_by_task_id)`);
+
   if (hasCol('reviews', 'id') && !hasCol('reviews', 'actor_handle')) {
     db.exec(`ALTER TABLE reviews ADD COLUMN actor_handle TEXT`);
   }

@@ -121,7 +121,11 @@ export default function TaskDetailPage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title={task ? task.title : `Task ${id}`}
-          subtitle={task ? `/${task.projectSlug} · ${task.status}${task.parentTaskId ? ` · child of ${task.parentTaskId}` : ''}` : 'Loading…'}
+          subtitle={
+            task
+              ? `/${task.projectSlug} · ${task.status}${task.isBlocked ? ' · BLOCKED' : ''}${task.parentTaskId ? ` · child of ${task.parentTaskId}` : ''}`
+              : 'Loading…'
+          }
           breadcrumbs={
             <Breadcrumbs
               items={[
@@ -216,6 +220,39 @@ export default function TaskDetailPage() {
                   )}
                 </div>
 
+                <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs font-semibold text-slate-200/70">Blockers</div>
+                    <div className="text-xs text-slate-200/60">blocked children {children.filter((c) => (c as any).isBlocked).length}</div>
+                  </div>
+
+                  <div className="mt-2 grid gap-2">
+                    {children
+                      .filter((c) => (c as any).isBlocked)
+                      .slice(0, 8)
+                      .map((c) => (
+                        <Link key={c.id} href={`/tasks/${encodeURIComponent(c.id)}`} className="block rounded-2xl border border-rose-400/20 bg-rose-400/10 p-3 hover:bg-rose-400/15">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="text-sm font-semibold text-slate-50">{c.title || c.id}</div>
+                            <div className="text-xs text-slate-200/70">blocked</div>
+                          </div>
+                          <div className="mt-1 text-xs text-slate-200/70">
+                            {(c as any).blockedReason ? <span><span className="text-slate-200/50">reason</span> {(c as any).blockedReason}</span> : <span className="text-slate-200/40">reason —</span>}
+                            {(c as any).blockedByTaskId ? (
+                              <span className="ml-2">
+                                · <span className="text-slate-200/50">blocked by</span> <span className="font-mono">{(c as any).blockedByTaskId}</span>
+                              </span>
+                            ) : null}
+                          </div>
+                        </Link>
+                      ))}
+
+                    {children.filter((c) => (c as any).isBlocked).length === 0 ? (
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/60">No blocked child tasks.</div>
+                    ) : null}
+                  </div>
+                </div>
+
                 {reviewSignals.submitted.length || reviewSignals.changesRequested.length ? (
                   <div className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
                     <div className="text-xs font-semibold text-slate-200/70">Latest active review signals</div>
@@ -285,6 +322,95 @@ export default function TaskDetailPage() {
               }
             >
               {task.description ? <div className="text-sm text-slate-200/80">{task.description}</div> : <div className="text-sm text-slate-200/60">No description</div>}
+
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-xs font-semibold text-slate-200/70">Blocker signal</div>
+                  {task.isBlocked ? <Tag>blocked</Tag> : <Tag>not blocked</Tag>}
+                </div>
+
+                {task.isBlocked ? (
+                  <div className="mt-2 grid gap-2 text-xs text-slate-200/70">
+                    {task.blockedReason ? <div><span className="text-slate-200/50">reason</span> {task.blockedReason}</div> : <div className="text-slate-200/50">reason —</div>}
+                    {task.blockedByTaskId ? (
+                      <div>
+                        <span className="text-slate-200/50">blocked by</span>{' '}
+                        <Link className="underline decoration-white/30 hover:decoration-white/60" href={`/tasks/${encodeURIComponent(task.blockedByTaskId)}`}>
+                          {task.blockedByTaskId}
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="text-slate-200/50">blocked by —</div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-2 text-xs text-slate-200/50">No blockers.</div>
+                )}
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
+                    onClick={async () => {
+                      const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/block`, {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({
+                          isBlocked: true,
+                          blockedReason: window.prompt('Blocked reason (optional):', task.blockedReason || '') || '',
+                          blockedByTaskId: window.prompt('Blocked by task id (optional):', task.blockedByTaskId || '') || '',
+                          actorHandle: (window as any).__A2A_ACTOR_HANDLE || ((window as any).localStorage?.getItem?.('a2a_site_actor') ? (() => { try { return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).handle; } catch { return 'local-human'; } })() : 'local-human'),
+                          actorType: (window as any).__A2A_ACTOR_TYPE || ((window as any).localStorage?.getItem?.('a2a_site_actor') ? (() => { try { return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).actorType; } catch { return 'human'; } })() : 'human'),
+                        }),
+                      });
+                      const j = (await res.json().catch(() => null)) as any;
+                      if (j?.task) setTask(j.task);
+                    }}
+                  >
+                    Mark blocked…
+                  </button>
+
+                  <button
+                    type="button"
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
+                    onClick={async () => {
+                      const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/block`, {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({
+                          isBlocked: false,
+                          actorHandle:
+                            (window as any).__A2A_ACTOR_HANDLE ||
+                            ((window as any).localStorage?.getItem?.('a2a_site_actor')
+                              ? (() => {
+                                  try {
+                                    return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).handle;
+                                  } catch {
+                                    return 'local-human';
+                                  }
+                                })()
+                              : 'local-human'),
+                          actorType:
+                            (window as any).__A2A_ACTOR_TYPE ||
+                            ((window as any).localStorage?.getItem?.('a2a_site_actor')
+                              ? (() => {
+                                  try {
+                                    return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).actorType;
+                                  } catch {
+                                    return 'human';
+                                  }
+                                })()
+                              : 'human'),
+                        }),
+                      });
+                      const j = (await res.json().catch(() => null)) as any;
+                      if (j?.task) setTask(j.task);
+                    }}
+                  >
+                    Clear blocked
+                  </button>
+                </div>
+              </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
