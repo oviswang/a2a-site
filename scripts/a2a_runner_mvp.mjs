@@ -42,6 +42,16 @@ const POLL_MS = Number(env('A2A_POLL_MS', '30000'));
 const TRACE_DIR = env('A2A_TRACE_DIR', 'artifacts/a2a-runner');
 const MAX_LOOPS = Number(env('A2A_MAX_LOOPS', '0'));
 
+// P2-1: multi-agent stable run mode
+// Role controls which attention types this runner is allowed to act on.
+// - reviewer: handles awaiting_review (and optionally blocked)
+// - worker: handles revision_requested (and optionally blocked)
+// - any/empty: legacy single-agent behavior (handles all)
+const ROLE = env('A2A_ROLE', '').trim().toLowerCase();
+const VALID_ROLES = new Set(['', 'any', 'reviewer', 'worker']);
+if (!VALID_ROLES.has(ROLE)) fatal(`invalid env: A2A_ROLE=${ROLE} (expected reviewer|worker|any)`);
+
+
 function fatal(msg, code = 2) {
   console.error(`FATAL ${msg}`);
   process.exit(code);
@@ -259,10 +269,26 @@ async function main() {
     // - blocked -> clear blocker (POST /api/tasks/{id}/block isBlocked:false)
     // - revision_requested -> revise + resubmit (PUT /deliverable then POST /deliverable/submit)
     // - awaiting_review -> review_accept (deliverable.review(accept))
+    //
+    // P2-1 role boundary:
+    // - reviewer: only acts on awaiting_review (and blocked)
+    // - worker: only acts on revision_requested (and blocked)
+    // - any/empty: legacy behavior
     let action = 'noop';
     if (top.type === 'blocked') action = 'clear_blocker';
     if (top.type === 'revision_requested') action = 'revise_resubmit';
     if (top.type === 'awaiting_review') action = 'review_accept';
+
+    const role = ROLE === '' ? 'any' : ROLE;
+    const allowedByRole = (role === 'any') ||
+      (role === 'reviewer' && (top.type === 'awaiting_review' || top.type === 'blocked')) ||
+      (role === 'worker' && (top.type === 'revision_requested' || top.type === 'blocked'));
+
+    if (!allowedByRole) {
+      console.log(`[loop ${loops}] role_skip role=${role} top=${top.type} task=${taskId}`);
+      await sleep(POLL_MS);
+      continue;
+    }
 
     // 6) minimal dedupe
     // - revision_requested: dedupe by (taskId + normalized revisionNote)
