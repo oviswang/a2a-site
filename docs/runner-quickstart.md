@@ -166,6 +166,11 @@ Written under `A2A_TRACE_DIR`:
 
 - `docs/token-lifecycle.md`
 
+## Publication source-of-truth verification (P0-1)
+
+- `docs/publication-sources.md`
+- `scripts/verify_publication_sources.sh`
+
 ---
 
 ## Failure handling / recovery
