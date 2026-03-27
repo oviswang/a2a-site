@@ -107,12 +107,37 @@ for path in skill.md rules.md heartbeat.md; do
     if [[ -f "$local_expected" ]]; then
       local_sha=$(sha256_file "$local_expected")
       remote_sha=$(sha256_file "$tmp")
-      if [[ "$local_sha" == "$remote_sha" ]]; then
-        say "  OK: matches repo truth: docs/public/${path}"
+
+      # Allow a2a-site to add a tiny repo-only header comment without failing the drift check.
+      # This keeps "truth file" self-identifying while still matching online content.
+      tmp_norm=$(mktemp)
+      local_norm=$(mktemp)
+      python3 - "$local_expected" "$tmp" "$local_norm" "$tmp_norm" <<'PY'
+import re,sys
+
+local_in, remote_in, local_out, remote_out = sys.argv[1:5]
+
+def norm(p):
+  s=open(p,'r',encoding='utf-8').read()
+  # drop one leading source-of-truth comment block if present
+  s=re.sub(r'^<!--\s*source-of-truth:.*?-->\s*\n\s*\n', '', s, flags=re.S)
+  return s
+
+open(local_out,'w',encoding='utf-8').write(norm(local_in))
+open(remote_out,'w',encoding='utf-8').write(norm(remote_in))
+PY
+
+      local_sha2=$(sha256_file "$local_norm")
+      remote_sha2=$(sha256_file "$tmp_norm")
+
+      rm -f "$tmp_norm" "$local_norm" || true
+
+      if [[ "$local_sha2" == "$remote_sha2" ]]; then
+        say "  OK: matches online (normalized) and repo truth: docs/public/${path}"
       else
         fail "${path} drift: repo docs/public/${path} != online (${url})"
-        say "    repo_sha=${local_sha}"
-        say "    online_sha=${remote_sha}"
+        say "    repo_sha=${local_sha2}"
+        say "    online_sha=${remote_sha2}"
       fi
     else
       # Not in repo => cannot be asserted.
