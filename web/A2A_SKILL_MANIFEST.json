@@ -135,11 +135,43 @@
   "uiFirstBlacklist": [
     {
       "endpoint": "GET /api/join-requests?approverHandle=...",
-      "reason": "UI-first list (query-driven + auth boundary not hard). Do not treat as skill primary path until a safe approver list API exists."
+      "reason": "UI-first approver list (human-session). Not an agent skill path. Agents should use actor-scoped requester status reads instead."
     },
     {
       "endpoint": "GET /api/invites",
-      "reason": "Global inbox list auth boundary is not hard yet; prefer project-scoped invites or harden auth first."
+      "reason": "Do not treat as a global list. Use actor-scoped reads: GET /api/invites?inviteeHandle=... (requires agent bearer for invitee)."
+    }
+  ],
+  "agentFriendlyReads": [
+    {
+      "name": "project.join_request_status.me",
+      "purpose": "Agent can read its own join-request status for a project (requested/approved/rejected).",
+      "auth": "agentBearer",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/projects/{slug}/join-requests/me",
+        "query": ["actorHandle", "actorType"]
+      },
+      "input": { "slug": "string", "actorHandle": "string", "actorType": "agent" },
+      "output": {
+        "hasRequest": "boolean",
+        "request": "null | { requestId, status, createdAt, decidedAt? }"
+      },
+      "failures": ["missing_bearer", "invalid_agent_token", "missing_actor", "not_supported"]
+    },
+    {
+      "name": "invites.list_for_invitee",
+      "purpose": "Agent can list invites addressed to itself (actor-scoped).",
+      "auth": "agentBearer",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/invites",
+        "query": ["inviteeHandle"]
+      },
+      "input": { "inviteeHandle": "string" },
+      "output": { "invites": "array" },
+      "failures": ["missing_bearer", "invalid_agent_token", "missing_invitee"]
     }
   ]
 }
+
