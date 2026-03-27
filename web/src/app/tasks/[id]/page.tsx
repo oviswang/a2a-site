@@ -45,12 +45,20 @@ export default function TaskDetailPage() {
   const [kind, setKind] = useState<'all' | string>('all');
   const [showAll, setShowAll] = useState(false);
 
+  const [blockedReasonDraft, setBlockedReasonDraft] = useState('');
+  const [blockedByTaskIdDraft, setBlockedByTaskIdDraft] = useState('');
+  const [blockerMsg, setBlockerMsg] = useState<string | null>(null);
+
   useEffect(() => {
     fetch(`/api/tasks/${encodeURIComponent(id)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         setTask(j?.task || null);
         setEvents(j?.events || []);
+        if (j?.task) {
+          setBlockedReasonDraft(String(j.task.blockedReason || ''));
+          setBlockedByTaskIdDraft(String(j.task.blockedByTaskId || ''));
+        }
       })
       .catch(() => void 0);
 
@@ -495,68 +503,179 @@ export default function TaskDetailPage() {
                   <div className="mt-2 text-xs text-slate-200/50">No blockers.</div>
                 )}
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
-                    onClick={async () => {
-                      const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/block`, {
-                        method: 'POST',
-                        headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify({
-                          isBlocked: true,
-                          blockedReason: window.prompt('Blocked reason (optional):', task.blockedReason || '') || '',
-                          blockedByTaskId: window.prompt('Blocked by task id (optional):', task.blockedByTaskId || '') || '',
-                          actorHandle: (window as any).__A2A_ACTOR_HANDLE || ((window as any).localStorage?.getItem?.('a2a_site_actor') ? (() => { try { return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).handle; } catch { return 'local-human'; } })() : 'local-human'),
-                          actorType: (window as any).__A2A_ACTOR_TYPE || ((window as any).localStorage?.getItem?.('a2a_site_actor') ? (() => { try { return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).actorType; } catch { return 'human'; } })() : 'human'),
-                        }),
-                      });
-                      const j = (await res.json().catch(() => null)) as any;
-                      if (j?.task) setTask(j.task);
-                    }}
-                  >
-                    Mark blocked…
-                  </button>
+                <div className="mt-3 grid gap-2">
+                  <div className="grid gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <label className="grid gap-1">
+                      <span className="text-[11px] text-slate-200/60">Reason (optional)</span>
+                      <input
+                        className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-100 outline-none focus:border-white/20"
+                        value={blockedReasonDraft}
+                        onChange={(e) => setBlockedReasonDraft(e.target.value)}
+                        placeholder="why is it blocked?"
+                      />
+                    </label>
+                    <label className="grid gap-1">
+                      <span className="text-[11px] text-slate-200/60">Blocked by task id (optional)</span>
+                      <input
+                        className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-100 outline-none focus:border-white/20"
+                        value={blockedByTaskIdDraft}
+                        onChange={(e) => setBlockedByTaskIdDraft(e.target.value)}
+                        placeholder="t-…"
+                      />
+                    </label>
 
-                  <button
-                    type="button"
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
-                    onClick={async () => {
-                      const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/block`, {
-                        method: 'POST',
-                        headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify({
-                          isBlocked: false,
-                          actorHandle:
-                            (window as any).__A2A_ACTOR_HANDLE ||
-                            ((window as any).localStorage?.getItem?.('a2a_site_actor')
-                              ? (() => {
-                                  try {
-                                    return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).handle;
-                                  } catch {
-                                    return 'local-human';
-                                  }
-                                })()
-                              : 'local-human'),
-                          actorType:
-                            (window as any).__A2A_ACTOR_TYPE ||
-                            ((window as any).localStorage?.getItem?.('a2a_site_actor')
-                              ? (() => {
-                                  try {
-                                    return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).actorType;
-                                  } catch {
-                                    return 'human';
-                                  }
-                                })()
-                              : 'human'),
-                        }),
-                      });
-                      const j = (await res.json().catch(() => null)) as any;
-                      if (j?.task) setTask(j.task);
-                    }}
-                  >
-                    Clear blocked
-                  </button>
+                    <div className="flex flex-wrap gap-2">
+                      {!task.isBlocked ? (
+                        <button
+                          type="button"
+                          className="rounded-xl bg-rose-700 px-3 py-2 text-xs text-white hover:bg-rose-600"
+                          onClick={async () => {
+                            setBlockerMsg(null);
+                            const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/block`, {
+                              method: 'POST',
+                              headers: { 'content-type': 'application/json' },
+                              body: JSON.stringify({
+                                isBlocked: true,
+                                blockedReason: blockedReasonDraft || '',
+                                blockedByTaskId: blockedByTaskIdDraft || '',
+                                actorHandle:
+                                  (window as any).__A2A_ACTOR_HANDLE ||
+                                  ((window as any).localStorage?.getItem?.('a2a_site_actor')
+                                    ? (() => {
+                                        try {
+                                          return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).handle;
+                                        } catch {
+                                          return 'local-human';
+                                        }
+                                      })()
+                                    : 'local-human'),
+                                actorType:
+                                  (window as any).__A2A_ACTOR_TYPE ||
+                                  ((window as any).localStorage?.getItem?.('a2a_site_actor')
+                                    ? (() => {
+                                        try {
+                                          return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).actorType;
+                                        } catch {
+                                          return 'human';
+                                        }
+                                      })()
+                                    : 'human'),
+                              }),
+                            });
+                            const j = (await res.json().catch(() => null)) as any;
+                            if (!res.ok || !j?.task) {
+                              setBlockerMsg(j?.error || 'mark_blocked_failed');
+                              return;
+                            }
+                            setTask(j.task);
+                            setBlockerMsg('Marked blocked.');
+                          }}
+                        >
+                          Mark blocked
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="rounded-xl bg-rose-700 px-3 py-2 text-xs text-white hover:bg-rose-600"
+                            onClick={async () => {
+                              setBlockerMsg(null);
+                              const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/block`, {
+                                method: 'POST',
+                                headers: { 'content-type': 'application/json' },
+                                body: JSON.stringify({
+                                  isBlocked: true,
+                                  blockedReason: blockedReasonDraft || '',
+                                  blockedByTaskId: blockedByTaskIdDraft || '',
+                                  actorHandle:
+                                    (window as any).__A2A_ACTOR_HANDLE ||
+                                    ((window as any).localStorage?.getItem?.('a2a_site_actor')
+                                      ? (() => {
+                                          try {
+                                            return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).handle;
+                                          } catch {
+                                            return 'local-human';
+                                          }
+                                        })()
+                                      : 'local-human'),
+                                  actorType:
+                                    (window as any).__A2A_ACTOR_TYPE ||
+                                    ((window as any).localStorage?.getItem?.('a2a_site_actor')
+                                      ? (() => {
+                                          try {
+                                            return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).actorType;
+                                          } catch {
+                                            return 'human';
+                                          }
+                                        })()
+                                      : 'human'),
+                                }),
+                              });
+                              const j = (await res.json().catch(() => null)) as any;
+                              if (!res.ok || !j?.task) {
+                                setBlockerMsg(j?.error || 'block_update_failed');
+                                return;
+                              }
+                              setTask(j.task);
+                              setBlockerMsg('Updated blocker signal.');
+                            }}
+                          >
+                            Update blocked info
+                          </button>
+
+                          <button
+                            type="button"
+                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
+                            onClick={async () => {
+                              setBlockerMsg(null);
+                              const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/block`, {
+                                method: 'POST',
+                                headers: { 'content-type': 'application/json' },
+                                body: JSON.stringify({
+                                  isBlocked: false,
+                                  actorHandle:
+                                    (window as any).__A2A_ACTOR_HANDLE ||
+                                    ((window as any).localStorage?.getItem?.('a2a_site_actor')
+                                      ? (() => {
+                                          try {
+                                            return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).handle;
+                                          } catch {
+                                            return 'local-human';
+                                          }
+                                        })()
+                                      : 'local-human'),
+                                  actorType:
+                                    (window as any).__A2A_ACTOR_TYPE ||
+                                    ((window as any).localStorage?.getItem?.('a2a_site_actor')
+                                      ? (() => {
+                                          try {
+                                            return JSON.parse((window as any).localStorage.getItem('a2a_site_actor')).actorType;
+                                          } catch {
+                                            return 'human';
+                                          }
+                                        })()
+                                      : 'human'),
+                                }),
+                              });
+                              const j = (await res.json().catch(() => null)) as any;
+                              if (!res.ok || !j?.task) {
+                                setBlockerMsg(j?.error || 'block_clear_failed');
+                                return;
+                              }
+                              setTask(j.task);
+                              setBlockedReasonDraft('');
+                              setBlockedByTaskIdDraft('');
+                              setBlockerMsg('Cleared blocker.');
+                            }}
+                          >
+                            Clear blocked
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {blockerMsg ? <div className="text-[11px] text-slate-200/60">{blockerMsg}</div> : null}
+                  </div>
                 </div>
               </div>
 
@@ -594,6 +713,17 @@ export default function TaskDetailPage() {
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className="text-slate-200/70">State</span>
                   <Tag>{deliverable?.status || 'none'}</Tag>
+                  <span className="text-slate-200/60">· Next action</span>
+                  <Tag>
+                    {(() => {
+                      const st = deliverable?.status || 'none';
+                      if (st === 'draft' || st === 'none') return 'Submit for review';
+                      if (st === 'changes_requested') return 'Revise → resubmit';
+                      if (st === 'submitted') return 'Review';
+                      if (st === 'accepted') return 'Done';
+                      return st;
+                    })()}
+                  </Tag>
                   {(() => {
                     const c = parseChecklistCount(deliverable?.summaryMd || summaryMd || '');
                     if (!c.total) return null;
