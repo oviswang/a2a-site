@@ -6,8 +6,8 @@
     "same_role"
   ],
   "matrixKey": "mode=same_role",
-  "gateLevel": "WARN",
-  "releaseDisposition": "observe_only",
+  "gateLevel": "PASS",
+  "releaseDisposition": "long_run_ok",
   "SAFE_FOR_LONG_RUN": "yes",
   "pass": true,
   "results": [
@@ -16,28 +16,32 @@
       "traceDir": "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.out.short.yield_high",
       "scenarioMode": "same_role",
       "matrixKey": "mode=same_role",
-      "gateLevel": "WARN",
-      "releaseDisposition": "observe_only",
+      "windowedMetrics": {
+        "loops": 5,
+        "handoff_ratio": 0,
+        "wait_ratio": 0.2,
+        "act_fail_ratio": 0,
+        "human_required_ratio": 0,
+        "parent_count": 1,
+        "attention_req": 2,
+        "attention_req_per_parent": 2,
+        "yield_rate": 1,
+        "owner_stale_rate": 0,
+        "takeover_rate": 0
+      },
+      "matrixRuleId": "Rsr1:same_role:yield_rate_high",
+      "matrixDecisionBasis": [
+        "yield_rate>0.5"
+      ],
+      "gateLevel": "PASS",
+      "releaseDisposition": "long_run_ok",
       "SAFE_FOR_LONG_RUN": "yes",
       "pass": true,
-      "gateReasons": [
-        {
-          "level": "warn",
-          "code": "same_role_yield_to_peer",
-          "signalClass": "coordination",
-          "matrixDisposition": "observe_only",
-          "detail": {
-            "yield_to_peer": 5,
-            "maxYield": 0
-          }
-        }
-      ],
+      "gateReasons": [],
       "recommendedActions": [],
       "evidencePaths": [
-        "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.out.short.yield_high/d3.decision.json",
-        "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.out.short.yield_high/d4.decision.json",
-        "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.out.short.yield_high/d5.decision.json",
-        "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.out.short.yield_high/summary.json"
+        "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.out.short.yield_high/summary.json",
+        "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.out.short.yield_high/d5.decision.json"
       ],
       "keyMetrics": {
         "health": "ok",

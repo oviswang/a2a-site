@@ -237,6 +237,54 @@ function gateOne(traceDir, name) {
 
   const matrixKey = `mode=${scenarioMode}`;
 
+  // P10-2: window/ratio metrics (best-effort; deterministic)
+  const loops = Number(summary?.windowLoops || 0);
+  const cts = summary?.counts || {};
+  const handoff_ratio = loops > 0 ? Number(cts.handoff || 0) / loops : null;
+  const wait_ratio = loops > 0 ? Number(cts.wait || 0) / loops : null;
+  const act_fail_ratio = loops > 0 ? Number(cts.act_fail || 0) / loops : null;
+  const human_required_ratio = loops > 0 ? Number(cts.HUMAN_ACTION_REQUIRED || 0) / loops : null;
+
+  const attention_req = cost ? Number(cost.byStage?.attention || 0) : null;
+  const parent_count = cost && cost.byParent ? Object.keys(cost.byParent).length : (Array.isArray(summary?.parentTaskIds) ? summary.parentTaskIds.length : null);
+  const attention_req_per_parent = (attention_req !== null && parent_count && parent_count > 0) ? (attention_req / parent_count) : null;
+
+  const yield_rate = loops > 0 ? (Number(keyMetrics.derived.yieldToPeer || 0) / loops) : null;
+  const owner_stale_rate = loops > 0 ? (Number(keyMetrics.derived.ownerStale || 0) / loops) : null;
+  const takeover_rate = loops > 0 ? (Number(keyMetrics.derived.takeover || 0) / loops) : null;
+
+  const windowedMetrics = {
+    loops,
+    handoff_ratio,
+    wait_ratio,
+    act_fail_ratio,
+    human_required_ratio,
+    parent_count: parent_count || 0,
+    attention_req,
+    attention_req_per_parent,
+    yield_rate,
+    owner_stale_rate,
+    takeover_rate,
+  };
+
+  // P10-2: deep matrix rule selection (MVP)
+  let matrixRuleId = `R0:${scenarioMode}:baseline`;
+  let matrixDecisionBasis = [];
+  if (scenarioMode === 'same_role') {
+    if (yield_rate !== null && yield_rate > 0.5) { matrixRuleId = 'Rsr1:same_role:yield_rate_high'; matrixDecisionBasis.push('yield_rate>0.5'); }
+    if (owner_stale_rate !== null && owner_stale_rate > 0) { matrixRuleId = 'Rsr2:same_role:owner_stale_seen'; matrixDecisionBasis.push('owner_stale_rate>0'); }
+    if (takeover_rate !== null && takeover_rate > 0) { matrixRuleId = 'Rsr3:same_role:takeover_seen'; matrixDecisionBasis.push('takeover_rate>0'); }
+  }
+  if (scenarioMode === 'multi_parent') {
+    if (attention_req_per_parent !== null && attention_req_per_parent > 5) { matrixRuleId = 'Rmp1:multi_parent:attention_per_parent_high'; matrixDecisionBasis.push('attention_req_per_parent>5'); }
+  }
+  if (scenarioMode === 'single') {
+    if (wait_ratio !== null && wait_ratio > 0.8) { matrixRuleId = 'Rs1:single:mostly_wait'; matrixDecisionBasis.push('wait_ratio>0.8'); }
+    if (handoff_ratio !== null && handoff_ratio > 0.8) { matrixRuleId = 'Rs2:single:mostly_handoff'; matrixDecisionBasis.push('handoff_ratio>0.8'); }
+  }
+  if (act_fail_ratio !== null && act_fail_ratio > 0) { matrixRuleId = `Raf1:${scenarioMode}:act_fail_seen`; matrixDecisionBasis.push('act_fail_ratio>0'); }
+  if (human_required_ratio !== null && human_required_ratio > 0) { matrixRuleId = `Rhr1:${scenarioMode}:human_required_seen`; matrixDecisionBasis.push('human_required_ratio>0'); }
+
   function classify(code) {
     // P9-2: signalClass mapping (MVP)
     const c = String(code || '');
@@ -374,6 +422,9 @@ function gateOne(traceDir, name) {
     traceDir,
     scenarioMode,
     matrixKey,
+    windowedMetrics,
+    matrixRuleId,
+    matrixDecisionBasis,
     gateLevel,
     releaseDisposition,
     SAFE_FOR_LONG_RUN: failed ? 'no' : 'yes',
