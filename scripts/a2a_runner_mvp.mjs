@@ -38,6 +38,7 @@ const TOKEN_DIRECT = env('A2A_AGENT_TOKEN');
 const TOKEN_FILE = env('A2A_TOKEN_FILE');
 const PROJECT_SLUG = env('A2A_PROJECT_SLUG');
 const PARENT_TASK_ID = env('A2A_PARENT_TASK_ID');
+const PARENT_TASK_IDS = env('A2A_PARENT_TASK_IDS');
 const POLL_MS = Number(env('A2A_POLL_MS', '30000'));
 const TRACE_DIR = env('A2A_TRACE_DIR', 'artifacts/a2a-runner');
 const MAX_LOOPS = Number(env('A2A_MAX_LOOPS', '0'));
@@ -63,7 +64,7 @@ function ensureTraceDirExists() {
 
 if (!HANDLE) fatal('missing env: A2A_AGENT_HANDLE');
 if (!PROJECT_SLUG) fatal('missing env: A2A_PROJECT_SLUG');
-if (!PARENT_TASK_ID) fatal('missing env: A2A_PARENT_TASK_ID (parent task id for /attention)');
+if (!PARENT_TASK_ID && !PARENT_TASK_IDS) fatal('missing env: A2A_PARENT_TASK_ID (single) or A2A_PARENT_TASK_IDS (multi) for /attention)');
 
 function readToken() {
   if (TOKEN_DIRECT) return TOKEN_DIRECT.trim();
@@ -245,6 +246,41 @@ function pickTopAttention(items) {
   return sorted[0];
 }
 
+function parseParentCandidates() {
+  const multi = String(PARENT_TASK_IDS || '').trim();
+  if (multi) {
+    const arr = multi.split(',').map((s) => s.trim()).filter(Boolean);
+    return Array.from(new Set(arr));
+  }
+  return [String(PARENT_TASK_ID || '').trim()].filter(Boolean);
+}
+
+function attentionScore(top, counts) {
+  const type = String(top?.type || '');
+  const base = TYPE_PRIORITY[type] ?? 999;
+  // Higher score = higher priority. We invert base priority.
+  const typeScore = 1000 - base * 100;
+  const c = counts || {};
+  const countScore = Number(c.blocked || 0) * 30 + Number(c.revisionRequested || 0) * 20 + Number(c.awaitingReview || 0) * 10;
+  const ts = top?.ts ? Date.parse(top.ts) : 0;
+  const freshnessScore = ts ? Math.min(50, Math.floor((Date.now() - ts) / 1000) * -1) : 0;
+  return typeScore + countScore + freshnessScore;
+}
+
+function pickParent(attByParent) {
+  // Deterministic: compute score per parent; tie-break by input order then parent id.
+  let best = null;
+  for (const x of attByParent) {
+    if (!x.attentionOk) continue;
+    if (!x.top) continue;
+    const score = attentionScore(x.top, x.counts);
+    const cand = { ...x, score };
+    if (!best) best = cand;
+    else if (cand.score > best.score) best = cand;
+  }
+  return best;
+}
+
 // Minimal dedupe state (per task last signature)
 function loadState() {
   const p = path.join(TRACE_DIR, 'state.json');
@@ -340,6 +376,9 @@ async function main() {
       role: ROLE === '' ? 'any' : ROLE,
       handle: HANDLE,
       parentTaskId: PARENT_TASK_ID,
+      parentTaskIds: parseParentCandidates(),
+      selectedParentTaskId: null,
+      parentCandidates: null,
       loop: loops,
       featureFlags: {
         allowBlocked: env('A2A_ALLOW_BLOCKED', '0') === '1',
@@ -381,33 +420,50 @@ async function main() {
       }
     }
 
-    // 3) attention (deterministic)
-    const attention = await httpJson('GET', `/api/tasks/${encodeURIComponent(PARENT_TASK_ID)}/attention`, {});
-    writeTrace(Date.now(), 'attention', attention);
-    if (!attention.ok) {
-      console.error(`[loop ${loops}] INFO attention_unavailable: ${classifyError(attention)}`);
-      await sleep(POLL_MS);
-      continue;
+    // 3) attention (multi-parent deterministic)
+    const parents = parseParentCandidates();
+    const attByParent = [];
+
+    for (const pid of parents) {
+      const att = await httpJson('GET', `/api/tasks/${encodeURIComponent(pid)}/attention`, {});
+      writeTrace(Date.now(), `attention.${pid}`, att);
+      const ok = !!att.ok;
+      const items = att.json?.items || [];
+      const top = pickTopAttention(items);
+      const counts = att.json?.counts || null;
+      attByParent.push({ parentTaskId: pid, attentionOk: ok, counts, top, itemsLen: Array.isArray(items) ? items.length : 0 });
     }
 
-    const items = attention.json?.items || [];
-    const top = pickTopAttention(items);
-    if (!top) {
+    decision.parentCandidates = attByParent.map((x) => ({
+      parentTaskId: x.parentTaskId,
+      attentionOk: x.attentionOk,
+      counts: x.counts,
+      top: x.top ? { taskId: String(x.top.taskId), type: String(x.top.type), ts: x.top.ts || null } : null,
+      itemsLen: x.itemsLen,
+      score: x.top ? attentionScore(x.top, x.counts) : null,
+    }));
+
+    const picked = pickParent(attByParent);
+    if (!picked) {
       decision.policyDecision = 'wait';
       decision.skipped = true;
       decision.reasonCode = 'idle_no_attention';
+      decision.reasonDetail = { parentsTried: parents };
       writeDecision(Date.now(), decision);
       bump(win, decision);
       if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
         const health = healthOf(win);
-        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: parents[0] || null, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
         writeTrace(Date.now(), 'summary', summary);
       }
-      console.log(`[loop ${loops}] idle: no attention items (parent=${PARENT_TASK_ID})`);
+      console.log(`[loop ${loops}] idle: no attention items (parents=${parents.join(',')})`);
       await sleep(POLL_MS);
       continue;
     }
 
+    decision.selectedParentTaskId = picked.parentTaskId;
+
+    const top = picked.top;
     decision.top = { taskId: String(top.taskId), type: String(top.type), ts: top.ts || null };
 
     const taskId = String(top.taskId);
