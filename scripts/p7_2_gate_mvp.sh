@@ -11,7 +11,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 usage() {
   cat <<'USAGE'
 Usage:
-  scripts/p7_2_gate_mvp.sh --dir <traceDir|benchRunDir> [--json-out <path>]
+  scripts/p7_2_gate_mvp.sh --dir <traceDir|benchRunDir> [--json-out <path>] [--regressions <completion.json>]
 
 Input forms:
   - traceDir: a directory containing runner traces (*.json)
@@ -25,6 +25,7 @@ USAGE
 
 DIR=""
 JSON_OUT=""
+REGRESSIONS_JSON=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -34,6 +35,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --json-out)
       JSON_OUT=${2:-}
+      shift 2
+      ;;
+    --regressions)
+      REGRESSIONS_JSON=${2:-}
       shift 2
       ;;
     -h|--help)
@@ -75,6 +80,7 @@ GATE_MAX_ATTENTION_REQ=${GATE_MAX_ATTENTION_REQ:-999999}
 GATE_MIN_FRESH_CACHE_SKIP=${GATE_MIN_FRESH_CACHE_SKIP:-0}
 
 DIR="$DIR" \
+REGRESSIONS_JSON="$REGRESSIONS_JSON" \
 GATE_MAX_STUCK_WINDOWS="$GATE_MAX_STUCK_WINDOWS" \
 GATE_MAX_DEGRADED_WINDOWS="$GATE_MAX_DEGRADED_WINDOWS" \
 GATE_MAX_HUMAN_REQUIRED="$GATE_MAX_HUMAN_REQUIRED" \
@@ -89,6 +95,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DIR = process.env.DIR;
+const REGRESSIONS_JSON = process.env.REGRESSIONS_JSON;
 
 function listDirs(p) {
   return fs.readdirSync(p, { withFileTypes: true })
@@ -98,6 +105,12 @@ function listDirs(p) {
 
 function readJson(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
+}
+
+function readCompletion(p) {
+  if (!p) return null;
+  if (!fs.existsSync(p)) return null;
+  return readJson(p);
 }
 
 function globJson(dir) {
@@ -499,8 +512,10 @@ const scenarioModes = Array.from(new Set(results.map(r => r.scenarioMode).filter
 const dispositionPolicyVersion = 'p11-2-mvp.1';
 
 // P12-2: release-ready semantics (MVP)
-function releaseSemantics({ overallLevel, overallDisposition, results, evidenceHint }) {
-  const requiredRegressionsComplete = false; // default: unknown unless provided by operator/checklist
+function releaseSemantics({ overallLevel, overallDisposition, results, evidenceHint, completion }) {
+  const requiredRegressionsComplete = (completion && typeof completion.requiredRegressionsComplete === 'boolean')
+    ? completion.requiredRegressionsComplete
+    : false; // default: unknown unless provided by operator/checklist
   const evidenceSufficiency = (evidenceHint === 'long_window') ? 'sufficient' : (evidenceHint ? 'partial' : 'partial');
 
   const blocking = [];
@@ -543,8 +558,9 @@ function releaseSemantics({ overallLevel, overallDisposition, results, evidenceH
 }
 
 // evidence sufficiency hint: if any result loops>=60 => long_window
+const completion = readCompletion(REGRESSIONS_JSON);
 const anyLong = (results || []).some(r => Number(r.windowedMetrics?.loops || 0) >= 60);
-const release = releaseSemantics({ overallLevel, overallDisposition, results, evidenceHint: anyLong ? 'long_window' : 'short_or_unknown' });
+const release = releaseSemantics({ overallLevel, overallDisposition, results, evidenceHint: anyLong ? 'long_window' : 'short_or_unknown', completion });
 
 const out = {
   ok: true,
