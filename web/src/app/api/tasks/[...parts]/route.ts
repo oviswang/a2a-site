@@ -33,10 +33,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ parts: s
   const db = getDb();
 
   const task = db
-    .prepare('SELECT id, project_id, project_slug, title, status FROM tasks WHERE id=?')
+    .prepare('SELECT id, project_id, title, status FROM tasks WHERE id=?')
     .get(id) as
-    | { id: string; project_id: number; project_slug: string; title: string; status: string }
+    | { id: string; project_id: number; title: string; status: string }
     | undefined;
+
+  const projectSlugRow = db
+    .prepare('SELECT slug FROM projects WHERE id=?')
+    .get(task?.project_id) as { slug: string } | undefined;
+  const projectSlug = projectSlugRow?.slug || null;
 
   if (!task) return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
 
@@ -73,7 +78,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ parts: s
   return NextResponse.json({
     ok: true,
     taskId: task.id,
-    projectSlug: task.project_slug,
+    projectSlug,
     actorHandle,
     actorType,
 
