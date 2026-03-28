@@ -890,6 +890,19 @@ async function main() {
       const fresh = isFresh(top.ts, BLOCKED_MAX_AGE_MS);
       decision.precondition = { kind: 'blocked_freshness', topTs: top.ts || null, fresh, maxAgeMs: BLOCKED_MAX_AGE_MS };
 
+      // Test-only freeze (default off): stop before side effects for a specific key.
+      // Used to produce stable stale/takeover proofs without killing processes.
+      if (freezeThis) {
+        decision.policyDecision = 'wait';
+        decision.skipped = true;
+        decision.reasonCode = CONFLICT_CODES.owner_frozen_for_test;
+        decision.reasonDetail = { key: thisKey, note: 'test-only freeze before clear_blocker side effect; no act attempted' };
+        writeDecision(Date.now(), decision);
+        bump(win, decision);
+        await sleep(POLL_MS);
+        continue;
+      }
+
       if (!fresh) {
         decision.policyDecision = 'HUMAN_ACTION_REQUIRED';
         decision.skipped = true;
