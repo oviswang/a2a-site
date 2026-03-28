@@ -228,6 +228,10 @@ function gateOne(traceDir, name) {
     reasons.push({ level: 'warn', code, detail });
     for (const p of paths) evidence.push(p);
   }
+  function info(code, detail, paths=[]) {
+    reasons.push({ level: 'info', code, detail });
+    for (const p of paths) evidence.push(p);
+  }
 
   // Gate 1: stuck
   const maxStuck = Number(process.env.GATE_MAX_STUCK_WINDOWS || 0);
@@ -281,7 +285,8 @@ function gateOne(traceDir, name) {
       warn('refresh_skip_low', { skippedByFreshCache: cost.refreshSkippedFreshCache, minFreshSkip }, [latestSummaryPath].filter(Boolean));
     }
   } else {
-    warn('no_summary_cost', { note: 'summary.cost missing; run with summary enabled to gate cost' }, []);
+    // P8-2 grading: missing cost is an INFO (still long-run-ok if no other issues), but not PASS.
+    info('no_summary_cost', { note: 'summary.cost missing; run with summary enabled to gate cost' }, []);
   }
 
   // Basic evidence: include latest summary + latest decision/act/echo
@@ -290,7 +295,17 @@ function gateOne(traceDir, name) {
   const latestEcho = pickEvidence(files, p => p.endsWith('.echo.json'));
   for (const p of [latestSummaryPath, latestDecision, latestAct, latestEcho].filter(Boolean)) evidence.push(p);
 
-  const failed = reasons.some(r => r.level === 'fail');
+  // P8-2: graded gate level
+  const hasFail = reasons.some(r => r.level === 'fail');
+  const hasWarn = reasons.some(r => r.level === 'warn');
+  const hasInfo = reasons.some(r => r.level === 'info');
+
+  // PASS requires no warn/info/fail.
+  const gateLevel = hasFail ? 'FAIL' : (hasWarn ? 'WARN' : (hasInfo ? 'WARN' : 'PASS'));
+  const releaseDisposition = (gateLevel === 'FAIL') ? 'must_fix_first' : (gateLevel === 'WARN' ? 'observe_only' : 'long_run_ok');
+
+  // Keep backward-compatible boolean outputs
+  const failed = hasFail;
   // P7-3: recommended actions (deterministic mapping)
   const signalHelper = path.join(process.cwd(), 'scripts', 'p7_3_signal_to_action.mjs');
   let recommendedActions = [];
@@ -317,6 +332,8 @@ function gateOne(traceDir, name) {
   return {
     name,
     traceDir,
+    gateLevel,
+    releaseDisposition,
     SAFE_FOR_LONG_RUN: failed ? 'no' : 'yes',
     pass: !failed,
     gateReasons: reasons,
@@ -332,10 +349,15 @@ const results = targets.map(t => gateOne(t.dir, t.name));
 
 const overallPass = results.every(r => r.pass);
 
+const overallLevel = results.some(r => r.gateLevel === 'FAIL') ? 'FAIL' : (results.some(r => r.gateLevel === 'WARN') ? 'WARN' : 'PASS');
+const overallDisposition = (overallLevel === 'FAIL') ? 'must_fix_first' : (overallLevel === 'WARN' ? 'observe_only' : 'long_run_ok');
+
 const out = {
   ok: true,
   kind: 'p7_2_gate',
   inputDir: input,
+  gateLevel: overallLevel,
+  releaseDisposition: overallDisposition,
   SAFE_FOR_LONG_RUN: overallPass ? 'yes' : 'no',
   pass: overallPass,
   results,

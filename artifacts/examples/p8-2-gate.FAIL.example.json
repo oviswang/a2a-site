@@ -1,0 +1,69 @@
+{
+  "ok": true,
+  "kind": "p7_2_gate",
+  "inputDir": "artifacts/a2a-runner/p1-1-20260327-204209",
+  "gateLevel": "FAIL",
+  "releaseDisposition": "must_fix_first",
+  "SAFE_FOR_LONG_RUN": "no",
+  "pass": false,
+  "results": [
+    {
+      "name": "p1-1-20260327-204209",
+      "traceDir": "artifacts/a2a-runner/p1-1-20260327-204209",
+      "gateLevel": "FAIL",
+      "releaseDisposition": "must_fix_first",
+      "SAFE_FOR_LONG_RUN": "no",
+      "pass": false,
+      "gateReasons": [
+        {
+          "level": "fail",
+          "code": "act_fail",
+          "detail": {
+            "act_fail": 0,
+            "maxActFail": -1
+          }
+        },
+        {
+          "level": "warn",
+          "code": "no_summary_cost",
+          "detail": {
+            "note": "summary.cost missing; run with summary enabled to gate cost"
+          }
+        }
+      ],
+      "recommendedActions": [
+        {
+          "id": "enable.summary.cost",
+          "title": "run runner with summary enabled (A2A_SUMMARY_EVERY) to produce summary.cost for gating/ops"
+        },
+        {
+          "id": "act_fail.recover",
+          "title": "inspect act trace; classify error; avoid repeating side effects"
+        }
+      ],
+      "evidencePaths": [
+        "artifacts/a2a-runner/p1-1-20260327-204209/2026-03-27T12-42-22-184Z.act.json",
+        "artifacts/a2a-runner/p1-1-20260327-204209/2026-03-27T12-42-22-190Z.echo.json"
+      ],
+      "keyMetrics": {
+        "health": null,
+        "windowLoops": 0,
+        "counts": {},
+        "conflictCounts": {},
+        "cost": null,
+        "derived": {
+          "actFail": 0,
+          "humanRequired": 0,
+          "stuckWindows": 0,
+          "degradedWindows": 0,
+          "ownerStale": 0,
+          "takeover": 0,
+          "yieldToPeer": 0,
+          "attentionReq": 0,
+          "topParentFetch": null,
+          "topStage": null
+        }
+      }
+    }
+  ]
+}

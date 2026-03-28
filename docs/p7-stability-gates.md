@@ -58,14 +58,18 @@
 
 ---
 
-## 3) 结果表达
+## 3) 结果表达（P8-2 graded）
 
 门禁输出为结构化 JSON：
+- `gateLevel=PASS|WARN|FAIL`
+- `releaseDisposition=long_run_ok|observe_only|must_fix_first`
 - `SAFE_FOR_LONG_RUN=yes|no`
-- `pass`（boolean）
-- `gateReasons[]`：每条包含 level=fail|warn + code + detail
+- `pass`（boolean，兼容旧字段）
+- `gateReasons[]`：每条包含 level=fail|warn|info + code + detail
 - `evidencePaths[]`：可复盘的文件路径（summary/decision/act/echo）
 - `keyMetrics`：用于人类快速阅读的关键统计
+
+分级语义详见：`docs/p8-2-gate-grading.md`
 
 ---
 
