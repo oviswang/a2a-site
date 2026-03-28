@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "kind": "p13_2_evidence_matrix",
+  "ts": "20260328T154216Z",
+  "cases": [
+    {
+      "caseId": "multi_parent.out.long.selection_anomaly",
+      "mode": "multi_parent",
+      "point": "out_of_range",
+      "window": "long",
+      "loops": 60,
+      "artifacts": {
+        "summary": "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/summary.json",
+        "gate": "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/gate.json",
+        "signal_to_action": "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "multi_parent_same_role.out.short.act_fail",
+      "mode": "multi_parent+same_role",
+      "point": "out_of_range",
+      "window": "short",
+      "loops": 5,
+      "artifacts": {
+        "summary": "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent_same_role.out.short.act_fail/summary.json",
+        "gate": "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent_same_role.out.short.act_fail/gate.json",
+        "signal_to_action": "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent_same_role.out.short.act_fail/signal_to_action.json"
+      }
+    }
+  ]
+}

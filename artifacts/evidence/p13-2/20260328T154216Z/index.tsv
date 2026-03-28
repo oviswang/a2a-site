@@ -1,0 +1,2 @@
+multi_parent.out.long.selection_anomaly	multi_parent	out_of_range	long	60	artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/gate.json	artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/signal_to_action.json
+multi_parent_same_role.out.short.act_fail	multi_parent+same_role	out_of_range	short	5	artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent_same_role.out.short.act_fail/gate.json	artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent_same_role.out.short.act_fail/signal_to_action.json

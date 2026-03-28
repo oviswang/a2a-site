@@ -1,0 +1,6 @@
+{
+  "loop": 12,
+  "policyDecision": "select_parent",
+  "reasonCode": "selection_churn",
+  "chosenParent": "p-c"
+}
