@@ -141,11 +141,12 @@ Goal: see a signal → know what to check next, what to tune, and what to rescue
 
 ---
 
-## Regression matrix (P10-3) — problem × action × verification (MVP)
+## Regression (P11-3) — required regression set by change type (MVP)
 
-Use this when you need a consistent post-fix verification loop.
+Use this before releasing changes.
 
-See: `docs/p10-3-regression-matrix.md`
+See: `docs/p11-3-required-regressions.md` (required checklists)
+Also: `docs/p10-3-regression-matrix.md` (problem×action templates)
 
 ---
 
