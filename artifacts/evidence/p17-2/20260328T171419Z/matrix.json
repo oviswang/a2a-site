@@ -1,0 +1,72 @@
+{
+  "ok": true,
+  "kind": "p17_2_selection_evidence",
+  "ts": "20260328T171419Z",
+  "cases": [
+    {
+      "caseId": "sel.Rsel0.multi_parent.short.churn_present",
+      "mode": "multi_parent",
+      "window": "short",
+      "loops": 5,
+      "problemType": "selection_churn_present",
+      "supportsRule": "Rsel0",
+      "artifacts": {
+        "summary": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel0.multi_parent.short.churn_present/summary.json",
+        "gate": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel0.multi_parent.short.churn_present/gate.json",
+        "signal_to_action": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel0.multi_parent.short.churn_present/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "sel.Rsel0.multi_parent.medium.churn_present",
+      "mode": "multi_parent",
+      "window": "medium",
+      "loops": 20,
+      "problemType": "selection_churn_present",
+      "supportsRule": "Rsel0",
+      "artifacts": {
+        "summary": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel0.multi_parent.medium.churn_present/summary.json",
+        "gate": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel0.multi_parent.medium.churn_present/gate.json",
+        "signal_to_action": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel0.multi_parent.medium.churn_present/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "sel.Rsel0.multi_parent.long.churn_present",
+      "mode": "multi_parent",
+      "window": "long",
+      "loops": 60,
+      "problemType": "selection_churn_present",
+      "supportsRule": "Rsel0",
+      "artifacts": {
+        "summary": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel0.multi_parent.long.churn_present/summary.json",
+        "gate": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel0.multi_parent.long.churn_present/gate.json",
+        "signal_to_action": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel0.multi_parent.long.churn_present/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "sel.Rsel2.combo.long.instability_mild",
+      "mode": "multi_parent+same_role",
+      "window": "long",
+      "loops": 60,
+      "problemType": "selection_instability",
+      "supportsRule": "Rsel2",
+      "artifacts": {
+        "summary": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel2.combo.long.instability_mild/summary.json",
+        "gate": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel2.combo.long.instability_mild/gate.json",
+        "signal_to_action": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel2.combo.long.instability_mild/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "sel.Rsel1.multi_parent.long.wrong_parent_spinning",
+      "mode": "multi_parent",
+      "window": "long",
+      "loops": 60,
+      "problemType": "wrong_parent_spinning",
+      "supportsRule": "Rsel1",
+      "artifacts": {
+        "summary": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel1.multi_parent.long.wrong_parent_spinning/summary.json",
+        "gate": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel1.multi_parent.long.wrong_parent_spinning/gate.json",
+        "signal_to_action": "artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel1.multi_parent.long.wrong_parent_spinning/signal_to_action.json"
+      }
+    }
+  ]
+}

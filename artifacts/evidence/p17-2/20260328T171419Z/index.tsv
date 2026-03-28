@@ -1,0 +1,5 @@
+sel.Rsel0.multi_parent.short.churn_present	multi_parent	selection_churn_present	Rsel0	short	5	artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel0.multi_parent.short.churn_present/gate.json
+sel.Rsel0.multi_parent.medium.churn_present	multi_parent	selection_churn_present	Rsel0	medium	20	artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel0.multi_parent.medium.churn_present/gate.json
+sel.Rsel0.multi_parent.long.churn_present	multi_parent	selection_churn_present	Rsel0	long	60	artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel0.multi_parent.long.churn_present/gate.json
+sel.Rsel2.combo.long.instability_mild	multi_parent+same_role	selection_instability	Rsel2	long	60	artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel2.combo.long.instability_mild/gate.json
+sel.Rsel1.multi_parent.long.wrong_parent_spinning	multi_parent	wrong_parent_spinning	Rsel1	long	60	artifacts/evidence/p17-2/20260328T171419Z/cases/sel.Rsel1.multi_parent.long.wrong_parent_spinning/gate.json
