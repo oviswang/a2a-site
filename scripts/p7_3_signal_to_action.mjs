@@ -19,14 +19,35 @@ function uniq(arr) {
   return Array.from(new Set((arr || []).filter(Boolean)));
 }
 
-function action(id, title, steps, evidence = [], whenToStop = [], validationChecks = []) {
+function action(id, title, steps, evidence = [], whenToStop = [], validationChecks = [], validationWorkflow = []) {
   return {
     id,
     title,
     steps: steps || [],
     validationChecks: validationChecks || [],
+    validationWorkflow: validationWorkflow || [],
     evidencePaths: uniq(evidence),
     whenToStop: whenToStop || [],
+  };
+}
+
+function workflow({
+  name,
+  reRunCommand,
+  targetMetrics,
+  compareRule,
+  expectedOutcome,
+  passCondition,
+  note,
+}) {
+  return {
+    name,
+    reRunCommand,
+    targetMetrics: targetMetrics || [],
+    compareRule,
+    expectedOutcome,
+    passCondition,
+    note: note || null,
   };
 }
 
@@ -231,6 +252,24 @@ function mapReasonsToActions({ gate, summary, decision, traceDir }) {
           evidencePathHint: '*.decision.json (or summary.perRole conflictCounts when available)',
           compareWindow: '>=1 yield window (A2A_YIELD_WINDOW_MS) across several loops',
         }),
+      ],
+      [
+        workflow({
+          name: 're-run gate (same-role traces)',
+          reRunCommand: 'scripts/p7_2_gate_mvp.sh --dir <sameRoleTraceDir>',
+          targetMetrics: ['gateLevel', 'gateReasons(code=same_role_owner_stale|same_role_takeover|same_role_yield_to_peer)'],
+          compareRule: 'same_role_* reasons should drop; gateLevel improves',
+          expectedOutcome: 'coordination becomes stable enough for long_run_ok or observe_only',
+          passCondition: 'no same_role_owner_stale/takeover fail reasons',
+        }),
+        workflow({
+          name: 're-run short same-role smoke (windowed)',
+          reRunCommand: 'scripts/p7_1_benchmark_mvp.sh (same-role=on, MAX_LOOPS>=5)',
+          targetMetrics: ['decision.reasonCode rate', 'summary.counts.handoff/wait'],
+          compareRule: 'owner_stale/takeover decrease; no persistent contention loops',
+          expectedOutcome: 'takeover becomes rare and purposeful (stale only)',
+          passCondition: 'owner_stale/takeover == 0 over several loops (unless truly stale owner)',
+        }),
       ]
     ));
   }
@@ -344,6 +383,24 @@ function mapReasonsToActions({ gate, summary, decision, traceDir }) {
             evidencePathHint: 'scripts/p7_2_gate_mvp.sh output',
             compareWindow: 'after tuning; traceDir with summary.cost present',
             note: 'cost-related WARN/FAIL should reduce; SAFE_FOR_LONG_RUN should remain yes',
+          }),
+        ],
+        [
+          workflow({
+            name: 're-run gate (after tuning)',
+            reRunCommand: 'scripts/p7_2_gate_mvp.sh --dir <traceDir>',
+            targetMetrics: ['gateLevel', 'releaseDisposition', 'gateReasons(code=attention_cost_high|refresh_skip_low)'],
+            compareRule: 'gateLevel should improve (FAIL→WARN→PASS) and cost-related reasons should reduce',
+            expectedOutcome: 'disposition moves toward long_run_ok; SAFE_FOR_LONG_RUN remains yes',
+            passCondition: 'gateLevel!=FAIL',
+          }),
+          workflow({
+            name: 're-run p7-1 benchmark (cost delta)',
+            reRunCommand: 'scripts/p7_1_benchmark_mvp.sh (refresh_ms=0 vs refresh_ms>0)',
+            targetMetrics: ['summary.cost.requests.byStage.attention', 'summary.cost.refreshPlan.skippedByFreshCache'],
+            compareRule: 'attention decreases; skippedByFreshCache increases',
+            expectedOutcome: 'attention cost growth slows with parent count; gating is effective',
+            passCondition: 'skippedByFreshCache>0 and attention lower vs baseline',
           }),
         ]
       ));
