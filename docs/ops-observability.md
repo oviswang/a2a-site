@@ -16,6 +16,14 @@ No new logging system. We only standardize how to read existing:
 
 ## 1) First look when something breaks
 
+### P7-3 quick loop: signal → action
+If you already have a gate output or a summary, don’t free-form diagnose.
+
+Recommended flow:
+1) Run stability gate: `scripts/p7_2_gate_mvp.sh --dir <traceDir>`
+2) Convert to deterministic actions: `node scripts/p7_3_signal_to_action.mjs <gate.json>`
+3) Use `summary.perParent` / `summary.perRole` + the recommended actions to rescue the highest-severity parent/role first.
+
 ### P4-3 / P5-3 quick triage
 1) Check the newest `*.decision.json` → tells you `policyDecision` (act/wait/handoff/noop/HUMAN_ACTION_REQUIRED) + reason.
 2) Check the newest `*.summary.json` → tells you windowed counts + `health` (ok/degraded/stuck) + deterministic recovery hints.

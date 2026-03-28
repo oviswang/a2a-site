@@ -284,12 +284,36 @@ function gateOne(traceDir, name) {
   for (const p of [latestSummaryPath, latestDecision, latestAct, latestEcho].filter(Boolean)) evidence.push(p);
 
   const failed = reasons.some(r => r.level === 'fail');
+  // P7-3: recommended actions (deterministic mapping)
+  const signalHelper = path.join(process.cwd(), 'scripts', 'p7_3_signal_to_action.mjs');
+  let recommendedActions = [];
+  try {
+    // We only attach a minimal hint list here to avoid heavy logic duplication.
+    // The full mapping is in scripts/p7_3_signal_to_action.mjs.
+    const codes = new Set(reasons.map(r => String(r.code || '')));
+
+    // Always attach at least one actionable next-step when we warn about missing summary cost.
+    if (codes.has('no_summary_cost')) {
+      recommendedActions.push({ id: 'enable.summary.cost', title: 'run runner with summary enabled (A2A_SUMMARY_EVERY) to produce summary.cost for gating/ops' });
+    }
+
+    if (codes.has('stuck')) recommendedActions.push({ id: 'stuck.triage', title: 'localize stuck stage; rescue stuck parent first; reduce duplicates' });
+    if (codes.has('act_fail')) recommendedActions.push({ id: 'act_fail.recover', title: 'inspect act trace; classify error; avoid repeating side effects' });
+    if (codes.has('human_action_required')) recommendedActions.push({ id: 'human_required.stop', title: 'stop automation; resolve boundary; restart with smoke' });
+    if (codes.has('same_role_owner_stale') || codes.has('same_role_takeover')) recommendedActions.push({ id: 'same_role.unstable', title: 'reduce same-role concurrency; verify handle ring; re-run short benchmark' });
+    if (codes.has('attention_cost_high')) recommendedActions.push({ id: 'cost.attention.reduce', title: 'tune refresh gating (refresh_ms/small_all/rr_k); re-run p7-1 bench' });
+    if (codes.has('refresh_skip_low')) recommendedActions.push({ id: 'cost.refresh.not_working', title: 'verify refresh_ms>0 and warm cache; re-run with same trace dir' });
+  } catch {
+    recommendedActions = [];
+  }
+
   return {
     name,
     traceDir,
     SAFE_FOR_LONG_RUN: failed ? 'no' : 'yes',
     pass: !failed,
     gateReasons: reasons,
+    recommendedActions,
     evidencePaths: Array.from(new Set(evidence)),
     keyMetrics,
   };

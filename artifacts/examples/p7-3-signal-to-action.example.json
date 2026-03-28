@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "kind": "p7_3_signal_to_action",
+  "traceDir": "artifacts/a2a-runner/p1-1-20260327-204209",
+  "inputs": {
+    "hasGate": true,
+    "hasSummary": true,
+    "hasDecision": false
+  },
+  "rescuePriority": {
+    "parent": null,
+    "role": null,
+    "rationale": []
+  },
+  "recommendedActions": [
+    {
+      "id": "enable.summary.cost",
+      "title": "run runner with summary enabled (A2A_SUMMARY_EVERY) to produce summary.cost for gating/ops",
+      "steps": [],
+      "evidencePaths": [
+        "artifacts/a2a-runner/p1-1-20260327-204209/2026-03-27T12-42-22-184Z.act.json",
+        "artifacts/a2a-runner/p1-1-20260327-204209/2026-03-27T12-42-22-190Z.echo.json"
+      ],
+      "whenToStop": []
+    }
+  ],
+  "stopConditions": []
+}

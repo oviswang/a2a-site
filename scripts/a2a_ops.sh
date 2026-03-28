@@ -129,6 +129,27 @@ if isinstance(body, dict):
       print('top_item:', {k: top.get(k) for k in ['type','taskId','title','reason','ts'] if isinstance(top, dict)})
 PY
 
+    echo "--- recommended_actions (P7-3)"
+    # best-effort: run gate + signal->action on the trace dir (no hard dependency)
+    if [[ -x scripts/p7_2_gate_mvp.sh && -f scripts/p7_3_signal_to_action.mjs ]]; then
+      tmp_gate="$dir/.tmp_gate.json"
+      scripts/p7_2_gate_mvp.sh --dir "$dir" > "$tmp_gate" || true
+      node scripts/p7_3_signal_to_action.mjs "$tmp_gate" 2>/dev/null | python3 - <<'PY'
+import json,sys
+raw=sys.stdin.read().strip()
+if not raw:
+  raise SystemExit(0)
+try:
+  j=json.loads(raw)
+except Exception:
+  raise SystemExit(0)
+acts=j.get('recommendedActions') or []
+for a in acts[:6]:
+  print('-', a.get('id'), a.get('title'))
+PY
+      rm -f "$tmp_gate" || true
+    fi
+
     exit 0
     ;;
 

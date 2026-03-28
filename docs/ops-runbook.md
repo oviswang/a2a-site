@@ -48,6 +48,93 @@ In a trace directory you will typically see:
 
 ---
 
+## Signal → Action (P7-3) — minimal deterministic loop
+
+Use this section when you already have a signal source:
+- `summary.json` (health/counts/cost/perParent/perRole)
+- `p7_2_gate_mvp.sh` output (gateReasons + SAFE_FOR_LONG_RUN)
+
+Goal: see a signal → know what to check next, what to tune, and what to rescue first.
+
+### 0) Pick rescue target first (multi-parent / multi-role)
+1) If `summary.perParent[*].health == stuck` → rescue that parent first.
+2) Else if `summary.hints` includes governance per_parent/per_role recommendations → follow the top recommendation.
+3) Else rescue the parent/role with highest `act_fail` or `HUMAN_ACTION_REQUIRED` counts.
+
+### A) stuck (health=stuck or gateReason=stuck)
+- Look first:
+  - latest `*.summary.json` (counts)
+  - latest `*.decision.json` (reasonCode)
+- Tune first:
+  - reduce duplicate instances (same role) to 1
+  - if multi-parent: temporarily reduce parent set to the stuck parent only
+- Rescue first:
+  - the stuck parent from `summary.perParent`
+- Stop & HUMAN_ACTION_REQUIRED:
+  - if stuck is driven by token/permission boundary or repeated HUMAN_ACTION_REQUIRED
+
+### B) degraded (health=degraded)
+- Look first:
+  - `*.summary.json` (act_fail / HUMAN_ACTION_REQUIRED)
+  - latest `*.act.json`
+- Tune first:
+  - fix root cause (often token/auth or precondition mismatch)
+- Rescue first:
+  - parent/role with `act_fail` or `HUMAN_ACTION_REQUIRED` > 0
+
+### C) act_fail
+- Look first:
+  - latest `*.act.json` (error/status)
+  - surrounding `*.deliverable_get_2.json` / `*.task_get.json`
+- Tune first:
+  - verify actorHandle/token pairing
+  - do NOT repeat side effects until echo converges
+- Stop & HUMAN_ACTION_REQUIRED:
+  - token invalid/rotated or permission boundary
+
+### D) HUMAN_ACTION_REQUIRED
+- Look first:
+  - `*.fatal.json` or latest `*.decision.json` reasonCode
+- Action:
+  - stop automation → resolve boundary → restart with short smoke loop
+
+### E) same-role coordination unstable (owner_stale / takeover / yield_to_peer high)
+- Look first:
+  - latest `*.decision.json` sequences (reasonCode)
+  - env: `A2A_SAME_ROLE_HANDLES`, `A2A_OWNER_STALE_MS`
+- Tune first:
+  - reduce same-role concurrency temporarily
+  - verify full stable handle ring
+  - increase `A2A_OWNER_STALE_MS` only after confirming progress surface is stable
+
+### F) handoff high / wait high
+- Look first:
+  - latest `*.decision.json` (policyDecision + reasonCode)
+  - env: `A2A_ROLE`, parent task ids
+- Tune first:
+  - fix role boundary mismatch
+  - fix parent selection (wrong parent task)
+
+### G) precondition_failed / stale_skip
+- Look first:
+  - `review_state_pre` traces and `deliverable_get_2` / `echo`
+- Tune first:
+  - reduce duplicate instances
+  - increase poll interval slightly if eventual consistency dominates
+
+### H) attention cost high / refresh not saving requests (summary.cost)
+- Look first:
+  - `summary.cost.requests.byStage.attention`
+  - `summary.cost.refreshPlan.skippedByFreshCache`
+- Tune first:
+  - set `A2A_PARENT_REFRESH_MS>0`
+  - keep `A2A_PARENT_SMALL_ALL` small
+  - keep `A2A_PARENT_RR_K` minimal
+- Verify:
+  - re-run p7-1 benchmark and compare attention requests + skippedByFreshCache
+
+---
+
 ## Failure taxonomy (symptom → cause → action)
 
 ### A) Token missing (HUMAN_ACTION_REQUIRED)
