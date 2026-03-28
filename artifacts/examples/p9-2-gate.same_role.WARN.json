@@ -1,0 +1,97 @@
+{
+  "ok": true,
+  "kind": "p7_2_gate",
+  "inputDir": "artifacts/examples/p9-2-same-role-warn",
+  "scenarioModes": [
+    "same_role"
+  ],
+  "matrixKey": "mode=same_role",
+  "gateLevel": "WARN",
+  "releaseDisposition": "observe_only",
+  "SAFE_FOR_LONG_RUN": "yes",
+  "pass": true,
+  "results": [
+    {
+      "name": "p9-2-same-role-warn",
+      "traceDir": "artifacts/examples/p9-2-same-role-warn",
+      "scenarioMode": "same_role",
+      "matrixKey": "mode=same_role",
+      "gateLevel": "WARN",
+      "releaseDisposition": "observe_only",
+      "SAFE_FOR_LONG_RUN": "yes",
+      "pass": true,
+      "gateReasons": [
+        {
+          "level": "warn",
+          "code": "same_role_yield_to_peer",
+          "signalClass": "coordination",
+          "matrixDisposition": "observe_only",
+          "detail": {
+            "yield_to_peer": 1,
+            "maxYield": 0
+          }
+        }
+      ],
+      "recommendedActions": [],
+      "evidencePaths": [
+        "artifacts/examples/p9-2-same-role-warn/2026-03-28T00-00-00-001Z.decision.json",
+        "artifacts/examples/p9-2-same-role-warn/2026-03-28T00-00-00-000Z.summary.json"
+      ],
+      "keyMetrics": {
+        "health": "ok",
+        "windowLoops": 20,
+        "counts": {
+          "act_ok": 1,
+          "act_fail": 0,
+          "role_skip": 0,
+          "handoff": 0,
+          "wait": 1,
+          "noop": 0,
+          "HUMAN_ACTION_REQUIRED": 0,
+          "stale_skip": 0,
+          "precondition_failed": 0,
+          "dedupe_skip": 0
+        },
+        "conflictCounts": {
+          "yield_to_peer": 1
+        },
+        "cost": {
+          "loops": 20,
+          "requestsTotal": 10,
+          "byStage": {
+            "token": 1,
+            "join": 1,
+            "attention": 2,
+            "task_get": 2,
+            "deliverable_get": 2,
+            "act": 1,
+            "echo": 1
+          },
+          "byParent": {
+            "p-example": 2
+          },
+          "refreshWillFetch": 2,
+          "refreshSkippedFreshCache": 1
+        },
+        "derived": {
+          "actFail": 0,
+          "humanRequired": 0,
+          "stuckWindows": 0,
+          "degradedWindows": 0,
+          "ownerStale": 0,
+          "takeover": 0,
+          "yieldToPeer": 1,
+          "attentionReq": 2,
+          "topParentFetch": {
+            "parentTaskId": "p-example",
+            "attentionFetch": 2
+          },
+          "topStage": {
+            "stage": "attention",
+            "requests": 2
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "ok": true,
+  "kind": "p7_2_gate",
+  "inputDir": "artifacts/examples/p9-2-multi-parent-pass",
+  "scenarioModes": [
+    "multi_parent"
+  ],
+  "matrixKey": "mode=multi_parent",
+  "gateLevel": "PASS",
+  "releaseDisposition": "long_run_ok",
+  "SAFE_FOR_LONG_RUN": "yes",
+  "pass": true,
+  "results": [
+    {
+      "name": "p9-2-multi-parent-pass",
+      "traceDir": "artifacts/examples/p9-2-multi-parent-pass",
+      "scenarioMode": "multi_parent",
+      "matrixKey": "mode=multi_parent",
+      "gateLevel": "PASS",
+      "releaseDisposition": "long_run_ok",
+      "SAFE_FOR_LONG_RUN": "yes",
+      "pass": true,
+      "gateReasons": [],
+      "recommendedActions": [],
+      "evidencePaths": [
+        "artifacts/examples/p9-2-multi-parent-pass/2026-03-28T00-00-00-000Z.summary.json"
+      ],
+      "keyMetrics": {
+        "health": "ok",
+        "windowLoops": 20,
+        "counts": {
+          "act_ok": 1,
+          "act_fail": 0,
+          "role_skip": 0,
+          "handoff": 0,
+          "wait": 1,
+          "noop": 0,
+          "HUMAN_ACTION_REQUIRED": 0,
+          "stale_skip": 0,
+          "precondition_failed": 0,
+          "dedupe_skip": 0
+        },
+        "conflictCounts": {},
+        "cost": {
+          "loops": 20,
+          "requestsTotal": 10,
+          "byStage": {
+            "token": 1,
+            "join": 1,
+            "attention": 2,
+            "task_get": 2,
+            "deliverable_get": 2,
+            "act": 1,
+            "echo": 1
+          },
+          "byParent": {
+            "p-a": 2,
+            "p-b": 2
+          },
+          "refreshWillFetch": 2,
+          "refreshSkippedFreshCache": 1
+        },
+        "derived": {
+          "actFail": 0,
+          "humanRequired": 0,
+          "stuckWindows": 0,
+          "degradedWindows": 0,
+          "ownerStale": 0,
+          "takeover": 0,
+          "yieldToPeer": 0,
+          "attentionReq": 2,
+          "topParentFetch": {
+            "parentTaskId": "p-a",
+            "attentionFetch": 2
+          },
+          "topStage": {
+            "stage": "attention",
+            "requests": 2
+          }
+        }
+      }
+    }
+  ]
+}

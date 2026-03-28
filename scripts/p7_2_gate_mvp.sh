@@ -220,16 +220,52 @@ function gateOne(traceDir, name) {
   const reasons = [];
   const evidence = [];
 
+  // P9-2: scenario mode (MVP inference)
+  const scenarioMode = (() => {
+    const parents = Array.isArray(summary?.parentTaskIds) ? summary.parentTaskIds.length : null;
+    // If we have any same-role coordination evidence (owner_stale/takeover/yield), treat as same_role.
+    if (Number(keyMetrics.derived.ownerStale || 0) > 0 || Number(keyMetrics.derived.takeover || 0) > 0 || Number(keyMetrics.derived.yieldToPeer || 0) > 0) return 'same_role';
+    // Multi-parent if summary carries multiple parent ids or cost.byParent has >1.
+    const byParentN = cost && cost.byParent ? Object.keys(cost.byParent).length : 0;
+    if ((parents && parents > 1) || byParentN > 1) return 'multi_parent';
+    return 'single';
+  })();
+
+  const matrixKey = `mode=${scenarioMode}`;
+
+  function classify(code) {
+    // P9-2: signalClass mapping (MVP)
+    const c = String(code || '');
+    if (c === 'stuck' || c === 'degraded' || c === 'act_fail') return 'health';
+    if (c === 'attention_cost_high' || c === 'refresh_skip_low' || c === 'no_summary_cost') return 'cost';
+    if (c.startsWith('same_role_')) return 'coordination';
+    if (c === 'human_action_required') return 'human_boundary';
+    return 'unknown';
+  }
+
+  function matrixDisposition(level, signalClass) {
+    // P9-2: matrix semantics (MVP)
+    // - fail => must_fix_first
+    // - warn/info => observe_only
+    // - none => long_run_ok
+    if (level === 'fail') return 'must_fix_first';
+    if (level === 'warn' || level === 'info') return 'observe_only';
+    return 'long_run_ok';
+  }
+
   function fail(code, detail, paths=[]) {
-    reasons.push({ level: 'fail', code, detail });
+    const signalClass = classify(code);
+    reasons.push({ level: 'fail', code, signalClass, matrixDisposition: matrixDisposition('fail', signalClass), detail });
     for (const p of paths) evidence.push(p);
   }
   function warn(code, detail, paths=[]) {
-    reasons.push({ level: 'warn', code, detail });
+    const signalClass = classify(code);
+    reasons.push({ level: 'warn', code, signalClass, matrixDisposition: matrixDisposition('warn', signalClass), detail });
     for (const p of paths) evidence.push(p);
   }
   function info(code, detail, paths=[]) {
-    reasons.push({ level: 'info', code, detail });
+    const signalClass = classify(code);
+    reasons.push({ level: 'info', code, signalClass, matrixDisposition: matrixDisposition('info', signalClass), detail });
     for (const p of paths) evidence.push(p);
   }
 
@@ -332,6 +368,8 @@ function gateOne(traceDir, name) {
   return {
     name,
     traceDir,
+    scenarioMode,
+    matrixKey,
     gateLevel,
     releaseDisposition,
     SAFE_FOR_LONG_RUN: failed ? 'no' : 'yes',
@@ -352,10 +390,13 @@ const overallPass = results.every(r => r.pass);
 const overallLevel = results.some(r => r.gateLevel === 'FAIL') ? 'FAIL' : (results.some(r => r.gateLevel === 'WARN') ? 'WARN' : 'PASS');
 const overallDisposition = (overallLevel === 'FAIL') ? 'must_fix_first' : (overallLevel === 'WARN' ? 'observe_only' : 'long_run_ok');
 
+const scenarioModes = Array.from(new Set(results.map(r => r.scenarioMode).filter(Boolean)));
 const out = {
   ok: true,
   kind: 'p7_2_gate',
   inputDir: input,
+  scenarioModes,
+  matrixKey: scenarioModes.length === 1 ? `mode=${scenarioModes[0]}` : `mode=mixed(${scenarioModes.join(',')})`,
   gateLevel: overallLevel,
   releaseDisposition: overallDisposition,
   SAFE_FOR_LONG_RUN: overallPass ? 'yes' : 'no',
