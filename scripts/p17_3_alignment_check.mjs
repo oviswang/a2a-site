@@ -151,9 +151,50 @@ function main(){
     ];
     const selectionFields = ['rsel','selection_case_present','selection_','keymetrics.selection'];
 
-    const strictCT = new Set(['selection_logic_change','runner_behavior_change','same_role_coordination_config','gate_rule_change']);
+    const strictCT = new Set(['selection_logic_change','runner_behavior_change','same_role_coordination_config','gate_rule_change','refresh_cost_config']);
     const needFields = strictCT.has(ct) ? commonFields : [];
     const missingFieldsInChecklist = needFields.filter(f=>!containsWord(chk,f));
+
+    // P20-3: required vs supplemental + weakening detection (MVP)
+    const weakeningWords = [
+      'optional','suggest','may','can','if needed','recommended',
+      // NOTE: exclude generic Chinese "建议" because checklist may contain unrelated "建议跑" sections.
+      '可选','可考虑','如有需要','推荐'
+    ];
+    const weakeningWindowChars = 220;
+    function hasWeakeningNear(text, needle){
+      const t=String(text||'');
+      const n=String(needle||'');
+      if(!n) return false;
+      const i = t.toLowerCase().indexOf(n.toLowerCase());
+      if(i<0) return false;
+      const s=Math.max(0,i-weakeningWindowChars);
+      const e=Math.min(t.length,i+n.length+weakeningWindowChars);
+      let win=t.slice(s,e);
+      // reduce false positives: drop earlier "建议跑:" blocks that may appear in the window
+      const cut = win.toLowerCase().lastIndexOf('\n建议跑');
+      if(cut >= 0) win = win.slice(cut + 1);
+
+      // also treat "建议跑" itself as not weakening of required items
+      const low=win.toLowerCase().replace(/\n\s*建议跑\s*:/gi,'');
+      return weakeningWords.some(w=>low.includes(String(w).toLowerCase()));
+    }
+
+    // required items = REQUIRED_RUNS items (fact source)
+    // Weakening detection: only apply to explicit "required" signals (name/command), not generic tokens like mode/window.
+    const requiredItems = items;
+    const requiredWeakeningInChecklist = [];
+    for(const it of requiredItems){
+      const needles=[];
+      if(it.name) needles.push(it.name);
+      if(it.command) needles.push(it.command);
+      for(const nd of needles){
+        if(hasWeakeningNear(chk, nd)){
+          requiredWeakeningInChecklist.push({item: it.name||null, needle: nd});
+          break;
+        }
+      }
+    }
 
     const missingSelectionFieldsInChecklist = (ct==='selection_logic_change')
       ? selectionFields.filter(f=>!containsAny(chk,[f]))
@@ -181,6 +222,9 @@ function main(){
       missingCommandsInChecklist,
       missingCommonFieldsInChecklist: missingFieldsInChecklist,
       missingSelectionFieldsInChecklist,
+
+      // P20-3
+      requiredWeakeningInChecklist,
     });
   }
 
@@ -194,10 +238,11 @@ function main(){
     (x.commandKeywordPresence && (!x.commandKeywordPresence.requiredRegressionsDoc || !x.commandKeywordPresence.checklist)) ||
     (x.missingCommandsInChecklist && x.missingCommandsInChecklist.length>0) ||
     (x.missingCommonFieldsInChecklist && x.missingCommonFieldsInChecklist.length>0) ||
-    (x.missingSelectionFieldsInChecklist && x.missingSelectionFieldsInChecklist.length>0)
+    (x.missingSelectionFieldsInChecklist && x.missingSelectionFieldsInChecklist.length>0) ||
+    (x.requiredWeakeningInChecklist && x.requiredWeakeningInChecklist.length>0)
   );
 
-  const report={ ok:true, kind:'p19_3_command_field_alignment_check', sourceOfTruth:'scripts/p13_1_regression_completion.mjs#REQUIRED_RUNS', hasDrift, report: out };
+  const report={ ok:true, kind:'p20_3_consistency_hardening_check', sourceOfTruth:'scripts/p13_1_regression_completion.mjs#REQUIRED_RUNS', hasDrift, report: out };
   fs.writeFileSync('artifacts/examples/p17-3-alignment-check.json', JSON.stringify(report,null,2));
   console.log(JSON.stringify(report,null,2));
 }
