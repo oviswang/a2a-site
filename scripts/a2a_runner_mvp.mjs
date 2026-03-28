@@ -43,6 +43,10 @@ const POLL_MS = Number(env('A2A_POLL_MS', '30000'));
 const TRACE_DIR = env('A2A_TRACE_DIR', 'artifacts/a2a-runner');
 const MAX_LOOPS = Number(env('A2A_MAX_LOOPS', '0'));
 
+// P6-2 proof helper (test-only, default off): freeze owner before side effects for a specific key.
+// Format: <taskId>:<type> (e.g. t-xxxx:revision_requested)
+const TEST_FREEZE_OWNER_ON_KEY = env('A2A_TEST_FREEZE_OWNER_ON_KEY', '').trim();
+
 // P2-1: multi-agent stable run mode
 // Role controls which attention types this runner is allowed to act on.
 // - reviewer: handles awaiting_review (and optionally blocked)
@@ -107,6 +111,8 @@ const CONFLICT_CODES = {
   act_ok: 'act_ok',
   act_fail: 'act_fail',
   human_required_blocked_stale: 'human_required_blocked_stale',
+  // test-only
+  owner_frozen_for_test: 'owner_frozen_for_test',
 };
 
 function writeDecision(ts, decision) {
@@ -974,6 +980,11 @@ async function main() {
       }
     }
 
+    // Test-only: freeze owner before side effects for stable proofs (default off)
+    // Only triggers when explicitly configured, and only before we attempt to POST/PUT side effects.
+    const thisKey = `${taskId}:${String(top.type)}`;
+    const freezeThis = TEST_FREEZE_OWNER_ON_KEY && TEST_FREEZE_OWNER_ON_KEY === thisKey && !!decision.selfIsOwner;
+
     if (action === 'review_accept') {
       // P4-1: act-before-re-read: require review-state still says pendingReview.
       const rs = await readReviewState({ taskId, handle: HANDLE, token });
@@ -1027,6 +1038,15 @@ async function main() {
           const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
           writeTrace(Date.now(), 'summary', summary);
         }
+        await sleep(POLL_MS);
+        continue;
+      } else if (freezeThis) {
+        decision.policyDecision = 'wait';
+        decision.skipped = true;
+        decision.reasonCode = CONFLICT_CODES.owner_frozen_for_test;
+        decision.reasonDetail = { key: thisKey, note: 'test-only freeze before side effects; no act attempted' };
+        writeDecision(Date.now(), decision);
+        bump(win, decision);
         await sleep(POLL_MS);
         continue;
       } else {
