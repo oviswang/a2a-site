@@ -292,7 +292,40 @@ function isFresh(tsIso, maxAgeMs) {
 }
 
 
-async function httpJson(method, urlPath, { token, body } = {}) {
+// P7-1: minimal cost/capacity counters (deterministic)
+function initCost() {
+  return {
+    loops: 0,
+    requests: {
+      total: 0,
+      byStage: {
+        token: 0,
+        join: 0,
+        attention: 0,
+        task_get: 0,
+        deliverable_get: 0,
+        act: 0,
+        echo: 0,
+      },
+      byParent: {},
+    },
+    refreshPlan: {
+      willFetch: 0,
+      skippedByFreshCache: 0,
+    },
+  };
+}
+
+function costBumpRequest(cost, stage, { parentTaskId } = {}) {
+  cost.requests.total += 1;
+  if (cost.requests.byStage[stage] === undefined) cost.requests.byStage[stage] = 0;
+  cost.requests.byStage[stage] += 1;
+  if (parentTaskId) {
+    cost.requests.byParent[parentTaskId] = (cost.requests.byParent[parentTaskId] || 0) + 1;
+  }
+}
+
+async function httpJson(method, urlPath, { token, body, stage, parentTaskId } = {}) {
   const url = `${BASE_URL}${urlPath}`;
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -310,7 +343,8 @@ async function httpJson(method, urlPath, { token, body } = {}) {
   } catch {
     json = { ok: false, error: 'non_json_response', raw: text.slice(0, 500) };
   }
-  return { ok: res.ok, status: res.status, json, urlPath, method };
+
+  return { ok: res.ok, status: res.status, json, urlPath, method, stage: stage || null, parentTaskId: parentTaskId || null };
 }
 
 // Deterministic priority
@@ -455,7 +489,8 @@ async function main() {
 
   // 1) token self-check
   {
-    const r = await httpJson('GET', '/api/auth/whoami', { token });
+    const r = await httpJson('GET', '/api/auth/whoami', { token, stage: 'token' });
+    costBumpRequest(cost, 'token');
     writeTrace(Date.now(), 'token_check', r);
     if (!r.ok) {
       const err = classifyError(r);
@@ -480,8 +515,12 @@ async function main() {
   const SUMMARY_EVERY = Number(env('A2A_SUMMARY_EVERY', '20'));
   let win = initWindow();
 
+  // P7-1 rolling cost baseline (aggregated, deterministic)
+  let cost = initCost();
+
   while (MAX_LOOPS === 0 || loops < MAX_LOOPS) {
     loops += 1;
+    cost.loops += 1;
     const loopStart = Date.now();
 
     // P4-1 decision frame (filled progressively)
@@ -520,7 +559,9 @@ async function main() {
       const r = await httpJson('POST', `/api/projects/${encodeURIComponent(PROJECT_SLUG)}/join`, {
         token,
         body: { slug: PROJECT_SLUG, actorHandle: HANDLE, actorType: 'agent' },
+        stage: 'join',
       });
+      costBumpRequest(cost, 'join');
       writeTrace(Date.now(), 'join', r);
       if (!r.ok) {
         const err = classifyError(r);
@@ -597,6 +638,11 @@ async function main() {
       const ageMs = ent ? (now - Number(ent.lastFetchAt || 0)) : null;
       // If selected by tier but cache is still fresh and refreshMs>0, we can skip network fetch.
       const gate = (refreshMs > 0) ? shouldRefreshParent({ parentId: pid, cache, now, refreshMs, force: want }) : { refresh: true, reason: 'disabled' };
+
+      // P7-1: refreshPlan counters
+      if (gate.refresh) cost.refreshPlan.willFetch += 1;
+      if (!gate.refresh && gate.reason === 'fresh_cache') cost.refreshPlan.skippedByFreshCache += 1;
+
       return {
         parentTaskId: pid,
         selectedByTier: want,
@@ -617,7 +663,8 @@ async function main() {
       let fromCache = false;
 
       if (plan && plan.willFetch) {
-        att = await httpJson('GET', `/api/tasks/${encodeURIComponent(pid)}/attention`, {});
+        att = await httpJson('GET', `/api/tasks/${encodeURIComponent(pid)}/attention`, { stage: 'attention', parentTaskId: pid });
+        costBumpRequest(cost, 'attention', { parentTaskId: pid });
         writeTrace(Date.now(), `attention.${pid}`, att);
         const ok = !!att.ok;
         const items = att.json?.items || [];
@@ -668,7 +715,26 @@ async function main() {
         const health = healthOf(win);
         const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
         const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
-        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: parents[0] || null, windowLoops: win.loops, counts: win.counts, health, perParent, perRole, hints: recoveryHints(win), last: win.last };
+        const summary = {
+          ok: true,
+          kind: 'summary',
+          role: decision.role,
+          handle: HANDLE,
+          parentTaskId: parents[0] || null,
+          windowLoops: win.loops,
+          counts: win.counts,
+          health,
+          perParent,
+          perRole,
+          // P7-1: aggregated cost/capacity counters (deterministic)
+          cost: {
+            loops: cost.loops,
+            requests: cost.requests,
+            refreshPlan: cost.refreshPlan,
+          },
+          hints: recoveryHints(win),
+          last: win.last,
+        };
         writeTrace(Date.now(), 'summary', summary);
       }
       console.log(`[loop ${loops}] idle: no attention items (parents=${parents.join(',')})`);
@@ -705,6 +771,8 @@ async function main() {
         const OWNER_STALE_MS = Number(env('A2A_OWNER_STALE_MS', '120000'));
         const prog = (st.progressByItem[key] ||= { lastProgressSig: null, lastProgressAt: 0 });
         const rsProg = await readReviewState({ taskId, handle: HANDLE, token });
+        // P7-1: count as task_get-stage read surface (review_state)
+        costBumpRequest(cost, 'task_get');
         writeTrace(Date.now(), 'review_state_progress', rsProg);
         const sig = rsProg.ok && rsProg.json && rsProg.json.ok
           ? `${String(rsProg.json.deliverableStatus || '')}:${String(rsProg.json.submittedAt || '')}:${String(rsProg.json.reviewedAt || '')}`
@@ -782,7 +850,8 @@ async function main() {
       }
     }
 // 4) read task + events
-    const task = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}`, {});
+    const task = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}`, { stage: 'task_get' });
+    costBumpRequest(cost, 'task_get');
     writeTrace(Date.now(), 'task_get', task);
     if (!task.ok) {
       console.error(`[loop ${loops}] WARN task_get_failed: ${classifyError(task)}`);
@@ -833,7 +902,7 @@ async function main() {
         const health = healthOf(win);
         const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
         const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
-        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
+        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, perParent, perRole, cost: { loops: cost.loops, requests: cost.requests, refreshPlan: cost.refreshPlan }, hints: recoveryHints(win), last: win.last };
         writeTrace(Date.now(), 'summary', summary);
       }
       console.log(`[loop ${loops}] role_skip role=${role} top=${top.type} task=${taskId}`);
@@ -847,14 +916,16 @@ async function main() {
     let sigExtra = '';
 
     if (action === 'revise_resubmit') {
-      const d0 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {});
+      const d0 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, { stage: 'deliverable_get' });
+      costBumpRequest(cost, 'deliverable_get');
       writeTrace(Date.now(), 'deliverable_get', d0);
       const note = d0.json?.deliverable?.revisionNote;
       sigExtra = normalizeNote(note);
     }
 
     if (action === 'review_accept') {
-      const d0 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {});
+      const d0 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, { stage: 'deliverable_get' });
+      costBumpRequest(cost, 'deliverable_get');
       writeTrace(Date.now(), 'deliverable_get', d0);
       const del = d0.json?.deliverable;
       sigExtra = del?.submittedAt ? String(del.submittedAt) : `status:${String(del?.status || 'none')}`;
@@ -874,7 +945,7 @@ async function main() {
         const health = healthOf(win);
         const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
         const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
-        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
+        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, perParent, perRole, cost: { loops: cost.loops, requests: cost.requests, refreshPlan: cost.refreshPlan }, hints: recoveryHints(win), last: win.last };
         writeTrace(Date.now(), 'summary', summary);
       }
       console.log(`[loop ${loops}] dedupe: skip ${sig} task=${taskId}`);
@@ -934,7 +1005,7 @@ async function main() {
           const health = healthOf(win);
           const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
           const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
-          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
+          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, perParent, perRole, cost: { loops: cost.loops, requests: cost.requests, refreshPlan: cost.refreshPlan }, hints: recoveryHints(win), last: win.last };
           writeTrace(Date.now(), 'summary', summary);
         }
         console.error(`[loop ${loops}] HUMAN_ACTION_REQUIRED blocked_stale task=${taskId}`);
@@ -944,8 +1015,10 @@ async function main() {
 
       const r = await httpJson('POST', `/api/tasks/${encodeURIComponent(taskId)}/block`, {
         token,
+        stage: 'act',
         body: { isBlocked: false, actorHandle: HANDLE, actorType: 'agent' },
       });
+      costBumpRequest(cost, 'act');
       actResult = r;
       writeTrace(Date.now(), 'act', actResult);
     }
@@ -953,6 +1026,8 @@ async function main() {
     if (action === 'revise_resubmit') {
       // P4-1: act-before-re-read: require review-state still says revisionRequested.
       const rs = await readReviewState({ taskId, handle: HANDLE, token });
+      // P7-1: count as task_get-stage read surface (review_state)
+      costBumpRequest(cost, 'task_get');
       writeTrace(Date.now(), 'review_state_pre', rs);
       const ok = !!(rs.ok && rs.json && rs.json.ok);
       const revisionRequested = !!rs.json?.revisionRequested;
@@ -969,7 +1044,7 @@ async function main() {
           const health = healthOf(win);
           const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
           const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
-          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
+          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, perParent, perRole, cost: { loops: cost.loops, requests: cost.requests, refreshPlan: cost.refreshPlan }, hints: recoveryHints(win), last: win.last };
           writeTrace(Date.now(), 'summary', summary);
         }
         await sleep(POLL_MS);
@@ -979,7 +1054,8 @@ async function main() {
       decision.policyDecision = 'act';
 
       // read deliverable
-      const d1 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {});
+      const d1 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, { stage: 'deliverable_get' });
+      costBumpRequest(cost, 'deliverable_get');
       writeTrace(Date.now(), 'deliverable_get_2', d1);
       if (!d1.ok || !d1.json?.deliverable) {
         actResult = { ok: false, error: 'deliverable_missing', status: d1.status, json: d1.json, action };
@@ -990,6 +1066,7 @@ async function main() {
         const newSummary = String(del.summaryMd || '') + patch;
         const put = await httpJson('PUT', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {
           token,
+          stage: 'act',
           body: {
             actorHandle: HANDLE,
             actorType: 'agent',
@@ -997,6 +1074,7 @@ async function main() {
             evidenceLinks: [{ label: 'placeholder', url: `${BASE_URL}/tasks/${taskId}` }],
           },
         });
+        costBumpRequest(cost, 'act');
         writeTrace(Date.now(), 'deliverable_put', put);
 
         if (!put.ok) {
@@ -1005,8 +1083,10 @@ async function main() {
         } else {
           const sub = await httpJson('POST', `/api/tasks/${encodeURIComponent(taskId)}/deliverable/submit`, {
             token,
+            stage: 'act',
             body: { actorHandle: HANDLE, actorType: 'agent' },
           });
+          costBumpRequest(cost, 'act');
           writeTrace(Date.now(), 'deliverable_submit', sub);
           actResult = sub;
           writeTrace(Date.now(), 'act', actResult);
@@ -1018,6 +1098,8 @@ async function main() {
     if (action === 'review_accept') {
       // P4-1: act-before-re-read: require review-state still says pendingReview.
       const rs = await readReviewState({ taskId, handle: HANDLE, token });
+      // P7-1: count as task_get-stage read surface (review_state)
+      costBumpRequest(cost, 'task_get');
       writeTrace(Date.now(), 'review_state_pre', rs);
       const ok = !!(rs.ok && rs.json && rs.json.ok);
       const pendingReview = !!rs.json?.pendingReview;
@@ -1034,7 +1116,7 @@ async function main() {
           const health = healthOf(win);
           const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
           const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
-          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
+          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, perParent, perRole, cost: { loops: cost.loops, requests: cost.requests, refreshPlan: cost.refreshPlan }, hints: recoveryHints(win), last: win.last };
           writeTrace(Date.now(), 'summary', summary);
         }
         await sleep(POLL_MS);
@@ -1045,7 +1127,8 @@ async function main() {
 
       // Minimal, deterministic review policy:
       // - only accept if deliverable.status === 'submitted'
-      const d1 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {});
+      const d1 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, { stage: 'deliverable_get' });
+      costBumpRequest(cost, 'deliverable_get');
       writeTrace(Date.now(), 'deliverable_get_2', d1);
       const del = d1.json?.deliverable;
       const status = String(del?.status || '');
@@ -1065,7 +1148,7 @@ async function main() {
           const health = healthOf(win);
           const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
           const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
-          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
+          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, perParent, perRole, cost: { loops: cost.loops, requests: cost.requests, refreshPlan: cost.refreshPlan }, hints: recoveryHints(win), last: win.last };
           writeTrace(Date.now(), 'summary', summary);
         }
         await sleep(POLL_MS);
@@ -1082,8 +1165,10 @@ async function main() {
       } else {
         const review = await httpJson('POST', `/api/tasks/${encodeURIComponent(taskId)}/deliverable/review`, {
           token,
+          stage: 'act',
           body: { actorHandle: HANDLE, actorType: 'agent', action: 'accept' },
         });
+        costBumpRequest(cost, 'act');
         writeTrace(Date.now(), 'deliverable_review', review);
         actResult = review;
         writeTrace(Date.now(), 'act', actResult);
@@ -1091,7 +1176,8 @@ async function main() {
     }
 
     // 8) echo: re-read task
-    const echo = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}`, {});
+    const echo = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}`, { stage: 'echo' });
+    costBumpRequest(cost, 'echo');
     writeTrace(Date.now(), 'echo', echo);
 
     // P4-1: finalize decision record
@@ -1124,7 +1210,26 @@ async function main() {
         last: r.last,
       }]));
 
-      const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID || (decision.parentTaskIds && decision.parentTaskIds[0]) || null, windowLoops: win.loops, counts: win.counts, health, perParent, perRole, hints: recoveryHints(win), last: win.last };
+      const summary = {
+        ok: true,
+        kind: 'summary',
+        role: decision.role,
+        handle: HANDLE,
+        parentTaskId: PARENT_TASK_ID || (decision.parentTaskIds && decision.parentTaskIds[0]) || null,
+        windowLoops: win.loops,
+        counts: win.counts,
+        health,
+        perParent,
+        perRole,
+        // P7-1: aggregated cost/capacity counters (deterministic)
+        cost: {
+          loops: cost.loops,
+          requests: cost.requests,
+          refreshPlan: cost.refreshPlan,
+        },
+        hints: recoveryHints(win),
+        last: win.last,
+      };
       writeTrace(Date.now(), 'summary', summary);
     }
 
