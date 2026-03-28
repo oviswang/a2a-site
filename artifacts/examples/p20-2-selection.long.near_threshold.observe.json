@@ -1,0 +1,13 @@
+{
+  "case": "near_threshold_long_observe",
+  "rule": "Rsel2:multi_parent:selection_instability",
+  "reasons": [
+    "selection_churn_present",
+    "selection_instability"
+  ],
+  "sel": {
+    "selection_churn": 11,
+    "parent_switch_count": 8,
+    "selection_churn_rate": 0.18333333333333332
+  }
+}

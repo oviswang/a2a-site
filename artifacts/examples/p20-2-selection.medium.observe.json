@@ -1,0 +1,13 @@
+{
+  "case": "observe_only_stable_medium",
+  "rule": "Rmp1:multi_parent:attention_per_parent_high",
+  "reasons": [
+    "selection_churn_present",
+    "selection_instability"
+  ],
+  "sel": {
+    "selection_churn": 4,
+    "parent_switch_count": 3,
+    "selection_churn_rate": 0.2
+  }
+}
