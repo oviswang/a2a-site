@@ -358,6 +358,26 @@ function pickParent(attByParent) {
   return best;
 }
 
+// P6-1: per-parent refresh policy (deterministic, no scheduler)
+function shouldRefreshParent({ parentId, cache, now, refreshMs, force }) {
+  if (force) return { refresh: true, reason: 'force' };
+  const ent = cache[parentId] || null;
+  if (!ent) return { refresh: true, reason: 'cold' };
+  const ageMs = now - Number(ent.lastFetchAt || 0);
+  if (ageMs >= refreshMs) return { refresh: true, reason: 'stale' };
+  return { refresh: false, reason: 'fresh_cache', ageMs };
+}
+
+function rrPick(parents, loop, k) {
+  if (!parents.length) return [];
+  const out = [];
+  const start = loop % parents.length;
+  for (let i = 0; i < Math.min(k, parents.length); i++) {
+    out.push(parents[(start + i) % parents.length]);
+  }
+  return out;
+}
+
 // Minimal dedupe state (per task last signature)
 function loadState() {
   const p = path.join(TRACE_DIR, 'state.json');
@@ -440,6 +460,10 @@ async function main() {
   let loops = 0;
   const st = loadState();
 
+  // P6-1 per-parent cache persisted in state.json (best-effort)
+  if (!st.parentCache) st.parentCache = {};
+  if (!st.lastSelectedParentTaskId) st.lastSelectedParentTaskId = null;
+
   // P4-3 rolling window summary
   const SUMMARY_EVERY = Number(env('A2A_SUMMARY_EVERY', '20'));
   let win = initWindow();
@@ -456,6 +480,7 @@ async function main() {
       parentTaskIds: parseParentCandidates(),
       selectedParentTaskId: null,
       parentCandidates: null,
+      refreshPlan: null,
       loop: loops,
       featureFlags: {
         allowBlocked: env('A2A_ALLOW_BLOCKED', '0') === '1',
@@ -497,18 +522,116 @@ async function main() {
       }
     }
 
-    // 3) attention (multi-parent deterministic)
+    // 3) attention (multi-parent deterministic) + P6-1 refresh policy
     const parents = parseParentCandidates();
+    const now = Date.now();
+
+    const refreshMs = Number(env('A2A_PARENT_REFRESH_MS', '0')) || 0;
+    const SMALL_PARENT_ALL = Number(env('A2A_PARENT_SMALL_ALL', '5'));
+    const RR_K = Number(env('A2A_PARENT_RR_K', '1'));
+
+    const cache = st.parentCache;
+
+    // Tiered refresh set
+    let refreshSet = new Set();
+    let reasons = {};
+
+    const lastSel = st.lastSelectedParentTaskId;
+    if (lastSel && parents.includes(lastSel)) {
+      refreshSet.add(lastSel);
+      reasons[lastSel] = (reasons[lastSel] || []).concat('last_selected');
+    }
+
+    // recently non-empty (cached)
+    for (const pid of parents) {
+      const ent = cache[pid];
+      if (ent && ent.lastTop) {
+        refreshSet.add(pid);
+        reasons[pid] = (reasons[pid] || []).concat('recent_non_empty');
+      }
+    }
+
+    // degraded/stuck from cached health
+    for (const pid of parents) {
+      const ent = cache[pid];
+      if (ent && (ent.lastHealth === 'degraded' || ent.lastHealth === 'stuck')) {
+        refreshSet.add(pid);
+        reasons[pid] = (reasons[pid] || []).concat(`health_${ent.lastHealth}`);
+      }
+    }
+
+    // Deterministic round-robin supplement
+    for (const pid of rrPick(parents, loops, RR_K)) {
+      refreshSet.add(pid);
+      reasons[pid] = (reasons[pid] || []).concat('round_robin');
+    }
+
+    // Small parent count: keep current behavior (full refresh)
+    const small = parents.length <= SMALL_PARENT_ALL;
+    if (small) {
+      refreshSet = new Set(parents);
+      for (const pid of parents) reasons[pid] = (reasons[pid] || []).concat('small_all');
+    }
+
+    // If refreshMs==0, preserve old behavior (always refresh all)
+    if (refreshMs <= 0) {
+      refreshSet = new Set(parents);
+      for (const pid of parents) reasons[pid] = (reasons[pid] || []).concat('refresh_ms_disabled');
+    }
+
+    decision.refreshPlan = parents.map((pid) => {
+      const want = refreshSet.has(pid);
+      const ent = cache[pid] || null;
+      const ageMs = ent ? (now - Number(ent.lastFetchAt || 0)) : null;
+      // If selected by tier but cache is still fresh and refreshMs>0, we can skip network fetch.
+      const gate = (refreshMs > 0) ? shouldRefreshParent({ parentId: pid, cache, now, refreshMs, force: want }) : { refresh: true, reason: 'disabled' };
+      return {
+        parentTaskId: pid,
+        selectedByTier: want,
+        tierReasons: reasons[pid] || [],
+        cacheAgeMs: ageMs,
+        willFetch: !!gate.refresh,
+        fetchReason: gate.reason,
+      };
+    });
+
     const attByParent = [];
 
     for (const pid of parents) {
-      const att = await httpJson('GET', `/api/tasks/${encodeURIComponent(pid)}/attention`, {});
-      writeTrace(Date.now(), `attention.${pid}`, att);
-      const ok = !!att.ok;
-      const items = att.json?.items || [];
-      const top = pickTopAttention(items);
-      const counts = att.json?.counts || null;
-      attByParent.push({ parentTaskId: pid, attentionOk: ok, counts, top, itemsLen: Array.isArray(items) ? items.length : 0 });
+      const plan = decision.refreshPlan.find((x) => x.parentTaskId === pid);
+      const ent = cache[pid] || null;
+
+      let att = null;
+      let fromCache = false;
+
+      if (plan && plan.willFetch) {
+        att = await httpJson('GET', `/api/tasks/${encodeURIComponent(pid)}/attention`, {});
+        writeTrace(Date.now(), `attention.${pid}`, att);
+        const ok = !!att.ok;
+        const items = att.json?.items || [];
+        const top = pickTopAttention(items);
+        const counts = att.json?.counts || null;
+
+        // update cache snapshot
+        cache[pid] = {
+          lastFetchAt: Date.now(),
+          lastCounts: counts,
+          lastTop: top ? { taskId: String(top.taskId), type: String(top.type), ts: top.ts || null } : null,
+          lastItemsLen: Array.isArray(items) ? items.length : 0,
+          lastHealth: null,
+        };
+        saveState(st);
+
+        attByParent.push({ parentTaskId: pid, attentionOk: ok, counts, top, itemsLen: Array.isArray(items) ? items.length : 0, fromCache });
+      } else if (ent) {
+        // cached snapshot
+        fromCache = true;
+        const top = ent.lastTop || null;
+        attByParent.push({ parentTaskId: pid, attentionOk: true, counts: ent.lastCounts || null, top, itemsLen: Number(ent.lastItemsLen || 0), fromCache });
+      } else {
+        // no cache and not fetching (should be rare) → treat as unavailable
+        attByParent.push({ parentTaskId: pid, attentionOk: false, counts: null, top: null, itemsLen: 0, fromCache });
+      }
     }
 
     decision.parentCandidates = attByParent.map((x) => ({
@@ -517,6 +640,7 @@ async function main() {
       counts: x.counts,
       top: x.top ? { taskId: String(x.top.taskId), type: String(x.top.type), ts: x.top.ts || null } : null,
       itemsLen: x.itemsLen,
+      fromCache: !!x.fromCache,
       score: x.top ? attentionScore(x.top, x.counts) : null,
     }));
 
