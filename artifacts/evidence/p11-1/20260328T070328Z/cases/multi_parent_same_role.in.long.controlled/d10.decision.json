@@ -1,0 +1,5 @@
+{
+  "loop": 10,
+  "policyDecision": "handoff",
+  "reasonCode": "yield_to_peer"
+}

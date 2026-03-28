@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "kind": "p7_3_signal_to_action",
+  "traceDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent.out.long.attention_too_high",
+  "inputs": {
+    "hasGate": true,
+    "hasSummary": true,
+    "hasDecision": false
+  },
+  "rescuePriority": {
+    "parent": null,
+    "role": null,
+    "rationale": []
+  },
+  "recommendedActions": [
+    {
+      "id": "cost.attention.reduce",
+      "title": "Attention cost high: tune refresh gating deterministically",
+      "steps": [
+        "1) Set A2A_PARENT_REFRESH_MS to a non-zero value to enable refresh gating.",
+        "2) Keep A2A_PARENT_SMALL_ALL small (default 5) to avoid full-refresh when parent count grows.",
+        "3) Keep A2A_PARENT_RR_K minimal (default 1) to prevent excessive supplemental fetch.",
+        "4) Re-run p7-1 benchmark: expect skippedByFreshCache to increase and attention request count to drop."
+      ],
+      "validationChecks": [
+        {
+          "checkType": "graded_gate",
+          "targetField": "gateLevel",
+          "expectedChange": "improve",
+          "evidencePathHint": "scripts/p7_2_gate_mvp.sh output",
+          "compareWindow": "after tuning; same traceDir",
+          "note": null
+        },
+        {
+          "checkType": "compare_benchmark",
+          "targetField": "summary.cost.requests.byStage.attention",
+          "expectedChange": "decrease",
+          "evidencePathHint": "artifacts/p7-1-bench/<ts>/*/latest.summary.json",
+          "compareWindow": "refresh_ms=0 vs >0",
+          "note": null
+        },
+        {
+          "checkType": "compare_benchmark",
+          "targetField": "summary.cost.refreshPlan.skippedByFreshCache",
+          "expectedChange": "increase",
+          "evidencePathHint": "artifacts/p7-1-bench/<ts>/*/latest.summary.json",
+          "compareWindow": "refresh_ms=0 vs >0",
+          "note": null
+        }
+      ],
+      "validationWorkflow": [
+        {
+          "name": "re-run gate (after tuning)",
+          "reRunCommand": "scripts/p7_2_gate_mvp.sh --dir <traceDir>",
+          "targetMetrics": [
+            "gateLevel",
+            "releaseDisposition",
+            "gateReasons(code=attention_cost_high|refresh_skip_low)"
+          ],
+          "compareRule": "gateLevel should improve and cost-related reasons should reduce",
+          "expectedOutcome": "disposition moves toward long_run_ok",
+          "passCondition": "gateLevel!=FAIL",
+          "note": null
+        },
+        {
+          "name": "re-run p7-1 benchmark (cost delta)",
+          "reRunCommand": "scripts/p7_1_benchmark_mvp.sh (refresh_ms=0 vs refresh_ms>0)",
+          "targetMetrics": [
+            "summary.cost.requests.byStage.attention",
+            "summary.cost.refreshPlan.skippedByFreshCache"
+          ],
+          "compareRule": "attention decreases; skippedByFreshCache increases",
+          "expectedOutcome": "gating effective under multi_parent",
+          "passCondition": "skippedByFreshCache>0 and attention lower vs baseline",
+          "note": null
+        }
+      ],
+      "evidencePaths": [
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent.out.long.attention_too_high/summary.json"
+      ],
+      "whenToStop": []
+    }
+  ],
+  "stopConditions": []
+}

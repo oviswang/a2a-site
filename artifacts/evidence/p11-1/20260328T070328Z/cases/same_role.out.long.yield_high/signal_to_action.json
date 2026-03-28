@@ -1,0 +1,79 @@
+{
+  "ok": true,
+  "kind": "p7_3_signal_to_action",
+  "traceDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high",
+  "inputs": {
+    "hasGate": true,
+    "hasSummary": true,
+    "hasDecision": false
+  },
+  "rescuePriority": {
+    "parent": null,
+    "role": null,
+    "rationale": []
+  },
+  "recommendedActions": [
+    {
+      "id": "same_role.unstable",
+      "title": "Same-role coordination unstable: reduce concurrency, verify owner ring config, then re-run",
+      "steps": [
+        "1) Verify A2A_SAME_ROLE_HANDLES contains the full stable handle ring and each instance uses a distinct handle.",
+        "2) Reduce same-role instance count to 1 temporarily to regain stability.",
+        "3) Increase OWNER_STALE_MS to avoid premature takeover (only after verifying progress surface stability).",
+        "4) Re-run a short benchmark with same-role on to confirm owner_stale/takeover drops to 0."
+      ],
+      "validationChecks": [
+        {
+          "checkType": "graded_gate",
+          "targetField": "gateReasons(code=same_role_owner_stale|same_role_takeover)",
+          "expectedChange": "decrease_to_zero",
+          "evidencePathHint": "scripts/p7_2_gate_mvp.sh output on same-role traceDir",
+          "compareWindow": "same workload; same-role=on; after config change",
+          "note": null
+        },
+        {
+          "checkType": "decision_reason_rate",
+          "targetField": "decision.reasonCode (owner_stale/takeover/yield_to_peer)",
+          "expectedChange": "owner_stale/takeover decrease; yield_to_peer stable_or_decrease",
+          "evidencePathHint": "*.decision.json (or summary.perRole conflictCounts when available)",
+          "compareWindow": ">=1 yield window (A2A_YIELD_WINDOW_MS) across several loops",
+          "note": null
+        }
+      ],
+      "validationWorkflow": [
+        {
+          "name": "re-run gate (same-role traces)",
+          "reRunCommand": "scripts/p7_2_gate_mvp.sh --dir <sameRoleTraceDir>",
+          "targetMetrics": [
+            "gateLevel",
+            "gateReasons(code=same_role_owner_stale|same_role_takeover|same_role_yield_to_peer)"
+          ],
+          "compareRule": "same_role_* reasons should drop; gateLevel improves",
+          "expectedOutcome": "coordination becomes stable enough for long_run_ok or observe_only",
+          "passCondition": "no same_role_owner_stale/takeover fail reasons",
+          "note": null
+        },
+        {
+          "name": "re-run short same-role smoke (windowed)",
+          "reRunCommand": "scripts/p7_1_benchmark_mvp.sh (same-role=on, MAX_LOOPS>=5)",
+          "targetMetrics": [
+            "decision.reasonCode rate",
+            "summary.counts.handoff/wait"
+          ],
+          "compareRule": "owner_stale/takeover decrease; no persistent contention loops",
+          "expectedOutcome": "takeover becomes rare and purposeful (stale only)",
+          "passCondition": "owner_stale/takeover == 0 over several loops (unless truly stale owner)",
+          "note": null
+        }
+      ],
+      "evidencePaths": [
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high/d7.decision.json",
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high/d8.decision.json",
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high/d9.decision.json",
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high/summary.json"
+      ],
+      "whenToStop": []
+    }
+  ],
+  "stopConditions": []
+}
