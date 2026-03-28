@@ -178,12 +178,37 @@ function gateOne(traceDir, name) {
   const actPaths = files.filter(p => p.endsWith('.act.json'));
   const echoPaths = files.filter(p => p.endsWith('.echo.json'));
 
+  // selection signals (MVP)
+  const selection = {
+    selection_churn: 0,
+    parent_switch_count: 0,
+    selection_churn_rate: null,
+  };
+  try {
+    let lastParent = null;
+    for (const p of decisionPaths.slice().sort()) {
+      const j = readJson(p);
+      const rc = j && j.reasonCode ? String(j.reasonCode) : null;
+      if (rc === 'selection_churn') {
+        selection.selection_churn++;
+        const cp = (j && typeof j.chosenParent === 'string') ? j.chosenParent : null;
+        if (cp) {
+          if (lastParent && cp !== lastParent) selection.parent_switch_count++;
+          lastParent = cp;
+        }
+      }
+    }
+    const loops = Number(summary?.windowLoops || 0);
+    if (loops > 0) selection.selection_churn_rate = selection.selection_churn / loops;
+  } catch {}
+
   const keyMetrics = {
     health: summary?.health || null,
     windowLoops: Number(summary?.windowLoops || 0),
     counts: summary?.counts || {},
     conflictCounts: {},
     cost: summary ? parseSummaryCost(summary) : null,
+    selection,
     derived: {
       actFail: 0,
       humanRequired: 0,
@@ -381,6 +406,17 @@ function gateOne(traceDir, name) {
     warn('same_role_yield_to_peer', { yield_to_peer: keyMetrics.derived.yieldToPeer, maxYield }, decisionPaths.slice(-3));
   }
 
+  // selection (MVP)
+  if (scenarioMode === 'multi_parent') {
+    const r = keyMetrics.selection?.selection_churn_rate;
+    const sw = keyMetrics.selection?.parent_switch_count;
+    if (r !== null && (r > 0.2 || Number(sw || 0) >= 10)) {
+      fail('selection_churn_high', { selection_churn_rate: r, parent_switch_count: sw, loops: keyMetrics.windowLoops }, decisionPaths.slice(-5));
+    } else if (r !== null && r > 0.05) {
+      warn('selection_churn_present', { selection_churn_rate: r, parent_switch_count: sw, loops: keyMetrics.windowLoops }, decisionPaths.slice(-5));
+    }
+  }
+
   // Gate 5: multi-parent cost sanity
   const maxAtt = Number(process.env.GATE_MAX_ATTENTION_REQ || 999999);
   const minFreshSkip = Number(process.env.GATE_MIN_FRESH_CACHE_SKIP || 0);
@@ -424,6 +460,9 @@ function gateOne(traceDir, name) {
   const L = Number(windowedMetrics?.loops || 0);
   const isLong = L >= 60;
 
+  // Selection signals (MVP) — derived from gateOne keyMetrics.selection
+  const sel = keyMetrics.selection || { selection_churn: 0, parent_switch_count: 0, selection_churn_rate: null };
+
   // 1) same_role: sustained yield is acceptable as observe_only on short windows, but long sustained yield becomes must_fix_first.
   if (scenarioMode === 'same_role' && windowedMetrics?.yield_rate !== null) {
     if (isLong && windowedMetrics.yield_rate > 0.5) {
@@ -446,6 +485,26 @@ function gateOne(traceDir, name) {
       releaseDisposition = 'must_fix_first';
       matrixDispositionOverride = { from: { gateLevel: baseGateLevel, releaseDisposition: baseReleaseDisposition }, to: { gateLevel, releaseDisposition } };
       dispositionReason.push('multi_parent long-window attention_req_per_parent>5 => must_fix_first');
+    }
+  }
+
+  // 2b) multi_parent selection (MVP)
+  // Long-window sustained selection churn indicates wrong-parent thrash; treat as must_fix_first.
+  if (scenarioMode === 'multi_parent' && isLong && sel.selection_churn_rate !== null) {
+    if (sel.selection_churn_rate > 0.2 || sel.parent_switch_count >= 10) {
+      gateLevel = 'FAIL';
+      releaseDisposition = 'must_fix_first';
+      matrixRuleId = 'Rsel1:multi_parent:selection_churn_high';
+      matrixDecisionBasis = [`selection_churn_rate>${0.2}`, `parent_switch_count>=${10}`];
+      matrixDispositionOverride = { from: { gateLevel: baseGateLevel, releaseDisposition: baseReleaseDisposition }, to: { gateLevel, releaseDisposition } };
+      dispositionReason.push('multi_parent long-window selection churn => must_fix_first');
+    } else if (sel.selection_churn_rate > 0.05 && baseGateLevel === 'PASS') {
+      gateLevel = 'WARN';
+      releaseDisposition = 'observe_only';
+      matrixRuleId = 'Rsel0:multi_parent:selection_churn_present';
+      matrixDecisionBasis = [`selection_churn_rate>${0.05}`];
+      matrixDispositionOverride = { from: { gateLevel: baseGateLevel, releaseDisposition: baseReleaseDisposition }, to: { gateLevel, releaseDisposition } };
+      dispositionReason.push('multi_parent selection churn (low) => observe_only');
     }
   }
 

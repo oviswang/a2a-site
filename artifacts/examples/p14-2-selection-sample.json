@@ -1,0 +1,13 @@
+{
+  "gateLevel": "FAIL",
+  "releaseReadiness": "blocked",
+  "rule": "Rsel1:multi_parent:selection_churn_high",
+  "reasons": [
+    "selection_churn_high"
+  ],
+  "sel": {
+    "selection_churn": 20,
+    "parent_switch_count": 18,
+    "selection_churn_rate": 0.3333333333333333
+  }
+}

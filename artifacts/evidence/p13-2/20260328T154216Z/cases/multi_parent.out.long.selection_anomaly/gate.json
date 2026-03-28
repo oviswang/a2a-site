@@ -13,6 +13,7 @@
   "releaseReadiness": "blocked",
   "releaseBlockingReasons": [
     "gate_failed_or_must_fix_first",
+    "required_regressions_incomplete",
     "deep_policy_must_fix_first"
   ],
   "requiredRegressionsComplete": false,
@@ -39,16 +40,17 @@
         "owner_stale_rate": 0,
         "takeover_rate": 0
       },
-      "matrixRuleId": "Rmp1:multi_parent:attention_per_parent_high",
+      "matrixRuleId": "Rsel1:multi_parent:selection_churn_high",
       "matrixDecisionBasis": [
-        "attention_req_per_parent>5"
+        "selection_churn_rate>0.2",
+        "parent_switch_count>=10"
       ],
       "gateLevel": "FAIL",
       "releaseDisposition": "must_fix_first",
       "matrixDispositionOverride": {
         "from": {
-          "gateLevel": "PASS",
-          "releaseDisposition": "long_run_ok"
+          "gateLevel": "FAIL",
+          "releaseDisposition": "must_fix_first"
         },
         "to": {
           "gateLevel": "FAIL",
@@ -56,15 +58,32 @@
         }
       },
       "dispositionReason": [
-        "multi_parent long-window attention_req_per_parent>5 => must_fix_first"
+        "multi_parent long-window attention_req_per_parent>5 => must_fix_first",
+        "multi_parent long-window selection churn => must_fix_first"
       ],
       "SAFE_FOR_LONG_RUN": "no",
       "pass": false,
-      "gateReasons": [],
+      "gateReasons": [
+        {
+          "level": "fail",
+          "code": "selection_churn_high",
+          "signalClass": "unknown",
+          "matrixDisposition": "must_fix_first",
+          "detail": {
+            "selection_churn_rate": 0.3333333333333333,
+            "parent_switch_count": 18,
+            "loops": 60
+          }
+        }
+      ],
       "recommendedActions": [],
       "evidencePaths": [
-        "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/summary.json",
-        "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/sel9.decision.json"
+        "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/sel5.decision.json",
+        "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/sel6.decision.json",
+        "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/sel7.decision.json",
+        "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/sel8.decision.json",
+        "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/sel9.decision.json",
+        "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/summary.json"
       ],
       "keyMetrics": {
         "health": "ok",
@@ -103,6 +122,11 @@
           },
           "refreshWillFetch": 2,
           "refreshSkippedFreshCache": 10
+        },
+        "selection": {
+          "selection_churn": 20,
+          "parent_switch_count": 18,
+          "selection_churn_rate": 0.3333333333333333
         },
         "derived": {
           "actFail": 0,

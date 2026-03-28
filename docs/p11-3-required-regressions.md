@@ -98,13 +98,21 @@
 范围：multi_parent selection / refresh policy / selection scoring
 
 必跑：
-1) **multi_parent combo case sanity**
-   - evidence: `.../cases/multi_parent_same_role.in.long.controlled`
-   - 观察重点：handoff/wait 与 cost 指标（若存在），以及 gate/disposition
-   - 通过条件：
-     - 不出现 `must_fix_first`；dispositionReason 不出现 selection 异常（当前 MVP 未覆盖 selection 专属 rule）
+1) **multi_parent selection anomaly guardrail (long)**
+   - evidence: `artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly`
+   - 观察重点：
+     - `gateReasons(code=selection_churn_high|selection_churn_present)`
+     - `matrixRuleId`（Rsel*）+ `matrixDecisionBasis`
+     - `keyMetrics.selection.selection_churn_rate` / `parent_switch_count`
+   - 通过条件（MVP）：
+     - 该 case 必须保持为 `blocked`（selection churn 高必须挡）
 
-2) **multi_parent in/out baseline**
+2) **multi_parent combo case sanity (long)**
+   - evidence: `artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent_same_role.in.long.controlled`
+   - 通过条件：
+     - 非 `blocked`
+
+3) **multi_parent in/out baseline (long)**
    - 同 refresh_cost_config 的 in/out 两个 long cases
 
 ---
