@@ -20,9 +20,9 @@
 - `requiredRegressionsComplete: true|false`
 - `evidenceSufficiency: sufficient|partial|insufficient`
 
-> MVP 约定：
-> - `requiredRegressionsComplete` 默认 false（unknown），用于强制把“未执行 checklist”与“真正 ready”区分开。
-> - `evidenceSufficiency` 以 loops>=60 作为 long-window 充分性提示（sufficient），否则为 partial。
+> P13-3 收紧约定（MVP）：
+> - `requiredRegressionsComplete=false` → **blocked**（缺项必须阻断）。
+> - `evidenceSufficiency!=sufficient` → **blocked**（证据不足必须阻断；MVP 以 loops>=60 作为 sufficient）。
 
 ---
 

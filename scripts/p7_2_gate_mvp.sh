@@ -525,6 +525,13 @@ function releaseSemantics({ overallLevel, overallDisposition, results, evidenceH
     blocking.push('gate_failed_or_must_fix_first');
   }
 
+  if (!requiredRegressionsComplete) {
+    blocking.push('required_regressions_incomplete');
+  }
+  if (evidenceSufficiency !== 'sufficient') {
+    blocking.push('evidence_insufficient');
+  }
+
   // 2) Hard blocks from explicit boundary signals (per-result reasons or key metrics)
   for (const r of results || []) {
     const reasons = Array.isArray(r.gateReasons) ? r.gateReasons : [];
@@ -545,9 +552,13 @@ function releaseSemantics({ overallLevel, overallDisposition, results, evidenceH
 
   const uniq = Array.from(new Set(blocking));
 
+  // P13-3: standards tightening (MVP)
+  // - Missing required regressions is a hard block for release.
+  // - Evidence partial is a hard block for high-risk change types (tracked outside; here we block when evidence is not long-window).
   let releaseReadiness = 'observe_only';
   if (uniq.length > 0) releaseReadiness = 'blocked';
-  else if (!requiredRegressionsComplete) releaseReadiness = 'observe_only';
+  else if (!requiredRegressionsComplete) releaseReadiness = 'blocked';
+  else if (evidenceSufficiency !== 'sufficient') releaseReadiness = 'blocked';
   else releaseReadiness = 'ready';
 
   const releaseReady = (releaseReadiness === 'ready');
