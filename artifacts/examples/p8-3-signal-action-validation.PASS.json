@@ -1,0 +1,58 @@
+{
+  "ok": true,
+  "kind": "p7_3_signal_to_action",
+  "traceDir": "artifacts/examples/p8-2-pass-with-summary",
+  "inputs": {
+    "hasGate": true,
+    "hasSummary": true,
+    "hasDecision": false
+  },
+  "rescuePriority": {
+    "parent": null,
+    "role": null,
+    "rationale": []
+  },
+  "recommendedActions": [
+    {
+      "id": "cost.attention.reduce",
+      "title": "Attention cost high: tune refresh gating deterministically",
+      "steps": [
+        "1) Set A2A_PARENT_REFRESH_MS to a non-zero value to enable refresh gating.",
+        "2) Keep A2A_PARENT_SMALL_ALL small (default 5) to avoid full-refresh when parent count grows.",
+        "3) Keep A2A_PARENT_RR_K minimal (default 1) to prevent excessive supplemental fetch.",
+        "4) Re-run p7-1 benchmark: expect skippedByFreshCache to increase and attention request count to drop."
+      ],
+      "validationChecks": [
+        {
+          "checkType": "compare_benchmark",
+          "targetField": "summary.cost.requests.byStage.attention",
+          "expectedChange": "decrease",
+          "evidencePathHint": "artifacts/p7-1-bench/<ts>/*/latest.summary.json",
+          "compareWindow": "same parents; refresh_ms=0 vs refresh_ms>0; loops>=2",
+          "note": null
+        },
+        {
+          "checkType": "compare_benchmark",
+          "targetField": "summary.cost.refreshPlan.skippedByFreshCache",
+          "expectedChange": "increase",
+          "evidencePathHint": "artifacts/p7-1-bench/<ts>/*/latest.summary.json",
+          "compareWindow": "same parents; refresh_ms=0 vs refresh_ms>0",
+          "note": null
+        },
+        {
+          "checkType": "graded_gate",
+          "targetField": "gateLevel",
+          "expectedChange": "improve",
+          "evidencePathHint": "scripts/p7_2_gate_mvp.sh output",
+          "compareWindow": "after tuning; traceDir with summary.cost present",
+          "note": "cost-related WARN/FAIL should reduce; SAFE_FOR_LONG_RUN should remain yes"
+        }
+      ],
+      "evidencePaths": [
+        "artifacts/examples/p8-2-pass-with-summary/2026-03-28T00-00-00-000Z.summary.json"
+      ],
+      "whenToStop": []
+    }
+  ],
+  "stopConditions": []
+}

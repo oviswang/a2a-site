@@ -132,8 +132,12 @@ Goal: see a signal → know what to check next, what to tune, and what to rescue
   - set `A2A_PARENT_REFRESH_MS>0`
   - keep `A2A_PARENT_SMALL_ALL` small
   - keep `A2A_PARENT_RR_K` minimal
-- Verify:
-  - re-run p7-1 benchmark and compare attention requests + skippedByFreshCache
+- Verify (P8-3 validation):
+  - re-run p7-1 benchmark and compare:
+    - `summary.cost.requests.byStage.attention` should **decrease**
+    - `summary.cost.refreshPlan.skippedByFreshCache` should **increase**
+  - re-run graded gate on the tuned traceDir:
+    - `gateLevel` should **improve** (FAIL→WARN→PASS) and cost-related reasons should reduce
 
 ---
 

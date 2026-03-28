@@ -19,13 +19,32 @@ function uniq(arr) {
   return Array.from(new Set((arr || []).filter(Boolean)));
 }
 
-function action(id, title, steps, evidence = [], whenToStop = []) {
+function action(id, title, steps, evidence = [], whenToStop = [], validationChecks = []) {
   return {
     id,
     title,
     steps: steps || [],
+    validationChecks: validationChecks || [],
     evidencePaths: uniq(evidence),
     whenToStop: whenToStop || [],
+  };
+}
+
+function vcheck({
+  checkType,
+  targetField,
+  expectedChange,
+  evidencePathHint,
+  compareWindow,
+  note,
+}) {
+  return {
+    checkType,
+    targetField,
+    expectedChange,
+    evidencePathHint,
+    compareWindow,
+    note: note || null,
   };
 }
 
@@ -133,6 +152,22 @@ function mapReasonsToActions({ gate, summary, decision, traceDir }) {
       evidenceBase,
       [
         'If error indicates token invalid/permission denied: stop and resolve as HUMAN_ACTION_REQUIRED.',
+      ],
+      [
+        vcheck({
+          checkType: 'graded_gate',
+          targetField: 'gateReasons(code=act_fail)',
+          expectedChange: 'decrease_to_zero',
+          evidencePathHint: 'scripts/p7_2_gate_mvp.sh output on the same traceDir',
+          compareWindow: 'after fix; run >=1 summary window',
+        }),
+        vcheck({
+          checkType: 'summary_counts',
+          targetField: 'summary.counts.act_fail',
+          expectedChange: 'decrease',
+          evidencePathHint: 'latest *.summary.json',
+          compareWindow: 'next summary window',
+        }),
       ]
     ));
   }
@@ -148,7 +183,23 @@ function mapReasonsToActions({ gate, summary, decision, traceDir }) {
         '4) Restart runner after resolution and re-run a short smoke loop.',
       ],
       evidenceBase,
-      []
+      [],
+      [
+        vcheck({
+          checkType: 'graded_gate',
+          targetField: 'gateReasons(code=human_action_required)',
+          expectedChange: 'decrease_to_zero',
+          evidencePathHint: 'scripts/p7_2_gate_mvp.sh output after restart',
+          compareWindow: 'next 1-2 summary windows',
+        }),
+        vcheck({
+          checkType: 'summary_counts',
+          targetField: 'summary.counts.HUMAN_ACTION_REQUIRED',
+          expectedChange: 'be_zero',
+          evidencePathHint: 'latest *.summary.json',
+          compareWindow: 'next summary window',
+        }),
+      ]
     ));
     out.stopConditions.push('HUMAN_ACTION_REQUIRED');
   }
@@ -164,7 +215,23 @@ function mapReasonsToActions({ gate, summary, decision, traceDir }) {
         '4) Re-run a short benchmark with same-role on to confirm owner_stale/takeover drops to 0.',
       ],
       evidenceBase,
-      []
+      [],
+      [
+        vcheck({
+          checkType: 'graded_gate',
+          targetField: 'gateReasons(code=same_role_owner_stale|same_role_takeover)',
+          expectedChange: 'decrease_to_zero',
+          evidencePathHint: 'scripts/p7_2_gate_mvp.sh output on same-role traceDir',
+          compareWindow: 'same workload; same-role=on; after config change',
+        }),
+        vcheck({
+          checkType: 'decision_reason_rate',
+          targetField: 'decision.reasonCode (owner_stale/takeover/yield_to_peer)',
+          expectedChange: 'owner_stale/takeover decrease; yield_to_peer stable_or_decrease',
+          evidencePathHint: '*.decision.json (or summary.perRole conflictCounts when available)',
+          compareWindow: '>=1 yield window (A2A_YIELD_WINDOW_MS) across several loops',
+        }),
+      ]
     ));
   }
 
@@ -182,7 +249,23 @@ function mapReasonsToActions({ gate, summary, decision, traceDir }) {
         '3) If multi-parent: inspect summary.perParent to identify where work exists but is always handed off; rescue that parent first.',
       ],
       evidenceBase,
-      []
+      [],
+      [
+        vcheck({
+          checkType: 'summary_ratio',
+          targetField: 'summary.counts.handoff / summary.windowLoops',
+          expectedChange: 'decrease_below_0.8',
+          evidencePathHint: 'latest *.summary.json',
+          compareWindow: '>=5 loops window',
+        }),
+        vcheck({
+          checkType: 'graded_gate',
+          targetField: 'gateLevel',
+          expectedChange: 'improve',
+          evidencePathHint: 'scripts/p7_2_gate_mvp.sh output',
+          compareWindow: 'after fixing role/parent mismatch',
+        }),
+      ]
     ));
   }
   if (loops >= 5 && wait / loops > 0.8) {
@@ -195,7 +278,23 @@ function mapReasonsToActions({ gate, summary, decision, traceDir }) {
         '3) Verify join/membership is ok (join traces not failing/requested).',
       ],
       evidenceBase,
-      []
+      [],
+      [
+        vcheck({
+          checkType: 'summary_ratio',
+          targetField: 'summary.counts.wait / summary.windowLoops',
+          expectedChange: 'decrease_below_0.8_or_confirm_idle',
+          evidencePathHint: 'latest *.summary.json + attention traces',
+          compareWindow: '>=5 loops window',
+        }),
+        vcheck({
+          checkType: 'attention_items',
+          targetField: 'attention.items_len',
+          expectedChange: 'be_zero_for_healthy_idle',
+          evidencePathHint: 'latest attention.*.json',
+          compareWindow: 'next 1-2 loops',
+        }),
+      ]
     ));
   }
 
@@ -222,7 +321,31 @@ function mapReasonsToActions({ gate, summary, decision, traceDir }) {
           '4) Re-run p7-1 benchmark: expect skippedByFreshCache to increase and attention request count to drop.',
         ],
         evidenceBase,
-        []
+        [],
+        [
+          vcheck({
+            checkType: 'compare_benchmark',
+            targetField: 'summary.cost.requests.byStage.attention',
+            expectedChange: 'decrease',
+            evidencePathHint: 'artifacts/p7-1-bench/<ts>/*/latest.summary.json',
+            compareWindow: 'same parents; refresh_ms=0 vs refresh_ms>0; loops>=2',
+          }),
+          vcheck({
+            checkType: 'compare_benchmark',
+            targetField: 'summary.cost.refreshPlan.skippedByFreshCache',
+            expectedChange: 'increase',
+            evidencePathHint: 'artifacts/p7-1-bench/<ts>/*/latest.summary.json',
+            compareWindow: 'same parents; refresh_ms=0 vs refresh_ms>0',
+          }),
+          vcheck({
+            checkType: 'graded_gate',
+            targetField: 'gateLevel',
+            expectedChange: 'improve',
+            evidencePathHint: 'scripts/p7_2_gate_mvp.sh output',
+            compareWindow: 'after tuning; traceDir with summary.cost present',
+            note: 'cost-related WARN/FAIL should reduce; SAFE_FOR_LONG_RUN should remain yes',
+          }),
+        ]
       ));
     }
   }
@@ -237,7 +360,23 @@ function mapReasonsToActions({ gate, summary, decision, traceDir }) {
         '3) Re-run with MAX_LOOPS>=2 and same TRACE_DIR to allow cache to become warm.',
       ],
       evidenceBase,
-      []
+      [],
+      [
+        vcheck({
+          checkType: 'field_presence',
+          targetField: 'summary.cost.refreshPlan.skippedByFreshCache',
+          expectedChange: 'become_nonzero',
+          evidencePathHint: 'latest *.summary.json in traceDir',
+          compareWindow: 'same traceDir across >=2 loops',
+        }),
+        vcheck({
+          checkType: 'compare_runs',
+          targetField: 'summary.cost.requests.byStage.attention',
+          expectedChange: 'decrease_or_growth_slowdown',
+          evidencePathHint: 'p7-1 benchmark latest.summary.json',
+          compareWindow: 'refresh_ms=0 vs refresh_ms>0',
+        }),
+      ]
     ));
   }
 
