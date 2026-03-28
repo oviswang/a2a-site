@@ -1,0 +1,227 @@
+{
+  "ok": true,
+  "kind": "p9_1_threshold_range_evidence",
+  "note": "Minimal evidence table built from a2a-site existing facts + deterministic sample summaries. Not a statistical study.",
+  "thresholds": [
+    {
+      "name": "A2A_PARENT_REFRESH_MS",
+      "default": 0,
+      "recommendedRange": "30s–5m (enable gating; tune per parent count)",
+      "modes": ["multi-parent"],
+      "evidence": [
+        {
+          "point": "refresh_ms=0 (disabled)",
+          "inputs": {"A2A_PARENT_REFRESH_MS": 0},
+          "expectedSignal": {
+            "cost.summary.cost.requests.byStage.attention": "higher (linear with parents)",
+            "cost.summary.cost.refreshPlan.skippedByFreshCache": "0"
+          },
+          "gradedGate": "more likely WARN/FAIL due to attention cost high when parent count grows"
+        },
+        {
+          "point": "refresh_ms>0 (enabled)",
+          "inputs": {"A2A_PARENT_REFRESH_MS": 60000},
+          "expectedSignal": {
+            "cost.summary.cost.requests.byStage.attention": "lower vs disabled (growth slowdown)",
+            "cost.summary.cost.refreshPlan.skippedByFreshCache": ">0"
+          },
+          "gradedGate": "more likely PASS/WARN (cost reasons reduced)"
+        }
+      ],
+      "evidenceSources": [
+        "docs/p6-1-refresh-policy.md",
+        "docs/p7-1-capacity-cost-baseline.md",
+        "docs/p8-1-threshold-catalog.md",
+        "artifacts/examples/p8-2-pass-with-summary/2026-03-28T00-00-00-000Z.summary.json",
+        "artifacts/examples/p8-2-gate.PASS.example.json",
+        "artifacts/examples/p8-2-gate.WARN.example.json",
+        "artifacts/examples/p8-3-signal-action-validation.FAIL-cost.json"
+      ],
+      "tooTight": "0ms when parents are medium/large (disables gating)",
+      "tooLoose": ">10m may starve attention freshness; depends on workload"
+    },
+    {
+      "name": "A2A_PARENT_SMALL_ALL",
+      "default": 5,
+      "recommendedRange": "3–8 (keep small to avoid full-refresh at moderate parent counts)",
+      "modes": ["multi-parent"],
+      "evidence": [
+        {
+          "point": "small_all too high",
+          "inputs": {"A2A_PARENT_SMALL_ALL": 20},
+          "expectedSignal": {
+            "decision.refreshPlan[*].tierReasons": "often includes small_all",
+            "cost.attention": "higher"
+          },
+          "gradedGate": "more likely WARN (observe_only)"
+        },
+        {
+          "point": "small_all near default",
+          "inputs": {"A2A_PARENT_SMALL_ALL": 5},
+          "expectedSignal": {
+            "decision.refreshPlan[*].tierReasons": "small_all only when parents<=5",
+            "cost.attention": "controlled"
+          },
+          "gradedGate": "more likely PASS/WARN"
+        }
+      ],
+      "evidenceSources": [
+        "docs/p6-1-refresh-policy.md",
+        "docs/p7-1-capacity-cost-baseline.md",
+        "docs/p8-1-threshold-catalog.md"
+      ],
+      "tooTight": "0–1 may under-fetch in genuinely small-parent setups",
+      "tooLoose": ">10 increases full-refresh regime and cost"
+    },
+    {
+      "name": "A2A_PARENT_RR_K",
+      "default": 1,
+      "recommendedRange": "1–2 (avoid extra fetch explosion)",
+      "modes": ["multi-parent"],
+      "evidence": [
+        {
+          "point": "rr_k high",
+          "inputs": {"A2A_PARENT_RR_K": 5},
+          "expectedSignal": {
+            "decision.refreshPlan[*].tierReasons": "round_robin appears on many parents",
+            "cost.attention": "higher"
+          },
+          "gradedGate": "more likely WARN"
+        },
+        {
+          "point": "rr_k minimal",
+          "inputs": {"A2A_PARENT_RR_K": 1},
+          "expectedSignal": {
+            "decision.refreshPlan[*].tierReasons": "round_robin limited",
+            "cost.attention": "controlled"
+          },
+          "gradedGate": "more likely PASS/WARN"
+        }
+      ],
+      "evidenceSources": [
+        "docs/p6-1-refresh-policy.md",
+        "docs/p7-1-capacity-cost-baseline.md",
+        "docs/p8-1-threshold-catalog.md"
+      ],
+      "tooTight": "0 risks starvation without other tiers",
+      "tooLoose": ">3 increases baseline attention cost per loop"
+    },
+    {
+      "name": "A2A_OWNER_STALE_MS",
+      "default": 120000,
+      "recommendedRange": "2–10m (avoid premature takeover; depends on progress surface cadence)",
+      "modes": ["same-role"],
+      "evidence": [
+        {
+          "point": "stale_ms too low",
+          "inputs": {"A2A_OWNER_STALE_MS": 30000},
+          "expectedSignal": {
+            "decision.reasonCode": "owner_stale/takeover more frequent",
+            "gateReasons": "same_role_owner_stale / same_role_takeover"
+          },
+          "gradedGate": "more likely FAIL (must_fix_first)"
+        },
+        {
+          "point": "stale_ms moderate",
+          "inputs": {"A2A_OWNER_STALE_MS": 120000},
+          "expectedSignal": {
+            "decision.reasonCode": "owner_stale/takeover lower",
+            "gateReasons": "reduced"
+          },
+          "gradedGate": "more likely PASS/WARN"
+        }
+      ],
+      "evidenceSources": [
+        "docs/p6-2-cross-env-stability.md",
+        "docs/p5-1-same-role-coordination.md",
+        "docs/p8-1-threshold-catalog.md",
+        "docs/p8-3-action-validation.md"
+      ],
+      "tooTight": "<60s in slow-progress workflows (premature takeover)",
+      "tooLoose": ">15m delays recovery from a truly stale owner"
+    },
+    {
+      "name": "A2A_YIELD_WINDOW_MS",
+      "default": 60000,
+      "recommendedRange": "30–120s (reduce contention noise without blocking progress)",
+      "modes": ["same-role"],
+      "evidence": [
+        {
+          "point": "yield too small",
+          "inputs": {"A2A_YIELD_WINDOW_MS": 5000},
+          "expectedSignal": {
+            "decision.reasonCode": "yield_to_peer may spike (more contention)"
+          },
+          "gradedGate": "more likely WARN"
+        },
+        {
+          "point": "yield moderate",
+          "inputs": {"A2A_YIELD_WINDOW_MS": 60000},
+          "expectedSignal": {
+            "decision.reasonCode": "yield_to_peer stable"
+          },
+          "gradedGate": "more likely PASS/WARN"
+        }
+      ],
+      "evidenceSources": [
+        "docs/p5-1-same-role-coordination.md",
+        "docs/p8-1-threshold-catalog.md"
+      ],
+      "tooTight": "<10s can cause repeated contention",
+      "tooLoose": ">5m may delay takeover/rescue in some setups"
+    },
+    {
+      "name": "GATE_MAX_ATTENTION_REQ",
+      "default": 999999,
+      "recommendedRange": "set relative to parents+refresh (start with observe-only threshold; tighten later)",
+      "modes": ["multi-parent"],
+      "evidence": [
+        {
+          "point": "threshold very high (default)",
+          "inputs": {"GATE_MAX_ATTENTION_REQ": 999999},
+          "expectedSignal": {"gateReasons": "no attention_cost_high unless extreme"},
+          "gradedGate": "PASS/WARN depending on other reasons"
+        },
+        {
+          "point": "threshold tight",
+          "inputs": {"GATE_MAX_ATTENTION_REQ": 1},
+          "expectedSignal": {"gateReasons": "attention_cost_high"},
+          "gradedGate": "FAIL"
+        }
+      ],
+      "evidenceSources": [
+        "docs/p8-1-threshold-catalog.md",
+        "docs/p8-2-gate-grading.md",
+        "artifacts/examples/p8-3-signal-action-validation.FAIL-cost.json"
+      ],
+      "tooTight": "<parents count (will fail most multi-parent loops)",
+      "tooLoose": "default hides cost regressions"
+    },
+    {
+      "name": "GATE_MIN_FRESH_CACHE_SKIP",
+      "default": 0,
+      "recommendedRange": "1–N (only meaningful when refresh_ms>0 and cache is warm)",
+      "modes": ["multi-parent"],
+      "evidence": [
+        {
+          "point": "min_skip=0",
+          "inputs": {"GATE_MIN_FRESH_CACHE_SKIP": 0},
+          "expectedSignal": {"gateReasons": "no refresh_skip_low"},
+          "gradedGate": "PASS/WARN"
+        },
+        {
+          "point": "min_skip>0 with cold cache",
+          "inputs": {"GATE_MIN_FRESH_CACHE_SKIP": 1},
+          "expectedSignal": {"gateReasons": "refresh_skip_low (warn)"},
+          "gradedGate": "WARN"
+        }
+      ],
+      "evidenceSources": [
+        "docs/p8-1-threshold-catalog.md",
+        "docs/p8-2-gate-grading.md"
+      ],
+      "tooTight": "requires skips before cache warms",
+      "tooLoose": "0 cannot detect gating not effective"
+    }
+  ]
+}
