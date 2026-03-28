@@ -11,7 +11,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 usage() {
   cat <<'USAGE'
 Usage:
-  scripts/p7_2_gate_mvp.sh --dir <traceDir|benchRunDir> [--json-out <path>] [--regressions <completion.json>]
+  scripts/p7_2_gate_mvp.sh --dir <traceDir|benchRunDir> [--json-out <path>] [--regressions <completion.json>] [--change-type <type>]
 
 Input forms:
   - traceDir: a directory containing runner traces (*.json)
@@ -26,6 +26,7 @@ USAGE
 DIR=""
 JSON_OUT=""
 REGRESSIONS_JSON=""
+CHANGE_TYPES=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -39,6 +40,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --regressions)
       REGRESSIONS_JSON=${2:-}
+      shift 2
+      ;;
+    --change-type)
+      CHANGE_TYPES+=("${2:-}")
       shift 2
       ;;
     -h|--help)
@@ -81,6 +86,7 @@ GATE_MIN_FRESH_CACHE_SKIP=${GATE_MIN_FRESH_CACHE_SKIP:-0}
 
 DIR="$DIR" \
 REGRESSIONS_JSON="$REGRESSIONS_JSON" \
+CHANGE_TYPES="${CHANGE_TYPES[*]:-}" \
 GATE_MAX_STUCK_WINDOWS="$GATE_MAX_STUCK_WINDOWS" \
 GATE_MAX_DEGRADED_WINDOWS="$GATE_MAX_DEGRADED_WINDOWS" \
 GATE_MAX_HUMAN_REQUIRED="$GATE_MAX_HUMAN_REQUIRED" \
@@ -96,6 +102,7 @@ const path = require('path');
 
 const DIR = process.env.DIR;
 const REGRESSIONS_JSON = process.env.REGRESSIONS_JSON;
+const CHANGE_TYPES = (process.env.CHANGE_TYPES || '').split(/\s+/).map(s=>s.trim()).filter(Boolean);
 
 function listDirs(p) {
   return fs.readdirSync(p, { withFileTypes: true })
@@ -529,7 +536,9 @@ function releaseSemantics({ overallLevel, overallDisposition, results, evidenceH
     blocking.push('required_regressions_incomplete');
   }
   if (evidenceSufficiency !== 'sufficient') {
-    blocking.push('evidence_insufficient');
+    // evidence insufficiency becomes a hard block unless graded thresholds allow partial
+    const allowPartial = (CHANGE_TYPES.includes('runner_behavior_change')) && (CHANGE_TYPES.length === 1);
+    if (!allowPartial) blocking.push('evidence_insufficient');
   }
 
   // 2) Hard blocks from explicit boundary signals (per-result reasons or key metrics)
@@ -552,13 +561,15 @@ function releaseSemantics({ overallLevel, overallDisposition, results, evidenceH
 
   const uniq = Array.from(new Set(blocking));
 
-  // P13-3: standards tightening (MVP)
+  // P14-1: graded thresholds (MVP)
   // - Missing required regressions is a hard block for release.
-  // - Evidence partial is a hard block for high-risk change types (tracked outside; here we block when evidence is not long-window).
+  // - Evidence sufficiency is changeType-aware: some changeTypes allow partial as observe_only.
+  const allowPartial = (CHANGE_TYPES.includes('runner_behavior_change')) && (CHANGE_TYPES.length === 1);
+
   let releaseReadiness = 'observe_only';
   if (uniq.length > 0) releaseReadiness = 'blocked';
   else if (!requiredRegressionsComplete) releaseReadiness = 'blocked';
-  else if (evidenceSufficiency !== 'sufficient') releaseReadiness = 'blocked';
+  else if (evidenceSufficiency !== 'sufficient') releaseReadiness = allowPartial ? 'observe_only' : 'blocked';
   else releaseReadiness = 'ready';
 
   const releaseReady = (releaseReadiness === 'ready');

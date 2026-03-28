@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "kind": "p14_1_graded_thresholds",
+  "schemaVersion": "p14-1-mvp.1",
+  "notes": [
+    "MVP: encode evidence sufficiency requirements by changeType.",
+    "requiredRegressionsComplete=false is always blocked (P13-3).",
+    "evidenceSufficiency requirements are graded: some changeTypes allow partial as observe_only."
+  ],
+  "changeTypes": {
+    "refresh_cost_config": {
+      "minEvidenceSufficiencyForReady": "sufficient",
+      "allowPartial": false,
+      "partialDisposition": "blocked"
+    },
+    "gate_rule_change": {
+      "minEvidenceSufficiencyForReady": "sufficient",
+      "allowPartial": false,
+      "partialDisposition": "blocked"
+    },
+    "runner_behavior_change": {
+      "minEvidenceSufficiencyForReady": "partial",
+      "allowPartial": true,
+      "partialDisposition": "observe_only"
+    },
+    "same_role_coordination_config": {
+      "minEvidenceSufficiencyForReady": "sufficient",
+      "allowPartial": false,
+      "partialDisposition": "blocked"
+    },
+    "selection_logic_change": {
+      "minEvidenceSufficiencyForReady": "sufficient",
+      "allowPartial": false,
+      "partialDisposition": "blocked"
+    }
+  },
+  "modeNotes": {
+    "multi_parent": ["Prefer long-window evidence for cost/selection changes."],
+    "same_role": ["Prefer long-window evidence for coordination changes."],
+    "single": ["Partial evidence may be acceptable for runner_behavior_change (observe_only)."]
+  }
+}
