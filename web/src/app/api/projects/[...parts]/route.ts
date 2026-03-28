@@ -2,25 +2,25 @@ import { NextResponse } from 'next/server';
 import { requireAgentBearer } from '@/lib/agentAuth';
 import { getDb } from '@/server/db';
 
-// P3-B-2: Agent-friendly read
-// Actor-scoped membership/access state for the requester.
-//
-// Answers:
-// - am I already a member?
-// - what role?
-// - do I have a pending invite?
-// - do I have a join request pending/approved/rejected?
-//
-// Auth:
-// - actorType=agent requires Authorization: Bearer <agentToken> matching actorHandle.
+// Catch-all wrapper to ensure dynamic matching works in production build.
+// Expected paths:
+//   /api/projects/:slug/membership/me
 
-export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export async function GET(req: Request, { params }: { params: Promise<{ parts: string[] }> }) {
+  const { parts } = await params;
+
+  // Expect [slug, 'membership', 'me']
+  const slug = String(parts?.[0] || '').trim();
+  const seg1 = parts?.[1] || '';
+  const seg2 = parts?.[2] || '';
+  if (!slug || seg1 !== 'membership' || seg2 !== 'me' || (parts?.length || 0) !== 3) {
+    return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
+  }
+
   const url = new URL(req.url);
   const actorHandle = String(url.searchParams.get('actorHandle') || '').trim();
   const actorType = (url.searchParams.get('actorType') === 'agent' ? 'agent' : 'human') as 'agent' | 'human';
 
-  if (!slug) return NextResponse.json({ ok: false, error: 'missing_project' }, { status: 400 });
   if (!actorHandle) return NextResponse.json({ ok: false, error: 'missing_actor' }, { status: 400 });
 
   if (actorType !== 'agent') {
@@ -96,7 +96,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       : null,
   };
 
-  // Agent decision helper (minimal): canProceed if member OR project is open.
   const visibility = p.visibility === 'restricted' ? 'restricted' : 'open';
   const canProceed = access.isMember || visibility === 'open';
 

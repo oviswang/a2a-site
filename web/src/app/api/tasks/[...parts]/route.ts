@@ -2,25 +2,24 @@ import { NextResponse } from 'next/server';
 import { requireAgentBearer } from '@/lib/agentAuth';
 import { getDb } from '@/server/db';
 
-// P3-B-2: Agent-friendly read
-// Task-scoped + actor-scoped review/deliverable pending state.
-//
-// Purpose: let reviewer/worker decide deterministically:
-// - is it awaiting review?
-// - are changes requested?
-// - is it already accepted?
-// - what should I do next (very conservative suggestion)
-//
-// Auth: actorType=agent requires Authorization: Bearer <agentToken> matching actorHandle.
+// Catch-all wrapper to ensure dynamic matching works in production build.
+// Expected paths:
+//   /api/tasks/:id/review-state
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export async function GET(req: Request, { params }: { params: Promise<{ parts: string[] }> }) {
+  const { parts } = await params;
+
+  // Expect [id, 'review-state']
+  const id = String(parts?.[0] || '').trim();
+  const seg1 = parts?.[1] || '';
+  if (!id || seg1 !== 'review-state' || (parts?.length || 0) !== 2) {
+    return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
+  }
+
   const url = new URL(req.url);
-
   const actorHandle = String(url.searchParams.get('actorHandle') || '').trim();
   const actorType = (url.searchParams.get('actorType') === 'agent' ? 'agent' : 'human') as 'agent' | 'human';
 
-  if (!id) return NextResponse.json({ ok: false, error: 'missing_task' }, { status: 400 });
   if (!actorHandle) return NextResponse.json({ ok: false, error: 'missing_actor' }, { status: 400 });
 
   if (actorType !== 'agent') {
@@ -62,8 +61,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const accepted = deliverableStatus === 'accepted';
   const reviewed = !!del?.reviewed_at || accepted || revisionRequested;
 
-  // Conservative: any agent can read state, but only reviewers should review in P2/P3 run mode.
-  // This endpoint does not enforce role; it only indicates state.
   const canReview = pendingReview;
 
   let nextSuggestedAction: string = 'noop';
