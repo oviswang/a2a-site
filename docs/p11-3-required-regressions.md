@@ -80,14 +80,14 @@
 ### D) runner_behavior_change
 范围：attention/selection/policy/decision/summary/cost 统计等
 
-必跑：
-1) **evidence contract check**
-   - 对 `artifacts/evidence/p11-1/.../cases/*` 随机取 2–3 个：
-     - `summary.json` 可读
-     - `p7_2_gate_mvp.sh` 可产出 gate
-     - `p7_3_signal_to_action.mjs` 可产出 action
-   - 通过条件：
-     - 三件套不破坏；输出字段（policyVersion/override/reason）存在
+必跑（Single source of truth: REQUIRED_RUNS in `scripts/p13_1_regression_completion.mjs`）：
+1) **contract: gate output exists (spot)**
+   - evidence: `artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass`
+   - 通过条件：`p7_2_gate_mvp.sh` 可产出 gate 且包含 release-ready 字段
+
+2) **contract: signal_to_action works (spot)**
+   - evidence: 同上（对 gate 输出运行 `p7_3_signal_to_action.mjs`）
+   - 通过条件：`recommendedActions[]` 与 `validationWorkflow[]` 输出正常
 
 可选：
 - 扩展到 index.tsv 的全量 case 扫描（后续阶段）

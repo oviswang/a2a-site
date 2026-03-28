@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "kind": "p13_1_regression_completion",
+  "schemaVersion": "p13-1-mvp.1",
+  "releaseId": "p16-3-demo-runner-oldlike",
+  "changeType": [
+    "runner_behavior_change"
+  ],
+  "requiredRuns": [
+    {
+      "name": "gate:single.in.long.pass",
+      "command": "scripts/p7_2_gate_mvp.sh --dir <traceDir>",
+      "evidenceDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/single.in.long.pass",
+      "gatePath": "artifacts/evidence/p11-1/20260328T070328Z/cases/single.in.long.pass/gate.json",
+      "resultSummary": {
+        "gateLevel": "PASS",
+        "releaseDisposition": "long_run_ok",
+        "releaseBlockingReasons": []
+      }
+    }
+  ],
+  "requiredRegressionsComplete": false,
+  "missingRequired": [
+    {
+      "changeType": "runner_behavior_change",
+      "name": "contract: gate output exists (spot)",
+      "requiredMode": "single",
+      "requiredWindow": "short",
+      "expectedEvidenceDir": "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass",
+      "expectedCommand": "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type runner_behavior_change",
+      "whyBlocking": "required run missing for changeType; release will be blocked by standards"
+    },
+    {
+      "changeType": "runner_behavior_change",
+      "name": "contract: signal_to_action works (spot)",
+      "requiredMode": "single",
+      "requiredWindow": "short",
+      "expectedEvidenceDir": "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass",
+      "expectedCommand": "node scripts/p7_3_signal_to_action.mjs <gate.json>",
+      "whyBlocking": "required run missing for changeType; release will be blocked by standards"
+    }
+  ],
+  "generatedAt": "2026-03-28T16:58:26.379Z",
+  "inputs": {
+    "commit": null,
+    "note": null,
+    "gates": [
+      "artifacts/evidence/p11-1/20260328T070328Z/cases/single.in.long.pass/gate.json"
+    ]
+  }
+}
