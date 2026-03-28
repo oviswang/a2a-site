@@ -64,16 +64,16 @@
 ### C) gate_rule_change
 范围：graded gate thresholds / deep disposition overrides / rule id mapping
 
-必跑：
-1) **policyVersion consistency**
-   - 任意 3 个代表 long-window cases（single/multi_parent/same_role）
-   - 通过条件：
-     - `dispositionPolicyVersion` 符合预期变更
+必跑（Single source of truth: REQUIRED_RUNS in `scripts/p13_1_regression_completion.mjs`）：
+1) **boundary human_required must stay blocked**
+   - evidence: `artifacts/evidence/p12-1/20260328T072524Z/cases/multi_parent_same_role.out.long.human_required`
+   - 通过条件（MVP）：
+     - 仍为 `blocked`
+     - blocking reasons 包含 `human_action_required` / `gate_failed_or_must_fix_first`
 
-2) **override drift check**
-   - evidence: `same_role.out.long.yield_high` & `multi_parent.out.long.attention_too_high`
-   - 通过条件：
-     - `matrixDispositionOverride` 仍存在且 from→to 逻辑一致
+补充验证（不替代必跑）：
+- policyVersion consistency（任意 3 个代表 long-window cases）
+- override drift check（same_role.out.long.yield_high & multi_parent.out.long.attention_too_high）
 
 ---
 

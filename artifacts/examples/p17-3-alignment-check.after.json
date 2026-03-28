@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "kind": "p17_3_alignment_check",
+  "sourceOfTruth": "scripts/p13_1_regression_completion.mjs#REQUIRED_RUNS",
+  "hasDrift": false,
+  "report": [
+    {
+      "changeType": "refresh_cost_config",
+      "requiredEvidences": [
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent.in.long.gating_effective",
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent.out.long.attention_too_high"
+      ],
+      "missingInRequiredRegressionsDoc": [],
+      "missingInChecklist": []
+    },
+    {
+      "changeType": "same_role_coordination_config",
+      "requiredEvidences": [
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.in.long.stable",
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high"
+      ],
+      "missingInRequiredRegressionsDoc": [],
+      "missingInChecklist": []
+    },
+    {
+      "changeType": "selection_logic_change",
+      "requiredEvidences": [
+        "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly",
+        "artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent_same_role.out.long.selection_instability_mild",
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent_same_role.in.long.controlled"
+      ],
+      "missingInRequiredRegressionsDoc": [],
+      "missingInChecklist": []
+    },
+    {
+      "changeType": "runner_behavior_change",
+      "requiredEvidences": [
+        "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass",
+        "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass"
+      ],
+      "missingInRequiredRegressionsDoc": [],
+      "missingInChecklist": []
+    },
+    {
+      "changeType": "gate_rule_change",
+      "requiredEvidences": [
+        "artifacts/evidence/p12-1/20260328T072524Z/cases/multi_parent_same_role.out.long.human_required"
+      ],
+      "missingInRequiredRegressionsDoc": [],
+      "missingInChecklist": []
+    }
+  ]
+}
