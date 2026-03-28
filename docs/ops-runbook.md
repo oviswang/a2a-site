@@ -141,6 +141,14 @@ Goal: see a signal → know what to check next, what to tune, and what to rescue
 
 ---
 
+## Regression matrix (P10-3) — problem × action × verification (MVP)
+
+Use this when you need a consistent post-fix verification loop.
+
+See: `docs/p10-3-regression-matrix.md`
+
+---
+
 ## Failure taxonomy (symptom → cause → action)
 
 ### A) Token missing (HUMAN_ACTION_REQUIRED)

@@ -225,7 +225,7 @@ function mapReasonsToActions({ gate, summary, decision, traceDir }) {
     out.stopConditions.push('HUMAN_ACTION_REQUIRED');
   }
 
-  if (reasonCodes.has('same_role_owner_stale') || reasonCodes.has('same_role_takeover')) {
+  if (reasonCodes.has('same_role_owner_stale') || reasonCodes.has('same_role_takeover') || reasonCodes.has('same_role_yield_to_peer')) {
     out.recommendedActions.push(action(
       'same_role.unstable',
       'Same-role coordination unstable: reduce concurrency, verify owner ring config, then re-run',
@@ -468,14 +468,67 @@ function mapReasonsToActions({ gate, summary, decision, traceDir }) {
   }
 
   // Include any recommended actions attached by gate (lightweight hints)
+  // If we have a known action id, attach standard workflow templates.
   for (const ra of gateRecommended) {
-    out.recommendedActions.push(action(
-      String(ra.id),
-      String(ra.title || ra.id),
-      [],
-      evidenceBase,
-      []
-    ));
+    const rid = String(ra.id);
+    if (rid === 'cost.attention.reduce') {
+      out.recommendedActions.push(action(
+        rid,
+        'Attention cost high: tune refresh gating deterministically',
+        [
+          '1) Set A2A_PARENT_REFRESH_MS to a non-zero value to enable refresh gating.',
+          '2) Keep A2A_PARENT_SMALL_ALL small (default 5) to avoid full-refresh when parent count grows.',
+          '3) Keep A2A_PARENT_RR_K minimal (default 1) to prevent excessive supplemental fetch.',
+          '4) Re-run p7-1 benchmark: expect skippedByFreshCache to increase and attention request count to drop.',
+        ],
+        evidenceBase,
+        [],
+        [
+          vcheck({ checkType: 'graded_gate', targetField: 'gateLevel', expectedChange: 'improve', evidencePathHint: 'scripts/p7_2_gate_mvp.sh output', compareWindow: 'after tuning; same traceDir' }),
+          vcheck({ checkType: 'compare_benchmark', targetField: 'summary.cost.requests.byStage.attention', expectedChange: 'decrease', evidencePathHint: 'artifacts/p7-1-bench/<ts>/*/latest.summary.json', compareWindow: 'refresh_ms=0 vs >0' }),
+          vcheck({ checkType: 'compare_benchmark', targetField: 'summary.cost.refreshPlan.skippedByFreshCache', expectedChange: 'increase', evidencePathHint: 'artifacts/p7-1-bench/<ts>/*/latest.summary.json', compareWindow: 'refresh_ms=0 vs >0' }),
+        ],
+        [
+          workflow({
+            name: 're-run gate (after tuning)',
+            reRunCommand: 'scripts/p7_2_gate_mvp.sh --dir <traceDir>',
+            targetMetrics: ['gateLevel', 'releaseDisposition', 'gateReasons(code=attention_cost_high|refresh_skip_low)'],
+            compareRule: 'gateLevel should improve and cost-related reasons should reduce',
+            expectedOutcome: 'disposition moves toward long_run_ok',
+            passCondition: 'gateLevel!=FAIL',
+          }),
+          workflow({
+            name: 're-run p7-1 benchmark (cost delta)',
+            reRunCommand: 'scripts/p7_1_benchmark_mvp.sh (refresh_ms=0 vs refresh_ms>0)',
+            targetMetrics: ['summary.cost.requests.byStage.attention', 'summary.cost.refreshPlan.skippedByFreshCache'],
+            compareRule: 'attention decreases; skippedByFreshCache increases',
+            expectedOutcome: 'gating effective under multi_parent',
+            passCondition: 'skippedByFreshCache>0 and attention lower vs baseline',
+          }),
+        ]
+      ));
+    } else if (rid === 'enable.summary.cost') {
+      out.recommendedActions.push(action(
+        rid,
+        String(ra.title || ra.id),
+        [],
+        evidenceBase,
+        [],
+        [],
+        [
+          workflow({
+            name: 're-run runner until summary exists',
+            reRunCommand: 'set A2A_SUMMARY_EVERY>=1; run MAX_LOOPS>=A2A_SUMMARY_EVERY',
+            targetMetrics: ['latest *.summary.json presence', 'summary.cost presence'],
+            compareRule: 'summary and summary.cost become present',
+            expectedOutcome: 'gate can evaluate cost and windowed metrics',
+            passCondition: 'summary.cost exists',
+          })
+        ]
+      ));
+    } else {
+      out.recommendedActions.push(action(rid, String(ra.title || ra.id), [], evidenceBase, []));
+    }
   }
 
   // Deduplicate actions by id
