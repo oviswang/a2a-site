@@ -2,20 +2,22 @@
   "ok": true,
   "kind": "p7_2_gate",
   "inputDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high",
+  "dispositionPolicyVersion": "p11-2-mvp.1",
   "scenarioModes": [
     "same_role"
   ],
   "matrixKey": "mode=same_role",
-  "gateLevel": "WARN",
-  "releaseDisposition": "observe_only",
-  "SAFE_FOR_LONG_RUN": "yes",
-  "pass": true,
+  "gateLevel": "FAIL",
+  "releaseDisposition": "must_fix_first",
+  "SAFE_FOR_LONG_RUN": "no",
+  "pass": false,
   "results": [
     {
       "name": "same_role.out.long.yield_high",
       "traceDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high",
       "scenarioMode": "same_role",
       "matrixKey": "mode=same_role",
+      "dispositionPolicyVersion": "p11-2-mvp.1",
       "windowedMetrics": {
         "loops": 60,
         "handoff_ratio": 0,
@@ -33,28 +35,28 @@
       "matrixDecisionBasis": [
         "yield_rate>0.5"
       ],
-      "gateLevel": "WARN",
-      "releaseDisposition": "observe_only",
-      "SAFE_FOR_LONG_RUN": "yes",
-      "pass": true,
-      "gateReasons": [
-        {
-          "level": "warn",
-          "code": "same_role_yield_to_peer",
-          "signalClass": "coordination",
-          "matrixDisposition": "observe_only",
-          "detail": {
-            "yield_to_peer": 40,
-            "maxYield": 10
-          }
+      "gateLevel": "FAIL",
+      "releaseDisposition": "must_fix_first",
+      "matrixDispositionOverride": {
+        "from": {
+          "gateLevel": "PASS",
+          "releaseDisposition": "long_run_ok"
+        },
+        "to": {
+          "gateLevel": "FAIL",
+          "releaseDisposition": "must_fix_first"
         }
+      },
+      "dispositionReason": [
+        "same_role long-window yield_rate>0.5 => must_fix_first"
       ],
+      "SAFE_FOR_LONG_RUN": "no",
+      "pass": false,
+      "gateReasons": [],
       "recommendedActions": [],
       "evidencePaths": [
-        "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high/d7.decision.json",
-        "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high/d8.decision.json",
-        "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high/d9.decision.json",
-        "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high/summary.json"
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high/summary.json",
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high/d9.decision.json"
       ],
       "keyMetrics": {
         "health": "ok",

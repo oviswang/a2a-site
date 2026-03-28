@@ -2,6 +2,7 @@
   "ok": true,
   "kind": "p7_2_gate",
   "inputDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent.out.long.attention_too_high",
+  "dispositionPolicyVersion": "p11-2-mvp.1",
   "scenarioModes": [
     "multi_parent"
   ],
@@ -16,6 +17,7 @@
       "traceDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent.out.long.attention_too_high",
       "scenarioMode": "multi_parent",
       "matrixKey": "mode=multi_parent",
+      "dispositionPolicyVersion": "p11-2-mvp.1",
       "windowedMetrics": {
         "loops": 60,
         "handoff_ratio": 0,
@@ -35,26 +37,23 @@
       ],
       "gateLevel": "FAIL",
       "releaseDisposition": "must_fix_first",
+      "matrixDispositionOverride": {
+        "from": {
+          "gateLevel": "PASS",
+          "releaseDisposition": "long_run_ok"
+        },
+        "to": {
+          "gateLevel": "FAIL",
+          "releaseDisposition": "must_fix_first"
+        }
+      },
+      "dispositionReason": [
+        "multi_parent long-window attention_req_per_parent>5 => must_fix_first"
+      ],
       "SAFE_FOR_LONG_RUN": "no",
       "pass": false,
-      "gateReasons": [
-        {
-          "level": "fail",
-          "code": "attention_cost_high",
-          "signalClass": "cost",
-          "matrixDisposition": "must_fix_first",
-          "detail": {
-            "attention_requests": 240,
-            "maxAtt": 50
-          }
-        }
-      ],
-      "recommendedActions": [
-        {
-          "id": "cost.attention.reduce",
-          "title": "tune refresh gating (refresh_ms/small_all/rr_k); re-run p7-1 bench"
-        }
-      ],
+      "gateReasons": [],
+      "recommendedActions": [],
       "evidencePaths": [
         "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent.out.long.attention_too_high/summary.json"
       ],

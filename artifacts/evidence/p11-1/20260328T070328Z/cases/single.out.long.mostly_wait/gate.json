@@ -2,12 +2,13 @@
   "ok": true,
   "kind": "p7_2_gate",
   "inputDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/single.out.long.mostly_wait",
+  "dispositionPolicyVersion": "p11-2-mvp.1",
   "scenarioModes": [
     "single"
   ],
   "matrixKey": "mode=single",
-  "gateLevel": "PASS",
-  "releaseDisposition": "long_run_ok",
+  "gateLevel": "WARN",
+  "releaseDisposition": "observe_only",
   "SAFE_FOR_LONG_RUN": "yes",
   "pass": true,
   "results": [
@@ -16,6 +17,7 @@
       "traceDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/single.out.long.mostly_wait",
       "scenarioMode": "single",
       "matrixKey": "mode=single",
+      "dispositionPolicyVersion": "p11-2-mvp.1",
       "windowedMetrics": {
         "loops": 60,
         "handoff_ratio": 0,
@@ -33,8 +35,21 @@
       "matrixDecisionBasis": [
         "wait_ratio>0.8"
       ],
-      "gateLevel": "PASS",
-      "releaseDisposition": "long_run_ok",
+      "gateLevel": "WARN",
+      "releaseDisposition": "observe_only",
+      "matrixDispositionOverride": {
+        "from": {
+          "gateLevel": "PASS",
+          "releaseDisposition": "long_run_ok"
+        },
+        "to": {
+          "gateLevel": "WARN",
+          "releaseDisposition": "observe_only"
+        }
+      },
+      "dispositionReason": [
+        "single long-window wait_ratio>0.8 => observe_only"
+      ],
       "SAFE_FOR_LONG_RUN": "yes",
       "pass": true,
       "gateReasons": [],

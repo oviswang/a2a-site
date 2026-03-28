@@ -383,17 +383,64 @@ function gateOne(traceDir, name) {
   const latestEcho = pickEvidence(files, p => p.endsWith('.echo.json'));
   for (const p of [latestSummaryPath, latestDecision, latestAct, latestEcho].filter(Boolean)) evidence.push(p);
 
-  // P8-2: graded gate level
+  // P11-2: disposition policy (MVP) — deep matrix -> default disposition
+  const dispositionPolicyVersion = 'p11-2-mvp.1';
+
+  // P8-2: graded gate level (base)
   const hasFail = reasons.some(r => r.level === 'fail');
   const hasWarn = reasons.some(r => r.level === 'warn');
   const hasInfo = reasons.some(r => r.level === 'info');
 
   // PASS requires no warn/info/fail.
-  const gateLevel = hasFail ? 'FAIL' : (hasWarn ? 'WARN' : (hasInfo ? 'WARN' : 'PASS'));
-  const releaseDisposition = (gateLevel === 'FAIL') ? 'must_fix_first' : (gateLevel === 'WARN' ? 'observe_only' : 'long_run_ok');
+  const baseGateLevel = hasFail ? 'FAIL' : (hasWarn ? 'WARN' : (hasInfo ? 'WARN' : 'PASS'));
+  const baseReleaseDisposition = (baseGateLevel === 'FAIL') ? 'must_fix_first' : (baseGateLevel === 'WARN' ? 'observe_only' : 'long_run_ok');
+
+  // Deep-policy overrides (mode-specific + long-window-sensitive)
+  let gateLevel = baseGateLevel;
+  let releaseDisposition = baseReleaseDisposition;
+  let matrixDispositionOverride = null;
+  const dispositionReason = [];
+
+  const L = Number(windowedMetrics?.loops || 0);
+  const isLong = L >= 60;
+
+  // 1) same_role: sustained yield is acceptable as observe_only on short windows, but long sustained yield becomes must_fix_first.
+  if (scenarioMode === 'same_role' && windowedMetrics?.yield_rate !== null) {
+    if (isLong && windowedMetrics.yield_rate > 0.5) {
+      gateLevel = 'FAIL';
+      releaseDisposition = 'must_fix_first';
+      matrixDispositionOverride = { from: { gateLevel: baseGateLevel, releaseDisposition: baseReleaseDisposition }, to: { gateLevel, releaseDisposition } };
+      dispositionReason.push('same_role long-window yield_rate>0.5 => must_fix_first');
+    } else if (windowedMetrics.yield_rate > 0.2 && baseGateLevel === 'PASS') {
+      gateLevel = 'WARN';
+      releaseDisposition = 'observe_only';
+      matrixDispositionOverride = { from: { gateLevel: baseGateLevel, releaseDisposition: baseReleaseDisposition }, to: { gateLevel, releaseDisposition } };
+      dispositionReason.push('same_role yield_rate>0.2 => observe_only');
+    }
+  }
+
+  // 2) multi_parent: attention per parent high in long window should be must_fix_first.
+  if (scenarioMode === 'multi_parent' && windowedMetrics?.attention_req_per_parent !== null) {
+    if (isLong && windowedMetrics.attention_req_per_parent > 5) {
+      gateLevel = 'FAIL';
+      releaseDisposition = 'must_fix_first';
+      matrixDispositionOverride = { from: { gateLevel: baseGateLevel, releaseDisposition: baseReleaseDisposition }, to: { gateLevel, releaseDisposition } };
+      dispositionReason.push('multi_parent long-window attention_req_per_parent>5 => must_fix_first');
+    }
+  }
+
+  // 3) single: mostly wait in long window is observe_only (not fail) unless paired with other fails.
+  if (scenarioMode === 'single' && isLong && windowedMetrics?.wait_ratio !== null) {
+    if (windowedMetrics.wait_ratio > 0.8 && baseGateLevel === 'PASS') {
+      gateLevel = 'WARN';
+      releaseDisposition = 'observe_only';
+      matrixDispositionOverride = { from: { gateLevel: baseGateLevel, releaseDisposition: baseReleaseDisposition }, to: { gateLevel, releaseDisposition } };
+      dispositionReason.push('single long-window wait_ratio>0.8 => observe_only');
+    }
+  }
 
   // Keep backward-compatible boolean outputs
-  const failed = hasFail;
+  const failed = gateLevel === 'FAIL';
   // P7-3: recommended actions (deterministic mapping)
   const signalHelper = path.join(process.cwd(), 'scripts', 'p7_3_signal_to_action.mjs');
   let recommendedActions = [];
@@ -422,11 +469,14 @@ function gateOne(traceDir, name) {
     traceDir,
     scenarioMode,
     matrixKey,
+    dispositionPolicyVersion,
     windowedMetrics,
     matrixRuleId,
     matrixDecisionBasis,
     gateLevel,
     releaseDisposition,
+    matrixDispositionOverride,
+    dispositionReason,
     SAFE_FOR_LONG_RUN: failed ? 'no' : 'yes',
     pass: !failed,
     gateReasons: reasons,
@@ -446,10 +496,12 @@ const overallLevel = results.some(r => r.gateLevel === 'FAIL') ? 'FAIL' : (resul
 const overallDisposition = (overallLevel === 'FAIL') ? 'must_fix_first' : (overallLevel === 'WARN' ? 'observe_only' : 'long_run_ok');
 
 const scenarioModes = Array.from(new Set(results.map(r => r.scenarioMode).filter(Boolean)));
+const dispositionPolicyVersion = 'p11-2-mvp.1';
 const out = {
   ok: true,
   kind: 'p7_2_gate',
   inputDir: input,
+  dispositionPolicyVersion,
   scenarioModes,
   matrixKey: scenarioModes.length === 1 ? `mode=${scenarioModes[0]}` : `mode=mixed(${scenarioModes.join(',')})`,
   gateLevel: overallLevel,
