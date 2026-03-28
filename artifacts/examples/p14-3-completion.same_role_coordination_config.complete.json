@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "kind": "p13_1_regression_completion",
+  "schemaVersion": "p13-1-mvp.1",
+  "releaseId": "p14-3-demo-sr-complete",
+  "changeType": [
+    "same_role_coordination_config"
+  ],
+  "requiredRuns": [
+    {
+      "name": "gate:same_role.in.long.stable",
+      "command": "scripts/p7_2_gate_mvp.sh --dir <traceDir>",
+      "evidenceDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.in.long.stable",
+      "gatePath": "/tmp/p14_sr_stable.json",
+      "resultSummary": {
+        "gateLevel": "PASS",
+        "releaseDisposition": "long_run_ok",
+        "releaseReadiness": "blocked",
+        "releaseBlockingReasons": [
+          "required_regressions_incomplete"
+        ],
+        "evidenceSufficiency": "sufficient",
+        "dispositionPolicyVersion": "p11-2-mvp.1"
+      }
+    },
+    {
+      "name": "gate:same_role.out.long.yield_high",
+      "command": "scripts/p7_2_gate_mvp.sh --dir <traceDir>",
+      "evidenceDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high",
+      "gatePath": "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high/gate.json",
+      "resultSummary": {
+        "gateLevel": "FAIL",
+        "releaseDisposition": "must_fix_first",
+        "releaseBlockingReasons": [],
+        "dispositionPolicyVersion": "p11-2-mvp.1"
+      }
+    }
+  ],
+  "requiredRegressionsComplete": true,
+  "missingRequired": [],
+  "generatedAt": "2026-03-28T16:12:46.532Z",
+  "inputs": {
+    "commit": null,
+    "note": null,
+    "gates": [
+      "/tmp/p14_sr_stable.json",
+      "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high/gate.json"
+    ]
+  }
+}

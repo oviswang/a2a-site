@@ -47,19 +47,77 @@ const REQUIRED_RUNS = {
     {
       name: 'multi_parent long in-range sanity',
       evidenceDirSuffix: 'artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent.in.long.gating_effective',
-      command: 'scripts/p7_2_gate_mvp.sh --dir <dir>',
+      command: 'scripts/p7_2_gate_mvp.sh --dir <dir> --change-type refresh_cost_config',
+      requiredMode: 'multi_parent',
+      requiredWindow: 'long',
     },
     {
       name: 'multi_parent long out-of-range guardrail',
       evidenceDirSuffix: 'artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent.out.long.attention_too_high',
-      command: 'scripts/p7_2_gate_mvp.sh --dir <dir>',
+      command: 'scripts/p7_2_gate_mvp.sh --dir <dir> --change-type refresh_cost_config',
+      requiredMode: 'multi_parent',
+      requiredWindow: 'long',
     },
   ],
+
+  same_role_coordination_config: [
+    {
+      name: 'same_role long stable should not be blocked',
+      evidenceDirSuffix: 'artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.in.long.stable',
+      command: 'scripts/p7_2_gate_mvp.sh --dir <dir> --change-type same_role_coordination_config',
+      requiredMode: 'same_role',
+      requiredWindow: 'long',
+    },
+    {
+      name: 'same_role long yield_high must remain blocked (deep policy)',
+      evidenceDirSuffix: 'artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high',
+      command: 'scripts/p7_2_gate_mvp.sh --dir <dir> --change-type same_role_coordination_config',
+      requiredMode: 'same_role',
+      requiredWindow: 'long',
+    },
+  ],
+
+  selection_logic_change: [
+    {
+      name: 'selection anomaly guardrail (long) must stay blocked',
+      evidenceDirSuffix: 'artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly',
+      command: 'scripts/p7_2_gate_mvp.sh --dir <dir> --change-type selection_logic_change',
+      requiredMode: 'multi_parent',
+      requiredWindow: 'long',
+    },
+    {
+      name: 'combo long sanity (multi_parent+same_role)',
+      evidenceDirSuffix: 'artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent_same_role.in.long.controlled',
+      command: 'scripts/p7_2_gate_mvp.sh --dir <dir> --change-type selection_logic_change',
+      requiredMode: 'multi_parent+same_role',
+      requiredWindow: 'long',
+    },
+  ],
+
+  runner_behavior_change: [
+    {
+      name: 'contract: gate output exists (spot)',
+      evidenceDirSuffix: 'artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass',
+      command: 'scripts/p7_2_gate_mvp.sh --dir <dir> --change-type runner_behavior_change',
+      requiredMode: 'single',
+      requiredWindow: 'short',
+    },
+    {
+      name: 'contract: signal_to_action works (spot)',
+      evidenceDirSuffix: 'artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass',
+      command: 'node scripts/p7_3_signal_to_action.mjs <gate.json>',
+      requiredMode: 'single',
+      requiredWindow: 'short',
+    },
+  ],
+
   gate_rule_change: [
     {
       name: 'boundary human_required must stay blocked',
       evidenceDirSuffix: 'artifacts/evidence/p12-1/20260328T072524Z/cases/multi_parent_same_role.out.long.human_required',
-      command: 'scripts/p7_2_gate_mvp.sh --dir <dir>',
+      command: 'scripts/p7_2_gate_mvp.sh --dir <dir> --change-type gate_rule_change',
+      requiredMode: 'multi_parent+same_role',
+      requiredWindow: 'long',
     },
   ],
 };
@@ -118,8 +176,11 @@ function main() {
       missingRequired.push({
         changeType: spec.changeType,
         name: spec.name,
+        requiredMode: spec.requiredMode || null,
+        requiredWindow: spec.requiredWindow || null,
         expectedEvidenceDir: spec.evidenceDirSuffix,
         expectedCommand: spec.command,
+        whyBlocking: 'required run missing for changeType; release will be blocked by standards',
       });
     }
   }

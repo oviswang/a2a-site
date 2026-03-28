@@ -1,0 +1,47 @@
+{
+  "ok": true,
+  "kind": "p13_1_regression_completion",
+  "schemaVersion": "p13-1-mvp.1",
+  "releaseId": "p14-3-demo-sr",
+  "changeType": [
+    "same_role_coordination_config"
+  ],
+  "requiredRuns": [
+    {
+      "name": "gate:same_role.in.long.stable",
+      "command": "scripts/p7_2_gate_mvp.sh --dir <traceDir>",
+      "evidenceDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.in.long.stable",
+      "gatePath": "/tmp/p14_sr_stable.json",
+      "resultSummary": {
+        "gateLevel": "PASS",
+        "releaseDisposition": "long_run_ok",
+        "releaseReadiness": "blocked",
+        "releaseBlockingReasons": [
+          "required_regressions_incomplete"
+        ],
+        "evidenceSufficiency": "sufficient",
+        "dispositionPolicyVersion": "p11-2-mvp.1"
+      }
+    }
+  ],
+  "requiredRegressionsComplete": false,
+  "missingRequired": [
+    {
+      "changeType": "same_role_coordination_config",
+      "name": "same_role long yield_high must remain blocked (deep policy)",
+      "requiredMode": "same_role",
+      "requiredWindow": "long",
+      "expectedEvidenceDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high",
+      "expectedCommand": "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type same_role_coordination_config",
+      "whyBlocking": "required run missing for changeType; release will be blocked by standards"
+    }
+  ],
+  "generatedAt": "2026-03-28T16:12:41.436Z",
+  "inputs": {
+    "commit": null,
+    "note": null,
+    "gates": [
+      "/tmp/p14_sr_stable.json"
+    ]
+  }
+}
