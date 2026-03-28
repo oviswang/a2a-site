@@ -823,6 +823,10 @@ async function main() {
       decision.reasonCode = CONFLICT_CODES.role_skip;
       decision.reasonDetail = { role, topType: top.type };
       decision.chosenAction = action;
+    // Test-only: freeze owner before side effects for stable proofs (default off)
+    // Only triggers when explicitly configured, and only before we attempt to POST/PUT side effects.
+    const thisKey = `${taskId}:${String(top.type)}`;
+    const freezeThis = TEST_FREEZE_OWNER_ON_KEY && TEST_FREEZE_OWNER_ON_KEY === thisKey && !!decision.selfIsOwner;
       writeDecision(Date.now(), decision);
       bump(win, decision);
       if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
@@ -993,10 +997,6 @@ async function main() {
       }
     }
 
-    // Test-only: freeze owner before side effects for stable proofs (default off)
-    // Only triggers when explicitly configured, and only before we attempt to POST/PUT side effects.
-    const thisKey = `${taskId}:${String(top.type)}`;
-    const freezeThis = TEST_FREEZE_OWNER_ON_KEY && TEST_FREEZE_OWNER_ON_KEY === thisKey && !!decision.selfIsOwner;
 
     if (action === 'review_accept') {
       // P4-1: act-before-re-read: require review-state still says pendingReview.
