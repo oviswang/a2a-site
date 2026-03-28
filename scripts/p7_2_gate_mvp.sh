@@ -410,10 +410,18 @@ function gateOne(traceDir, name) {
   if (scenarioMode === 'multi_parent') {
     const r = keyMetrics.selection?.selection_churn_rate;
     const sw = keyMetrics.selection?.parent_switch_count;
+
+    // allow mild churn as observe_only, especially on short windows
     if (r !== null && (r > 0.2 || Number(sw || 0) >= 10)) {
       fail('selection_churn_high', { selection_churn_rate: r, parent_switch_count: sw, loops: keyMetrics.windowLoops }, decisionPaths.slice(-5));
     } else if (r !== null && r > 0.05) {
       warn('selection_churn_present', { selection_churn_rate: r, parent_switch_count: sw, loops: keyMetrics.windowLoops }, decisionPaths.slice(-5));
+    }
+
+    // selection instability (MVP): parent switching is high relative to churn count
+    // this indicates drift even if churn_rate is not extreme.
+    if (r !== null && Number(sw || 0) >= 3 && r <= 0.2) {
+      warn('selection_instability', { selection_churn_rate: r, parent_switch_count: sw, loops: keyMetrics.windowLoops }, decisionPaths.slice(-5));
     }
   }
 
@@ -498,6 +506,13 @@ function gateOne(traceDir, name) {
       matrixDecisionBasis = [`selection_churn_rate>${0.2}`, `parent_switch_count>=${10}`];
       matrixDispositionOverride = { from: { gateLevel: baseGateLevel, releaseDisposition: baseReleaseDisposition }, to: { gateLevel, releaseDisposition } };
       dispositionReason.push('multi_parent long-window selection churn => must_fix_first');
+    } else if (sel.parent_switch_count >= 3) {
+      gateLevel = 'WARN';
+      releaseDisposition = 'observe_only';
+      matrixRuleId = 'Rsel2:multi_parent:selection_instability';
+      matrixDecisionBasis = [`parent_switch_count>=${3}`, `selection_churn_rate<=${0.2}`];
+      matrixDispositionOverride = { from: { gateLevel: baseGateLevel, releaseDisposition: baseReleaseDisposition }, to: { gateLevel, releaseDisposition } };
+      dispositionReason.push('multi_parent long-window selection_instability => observe_only');
     } else if (sel.selection_churn_rate > 0.05 && baseGateLevel === 'PASS') {
       gateLevel = 'WARN';
       releaseDisposition = 'observe_only';

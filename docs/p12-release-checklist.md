@@ -111,10 +111,15 @@
    - dir: `artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly`
    - cmd: `scripts/p7_2_gate_mvp.sh --dir <dir> --change-type selection_logic_change`
    - 必查字段：
-     - `gateReasons`（selection_churn_high/present）
+     - `gateReasons`（selection_churn_high/present/selection_instability）
      - `matrixRuleId`（Rsel*）+ `matrixDecisionBasis`
      - `keyMetrics.selection.*`
    - 阻断条件：该 case 变为非 blocked（削弱 selection 门禁）
+
+2) selection instability contrast (long, observe_only)
+   - dir: `artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent_same_role.out.long.selection_instability_mild`
+   - cmd: `scripts/p7_2_gate_mvp.sh --dir <dir> --change-type selection_logic_change`
+   - 通过条件（MVP）：该 case 保持为 observe_only（Rsel2 selection_instability）
 
 2) combo long sanity
    - dir: `artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent_same_role.in.long.controlled`

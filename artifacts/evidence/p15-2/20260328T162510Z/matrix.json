@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "kind": "p15_2_selection_evidence",
+  "ts": "20260328T162510Z",
+  "cases": [
+    {
+      "caseId": "multi_parent.out.short.selection_churn_low",
+      "mode": "multi_parent",
+      "point": "out_of_range",
+      "window": "short",
+      "loops": 5,
+      "artifacts": {
+        "summary": "artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent.out.short.selection_churn_low/summary.json",
+        "gate": "artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent.out.short.selection_churn_low/gate.json",
+        "signal_to_action": "artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent.out.short.selection_churn_low/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "multi_parent.out.long.wrong_parent_spinning",
+      "mode": "multi_parent",
+      "point": "out_of_range",
+      "window": "long",
+      "loops": 60,
+      "artifacts": {
+        "summary": "artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent.out.long.wrong_parent_spinning/summary.json",
+        "gate": "artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent.out.long.wrong_parent_spinning/gate.json",
+        "signal_to_action": "artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent.out.long.wrong_parent_spinning/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "multi_parent_same_role.out.long.selection_instability_mild",
+      "mode": "multi_parent+same_role",
+      "point": "out_of_range",
+      "window": "long",
+      "loops": 60,
+      "artifacts": {
+        "summary": "artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent_same_role.out.long.selection_instability_mild/summary.json",
+        "gate": "artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent_same_role.out.long.selection_instability_mild/gate.json",
+        "signal_to_action": "artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent_same_role.out.long.selection_instability_mild/signal_to_action.json"
+      }
+    }
+  ]
+}

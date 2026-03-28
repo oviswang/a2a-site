@@ -1,0 +1,15 @@
+{
+  "case": "selection_instability_mild",
+  "rule": "Rsel2:multi_parent:selection_instability",
+  "reasons": [
+    "selection_churn_present",
+    "selection_instability"
+  ],
+  "disp": "observe_only",
+  "readiness": "blocked",
+  "sel": {
+    "selection_churn": 4,
+    "parent_switch_count": 3,
+    "selection_churn_rate": 0.06666666666666667
+  }
+}

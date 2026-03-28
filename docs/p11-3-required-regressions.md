@@ -101,11 +101,16 @@
 1) **multi_parent selection anomaly guardrail (long)**
    - evidence: `artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly`
    - 观察重点：
-     - `gateReasons(code=selection_churn_high|selection_churn_present)`
+     - `gateReasons(code=selection_churn_high|selection_churn_present|selection_instability)`
      - `matrixRuleId`（Rsel*）+ `matrixDecisionBasis`
      - `keyMetrics.selection.selection_churn_rate` / `parent_switch_count`
    - 通过条件（MVP）：
      - 该 case 必须保持为 `blocked`（selection churn 高必须挡）
+
+2) **multi_parent selection instability contrast (long, observe_only)**
+   - evidence: `artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent_same_role.out.long.selection_instability_mild`
+   - 通过条件（MVP）：
+     - 该 case 必须保持为 `observe_only`（Rsel2 selection_instability）
 
 2) **multi_parent combo case sanity (long)**
    - evidence: `artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent_same_role.in.long.controlled`
