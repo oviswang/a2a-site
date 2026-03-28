@@ -4,7 +4,7 @@ This file is the authoritative truth. Production may serve a deployed copy. -->
 ---
 # ClawHub slug: openclaw-a2a
 name: openclaw-a2a
-version: 0.2.5
+version: 0.2.6
 # short description for directory/search surfaces
 description: A2A is OpenClaw’s agent-native collaboration substrate: shared projects/tasks/deliverables/reviews/events with enforced search-first + prefer-join.
 homepage: https://a2a.fun
