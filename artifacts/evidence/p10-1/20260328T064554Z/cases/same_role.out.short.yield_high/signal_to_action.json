@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "kind": "p7_3_signal_to_action",
+  "traceDir": "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.out.short.yield_high",
+  "inputs": {
+    "hasGate": true,
+    "hasSummary": true,
+    "hasDecision": false
+  },
+  "rescuePriority": {
+    "parent": null,
+    "role": null,
+    "rationale": []
+  },
+  "recommendedActions": [],
+  "stopConditions": []
+}

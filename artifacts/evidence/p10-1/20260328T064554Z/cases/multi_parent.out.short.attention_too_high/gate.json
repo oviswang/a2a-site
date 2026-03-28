@@ -1,0 +1,102 @@
+{
+  "ok": true,
+  "kind": "p7_2_gate",
+  "inputDir": "artifacts/evidence/p10-1/20260328T064554Z/cases/multi_parent.out.short.attention_too_high",
+  "scenarioModes": [
+    "multi_parent"
+  ],
+  "matrixKey": "mode=multi_parent",
+  "gateLevel": "FAIL",
+  "releaseDisposition": "must_fix_first",
+  "SAFE_FOR_LONG_RUN": "no",
+  "pass": false,
+  "results": [
+    {
+      "name": "multi_parent.out.short.attention_too_high",
+      "traceDir": "artifacts/evidence/p10-1/20260328T064554Z/cases/multi_parent.out.short.attention_too_high",
+      "scenarioMode": "multi_parent",
+      "matrixKey": "mode=multi_parent",
+      "gateLevel": "FAIL",
+      "releaseDisposition": "must_fix_first",
+      "SAFE_FOR_LONG_RUN": "no",
+      "pass": false,
+      "gateReasons": [
+        {
+          "level": "fail",
+          "code": "attention_cost_high",
+          "signalClass": "cost",
+          "matrixDisposition": "must_fix_first",
+          "detail": {
+            "attention_requests": 20,
+            "maxAtt": 5
+          }
+        }
+      ],
+      "recommendedActions": [
+        {
+          "id": "cost.attention.reduce",
+          "title": "tune refresh gating (refresh_ms/small_all/rr_k); re-run p7-1 bench"
+        }
+      ],
+      "evidencePaths": [
+        "artifacts/evidence/p10-1/20260328T064554Z/cases/multi_parent.out.short.attention_too_high/summary.json"
+      ],
+      "keyMetrics": {
+        "health": "ok",
+        "windowLoops": 5,
+        "counts": {
+          "act_ok": 1,
+          "act_fail": 0,
+          "role_skip": 0,
+          "handoff": 0,
+          "wait": 1,
+          "noop": 0,
+          "HUMAN_ACTION_REQUIRED": 0,
+          "stale_skip": 0,
+          "precondition_failed": 0,
+          "dedupe_skip": 0
+        },
+        "conflictCounts": {},
+        "cost": {
+          "loops": 5,
+          "requestsTotal": 10,
+          "byStage": {
+            "token": 1,
+            "join": 1,
+            "attention": 20,
+            "task_get": 2,
+            "deliverable_get": 2,
+            "act": 1,
+            "echo": 1
+          },
+          "byParent": {
+            "p-a": 5,
+            "p-b": 5,
+            "p-c": 5,
+            "p-d": 5
+          },
+          "refreshWillFetch": 2,
+          "refreshSkippedFreshCache": 0
+        },
+        "derived": {
+          "actFail": 0,
+          "humanRequired": 0,
+          "stuckWindows": 0,
+          "degradedWindows": 0,
+          "ownerStale": 0,
+          "takeover": 0,
+          "yieldToPeer": 0,
+          "attentionReq": 20,
+          "topParentFetch": {
+            "parentTaskId": "p-a",
+            "attentionFetch": 5
+          },
+          "topStage": {
+            "stage": "attention",
+            "requests": 20
+          }
+        }
+      }
+    }
+  ]
+}

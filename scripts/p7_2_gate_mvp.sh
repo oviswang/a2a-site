@@ -146,8 +146,12 @@ function parseSummaryCost(summary) {
 function gateOne(traceDir, name) {
   const files = globJson(traceDir);
 
-  // Prefer latest summary if present, else build minimal summary from decision+act+echo traces.
-  const latestSummaryPath = pickEvidence(files, p => p.endsWith('.summary.json') || p.endsWith('latest.summary.json'));
+  // Prefer latest summary if present, else accept a deterministic standalone summary.json (evidence matrix), else null.
+  let latestSummaryPath = pickEvidence(files, p => p.endsWith('.summary.json') || p.endsWith('latest.summary.json'));
+  if (!latestSummaryPath) {
+    const standalone = path.join(traceDir, 'summary.json');
+    if (fs.existsSync(standalone)) latestSummaryPath = standalone;
+  }
   const summary = latestSummaryPath ? readJson(latestSummaryPath) : null;
 
   const decisionPaths = files.filter(p => p.endsWith('.decision.json'));

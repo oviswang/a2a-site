@@ -1,0 +1,91 @@
+{
+  "ok": true,
+  "kind": "p10_1_evidence_matrix",
+  "ts": "20260328T064554Z",
+  "cases": [
+    {
+      "caseId": "single.in.short.pass",
+      "mode": "single",
+      "point": "in_range",
+      "window": 5,
+      "artifacts": {
+        "summary": "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass/summary.json",
+        "gate": "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass/gate.json",
+        "signal_to_action": "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass/signal_to_action.json"
+      },
+      "supports": []
+    },
+    {
+      "caseId": "single.in.medium.pass",
+      "mode": "single",
+      "point": "in_range",
+      "window": 20,
+      "artifacts": {
+        "summary": "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.medium.pass/summary.json",
+        "gate": "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.medium.pass/gate.json",
+        "signal_to_action": "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.medium.pass/signal_to_action.json"
+      },
+      "supports": []
+    },
+    {
+      "caseId": "multi_parent.in.short.gating_effective",
+      "mode": "multi_parent",
+      "point": "in_range",
+      "window": 5,
+      "artifacts": {
+        "summary": "artifacts/evidence/p10-1/20260328T064554Z/cases/multi_parent.in.short.gating_effective/summary.json",
+        "gate": "artifacts/evidence/p10-1/20260328T064554Z/cases/multi_parent.in.short.gating_effective/gate.json",
+        "signal_to_action": "artifacts/evidence/p10-1/20260328T064554Z/cases/multi_parent.in.short.gating_effective/signal_to_action.json"
+      },
+      "supports": []
+    },
+    {
+      "caseId": "multi_parent.out.short.attention_too_high",
+      "mode": "multi_parent",
+      "point": "out_of_range",
+      "window": 5,
+      "artifacts": {
+        "summary": "artifacts/evidence/p10-1/20260328T064554Z/cases/multi_parent.out.short.attention_too_high/summary.json",
+        "gate": "artifacts/evidence/p10-1/20260328T064554Z/cases/multi_parent.out.short.attention_too_high/gate.json",
+        "signal_to_action": "artifacts/evidence/p10-1/20260328T064554Z/cases/multi_parent.out.short.attention_too_high/signal_to_action.json"
+      },
+      "supports": []
+    },
+    {
+      "caseId": "multi_parent.in.medium.gating_effective",
+      "mode": "multi_parent",
+      "point": "in_range",
+      "window": 20,
+      "artifacts": {
+        "summary": "artifacts/evidence/p10-1/20260328T064554Z/cases/multi_parent.in.medium.gating_effective/summary.json",
+        "gate": "artifacts/evidence/p10-1/20260328T064554Z/cases/multi_parent.in.medium.gating_effective/gate.json",
+        "signal_to_action": "artifacts/evidence/p10-1/20260328T064554Z/cases/multi_parent.in.medium.gating_effective/signal_to_action.json"
+      },
+      "supports": []
+    },
+    {
+      "caseId": "same_role.in.short.stable",
+      "mode": "same_role",
+      "point": "in_range",
+      "window": 5,
+      "artifacts": {
+        "summary": "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.in.short.stable/summary.json",
+        "gate": "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.in.short.stable/gate.json",
+        "signal_to_action": "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.in.short.stable/signal_to_action.json"
+      },
+      "supports": []
+    },
+    {
+      "caseId": "same_role.out.short.yield_high",
+      "mode": "same_role",
+      "point": "out_of_range",
+      "window": 5,
+      "artifacts": {
+        "summary": "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.out.short.yield_high/summary.json",
+        "gate": "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.out.short.yield_high/gate.json",
+        "signal_to_action": "artifacts/evidence/p10-1/20260328T064554Z/cases/same_role.out.short.yield_high/signal_to_action.json"
+      },
+      "supports": []
+    }
+  ]
+}
