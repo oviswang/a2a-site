@@ -97,6 +97,10 @@ function writeTrace(ts, kind, obj) {
 const CONFLICT_CODES = {
   role_skip: 'role_skip',
   yield_to_peer: 'yield_to_peer',
+  // P6-2
+  owner_stale: 'owner_stale',
+  takeover: 'takeover',
+
   dedupe_skip: 'dedupe_skip',
   stale_skip: 'stale_skip',
   precondition_failed: 'precondition_failed',
@@ -463,6 +467,8 @@ async function main() {
   // P6-1 per-parent cache persisted in state.json (best-effort)
   if (!st.parentCache) st.parentCache = {};
   if (!st.lastSelectedParentTaskId) st.lastSelectedParentTaskId = null;
+  // P6-2: per-item progress tracking for same-role coordination
+  if (!st.progressByItem) st.progressByItem = {};
 
   // P4-3 rolling window summary
   const SUMMARY_EVERY = Number(env('A2A_SUMMARY_EVERY', '20'));
@@ -680,18 +686,65 @@ async function main() {
       // If misconfigured, fall back to single-instance semantics.
       if (handles.length >= 2 && handles.includes(HANDLE)) {
         const sorted = [...handles].sort();
-        const key = `${taskId}:${String(top.type)}`;
-        // Simple deterministic hash (stable across processes): sum of char codes.
+        const itemType = String(top.type);
+        const key = `${taskId}:${itemType}`;
+
+        // Deterministic owner ring
         let h = 0;
         for (const ch of key) h = (h + ch.charCodeAt(0)) >>> 0;
-        const owner = sorted[h % sorted.length];
+        const ownerIdx = h % sorted.length;
+        const owner = sorted[ownerIdx];
+
+        // P6-2: progress signature for stale-owner detection (fact-surface based)
+        const OWNER_STALE_MS = Number(env('A2A_OWNER_STALE_MS', '120000'));
+        const prog = (st.progressByItem[key] ||= { lastProgressSig: null, lastProgressAt: 0 });
+        const rsProg = await readReviewState({ taskId, handle: HANDLE, token });
+        writeTrace(Date.now(), 'review_state_progress', rsProg);
+        const sig = rsProg.ok && rsProg.json && rsProg.json.ok
+          ? `${String(rsProg.json.deliverableStatus || '')}:${String(rsProg.json.submittedAt || '')}:${String(rsProg.json.reviewedAt || '')}`
+          : `err:${rsProg.status}:${String(rsProg.json?.error || '')}`;
+        const now = Date.now();
+        if (prog.lastProgressSig !== sig) {
+          prog.lastProgressSig = sig;
+          prog.lastProgressAt = now;
+        }
+        saveState(st);
+
+        const ownerStale = (owner !== HANDLE) && prog.lastProgressAt && (now - prog.lastProgressAt) >= OWNER_STALE_MS;
+        const takeoverBy = sorted[(ownerIdx + 1) % sorted.length];
+
+        // Record owner info in decision
         decision.ownerHandle = owner;
         decision.selfIsOwner = owner === HANDLE;
 
-        // yield window check
-        const now = Date.now();
+        // If owner is stale, allow deterministic takeover by next owner in ring.
+        if (ownerStale) {
+          decision.reasonCode = CONFLICT_CODES.owner_stale;
+          decision.reasonDetail = { ownerHandle: owner, ownerStale: true, ownerStaleMs: now - prog.lastProgressAt, takeoverBy, takeoverFrom: owner };
+          if (takeoverBy === HANDLE) {
+            // We become acting owner for this loop.
+            decision.ownerHandle = takeoverBy;
+            decision.selfIsOwner = true;
+            decision.reasonCode = CONFLICT_CODES.takeover;
+          } else {
+            // Not our turn to take over; yield.
+            const until = now + YIELD_WINDOW_MS;
+            st.yieldByItem[key] = until;
+            saveState(st);
+            decision.policyDecision = 'handoff';
+            decision.skipped = true;
+            decision.reasonCode = CONFLICT_CODES.owner_stale;
+            decision.yieldUntil = new Date(until).toISOString();
+            writeDecision(Date.now(), decision);
+            bump(win, decision);
+            await sleep(POLL_MS);
+            continue;
+          }
+        }
+
+        // Yield window check (normal)
         const until = Number(st.yieldByItem?.[key] || 0);
-        if (until && now < until && owner !== HANDLE) {
+        if (until && now < until && owner !== HANDLE && !ownerStale) {
           decision.policyDecision = 'handoff';
           decision.skipped = true;
           decision.reasonCode = CONFLICT_CODES.yield_to_peer;
@@ -699,22 +752,15 @@ async function main() {
           decision.yieldUntil = new Date(until).toISOString();
           writeDecision(Date.now(), decision);
           bump(win, decision);
-          if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
-            const health = healthOf(win);
-            const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
-            const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
-            const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
-            writeTrace(Date.now(), 'summary', summary);
-          }
           await sleep(POLL_MS);
           continue;
         }
 
-        if (owner !== HANDLE) {
+        // Standard owner gating (if not stale takeover)
+        if (owner !== HANDLE && !ownerStale) {
           const newUntil = now + YIELD_WINDOW_MS;
           st.yieldByItem[key] = newUntil;
           saveState(st);
-
           decision.policyDecision = 'handoff';
           decision.skipped = true;
           decision.reasonCode = CONFLICT_CODES.yield_to_peer;
@@ -722,20 +768,14 @@ async function main() {
           decision.yieldUntil = new Date(newUntil).toISOString();
           writeDecision(Date.now(), decision);
           bump(win, decision);
-          if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
-            const health = healthOf(win);
-            const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
-            const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
-            const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
-            writeTrace(Date.now(), 'summary', summary);
-          }
           await sleep(POLL_MS);
           continue;
         }
+
+        // If we get here, we are allowed to proceed (owner or takeover).
       }
     }
-
-    // 4) read task + events
+// 4) read task + events
     const task = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}`, {});
     writeTrace(Date.now(), 'task_get', task);
     if (!task.ok) {
