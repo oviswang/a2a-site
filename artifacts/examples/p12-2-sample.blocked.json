@@ -1,0 +1,145 @@
+{
+  "ok": true,
+  "kind": "p7_2_gate",
+  "inputDir": "artifacts/evidence/p12-1/20260328T072524Z/cases/multi_parent_same_role.out.long.human_required",
+  "dispositionPolicyVersion": "p11-2-mvp.1",
+  "scenarioModes": [
+    "multi_parent"
+  ],
+  "matrixKey": "mode=multi_parent",
+  "gateLevel": "FAIL",
+  "releaseDisposition": "must_fix_first",
+  "releaseReady": false,
+  "releaseReadiness": "blocked",
+  "releaseBlockingReasons": [
+    "gate_failed_or_must_fix_first",
+    "human_action_required",
+    "deep_policy_must_fix_first"
+  ],
+  "requiredRegressionsComplete": false,
+  "evidenceSufficiency": "sufficient",
+  "SAFE_FOR_LONG_RUN": "no",
+  "pass": false,
+  "results": [
+    {
+      "name": "multi_parent_same_role.out.long.human_required",
+      "traceDir": "artifacts/evidence/p12-1/20260328T072524Z/cases/multi_parent_same_role.out.long.human_required",
+      "scenarioMode": "multi_parent",
+      "matrixKey": "mode=multi_parent",
+      "dispositionPolicyVersion": "p11-2-mvp.1",
+      "windowedMetrics": {
+        "loops": 60,
+        "handoff_ratio": 0,
+        "wait_ratio": 0,
+        "act_fail_ratio": 0,
+        "human_required_ratio": 0.05,
+        "parent_count": 2,
+        "attention_req": 20,
+        "attention_req_per_parent": 10,
+        "yield_rate": 0,
+        "owner_stale_rate": 0,
+        "takeover_rate": 0
+      },
+      "matrixRuleId": "Rhr1:multi_parent:human_required_seen",
+      "matrixDecisionBasis": [
+        "attention_req_per_parent>5",
+        "human_required_ratio>0"
+      ],
+      "gateLevel": "FAIL",
+      "releaseDisposition": "must_fix_first",
+      "matrixDispositionOverride": {
+        "from": {
+          "gateLevel": "FAIL",
+          "releaseDisposition": "must_fix_first"
+        },
+        "to": {
+          "gateLevel": "FAIL",
+          "releaseDisposition": "must_fix_first"
+        }
+      },
+      "dispositionReason": [
+        "multi_parent long-window attention_req_per_parent>5 => must_fix_first"
+      ],
+      "SAFE_FOR_LONG_RUN": "no",
+      "pass": false,
+      "gateReasons": [
+        {
+          "level": "fail",
+          "code": "human_action_required",
+          "signalClass": "human_boundary",
+          "matrixDisposition": "must_fix_first",
+          "detail": {
+            "HUMAN_ACTION_REQUIRED": 3,
+            "maxHuman": 0
+          }
+        }
+      ],
+      "recommendedActions": [
+        {
+          "id": "human_required.stop",
+          "title": "stop automation; resolve boundary; restart with smoke"
+        }
+      ],
+      "evidencePaths": [
+        "artifacts/evidence/p12-1/20260328T072524Z/cases/multi_parent_same_role.out.long.human_required/summary.json",
+        "artifacts/evidence/p12-1/20260328T072524Z/cases/multi_parent_same_role.out.long.human_required/d3.decision.json"
+      ],
+      "keyMetrics": {
+        "health": "ok",
+        "windowLoops": 60,
+        "counts": {
+          "act_ok": 0,
+          "act_fail": 0,
+          "role_skip": 0,
+          "handoff": 0,
+          "wait": 0,
+          "noop": 0,
+          "HUMAN_ACTION_REQUIRED": 3,
+          "stale_skip": 0,
+          "precondition_failed": 0,
+          "dedupe_skip": 0
+        },
+        "conflictCounts": {
+          "HUMAN_ACTION_REQUIRED": 3
+        },
+        "cost": {
+          "loops": 60,
+          "requestsTotal": 10,
+          "byStage": {
+            "token": 1,
+            "join": 1,
+            "attention": 20,
+            "task_get": 2,
+            "deliverable_get": 2,
+            "act": 1,
+            "echo": 1
+          },
+          "byParent": {
+            "p-a": 10,
+            "p-b": 10
+          },
+          "refreshWillFetch": 2,
+          "refreshSkippedFreshCache": 10
+        },
+        "derived": {
+          "actFail": 0,
+          "humanRequired": 3,
+          "stuckWindows": 0,
+          "degradedWindows": 0,
+          "ownerStale": 0,
+          "takeover": 0,
+          "yieldToPeer": 0,
+          "attentionReq": 20,
+          "topParentFetch": {
+            "parentTaskId": "p-a",
+            "attentionFetch": 10
+          },
+          "topStage": {
+            "stage": "attention",
+            "requests": 20
+          }
+        }
+      }
+    }
+  ]
+}

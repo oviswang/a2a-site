@@ -497,6 +497,55 @@ const overallDisposition = (overallLevel === 'FAIL') ? 'must_fix_first' : (overa
 
 const scenarioModes = Array.from(new Set(results.map(r => r.scenarioMode).filter(Boolean)));
 const dispositionPolicyVersion = 'p11-2-mvp.1';
+
+// P12-2: release-ready semantics (MVP)
+function releaseSemantics({ overallLevel, overallDisposition, results, evidenceHint }) {
+  const requiredRegressionsComplete = false; // default: unknown unless provided by operator/checklist
+  const evidenceSufficiency = (evidenceHint === 'long_window') ? 'sufficient' : (evidenceHint ? 'partial' : 'partial');
+
+  const blocking = [];
+
+  // 1) Hard blocks from overall gate/disposition
+  if (overallLevel === 'FAIL' || overallDisposition === 'must_fix_first') {
+    blocking.push('gate_failed_or_must_fix_first');
+  }
+
+  // 2) Hard blocks from explicit boundary signals (per-result reasons or key metrics)
+  for (const r of results || []) {
+    const reasons = Array.isArray(r.gateReasons) ? r.gateReasons : [];
+    const hasHuman = reasons.some(x => x.code === 'human_action_required' && (x.level === 'fail' || x.level === 'warn'));
+    const hasActFail = reasons.some(x => x.code === 'act_fail' && (x.level === 'fail' || x.level === 'warn'));
+    const hasDegraded = reasons.some(x => x.code === 'degraded' && x.level === 'fail');
+    const hasStuck = reasons.some(x => x.code === 'stuck' && x.level === 'fail');
+    if (hasHuman) blocking.push('human_action_required');
+    if (hasActFail) blocking.push('act_fail');
+    if (hasDegraded) blocking.push('degraded');
+    if (hasStuck) blocking.push('stuck');
+
+    // deep policy override present on long-window sustained cases: treat as hard block
+    if (r.matrixDispositionOverride && r.releaseDisposition === 'must_fix_first') {
+      blocking.push('deep_policy_must_fix_first');
+    }
+  }
+
+  const uniq = Array.from(new Set(blocking));
+
+  let releaseReadiness = 'observe_only';
+  if (uniq.length > 0) releaseReadiness = 'blocked';
+  else if (!requiredRegressionsComplete) releaseReadiness = 'observe_only';
+  else releaseReadiness = 'ready';
+
+  const releaseReady = (releaseReadiness === 'ready');
+
+  const releaseBlockingReasons = uniq;
+
+  return { releaseReady, releaseReadiness, releaseBlockingReasons, requiredRegressionsComplete, evidenceSufficiency };
+}
+
+// evidence sufficiency hint: if any result loops>=60 => long_window
+const anyLong = (results || []).some(r => Number(r.windowedMetrics?.loops || 0) >= 60);
+const release = releaseSemantics({ overallLevel, overallDisposition, results, evidenceHint: anyLong ? 'long_window' : 'short_or_unknown' });
+
 const out = {
   ok: true,
   kind: 'p7_2_gate',
@@ -506,6 +555,7 @@ const out = {
   matrixKey: scenarioModes.length === 1 ? `mode=${scenarioModes[0]}` : `mode=mixed(${scenarioModes.join(',')})`,
   gateLevel: overallLevel,
   releaseDisposition: overallDisposition,
+  ...release,
   SAFE_FOR_LONG_RUN: overallPass ? 'yes' : 'no',
   pass: overallPass,
   results,
