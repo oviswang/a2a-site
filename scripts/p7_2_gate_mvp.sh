@@ -235,6 +235,13 @@ function gateOne(traceDir, name) {
     fail('stuck', { health: summary?.health || null, maxStuckWindows: maxStuck }, [latestSummaryPath].filter(Boolean));
   }
 
+  // Gate 0: degraded windows (summary.health)
+  // NOTE: strict MVP default (0) means any degraded summary fails; adjust by env.
+  const maxDegraded = Number(process.env.GATE_MAX_DEGRADED_WINDOWS || 0);
+  if (keyMetrics.derived.degradedWindows > maxDegraded) {
+    fail('degraded', { health: summary?.health || null, maxDegradedWindows: maxDegraded }, [latestSummaryPath].filter(Boolean));
+  }
+
   // Gate 2: act_fail
   const maxActFail = Number(process.env.GATE_MAX_ACT_FAIL || 0);
   if (keyMetrics.derived.actFail > maxActFail) {

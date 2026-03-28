@@ -77,6 +77,8 @@ Goal: see a signal → know what to check next, what to tune, and what to rescue
 - Look first:
   - `*.summary.json` (act_fail / HUMAN_ACTION_REQUIRED)
   - latest `*.act.json`
+- Gate default semantics (P8-1 baseline):
+  - `scripts/p7_2_gate_mvp.sh` treats degraded as **fail** by default (`GATE_MAX_DEGRADED_WINDOWS=0`).
 - Tune first:
   - fix root cause (often token/auth or precondition mismatch)
 - Rescue first:
