@@ -1,0 +1,9 @@
+{
+  "loop": 4,
+  "ok": false,
+  "status": "error",
+  "error": {
+    "code": "act_failed",
+    "message": "simulated act failure"
+  }
+}

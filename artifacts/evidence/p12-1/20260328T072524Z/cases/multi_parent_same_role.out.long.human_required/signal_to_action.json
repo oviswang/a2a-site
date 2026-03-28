@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "kind": "p7_3_signal_to_action",
+  "traceDir": "artifacts/evidence/p12-1/20260328T072524Z/cases/multi_parent_same_role.out.long.human_required",
+  "inputs": {
+    "hasGate": true,
+    "hasSummary": true,
+    "hasDecision": false
+  },
+  "rescuePriority": {
+    "parent": null,
+    "role": null,
+    "rationale": []
+  },
+  "recommendedActions": [
+    {
+      "id": "human_required.stop",
+      "title": "HUMAN_ACTION_REQUIRED: stop automation and resolve boundary condition",
+      "steps": [
+        "1) Stop long-running runner (do not keep looping).",
+        "2) Open latest fatal/decision trace to read the reasonCode (e.g. blocked_stale, token invalid).",
+        "3) Perform the required human action (token reissue/permission/blocked decision).",
+        "4) Restart runner after resolution and re-run a short smoke loop."
+      ],
+      "validationChecks": [
+        {
+          "checkType": "graded_gate",
+          "targetField": "gateReasons(code=human_action_required)",
+          "expectedChange": "decrease_to_zero",
+          "evidencePathHint": "scripts/p7_2_gate_mvp.sh output after restart",
+          "compareWindow": "next 1-2 summary windows",
+          "note": null
+        },
+        {
+          "checkType": "summary_counts",
+          "targetField": "summary.counts.HUMAN_ACTION_REQUIRED",
+          "expectedChange": "be_zero",
+          "evidencePathHint": "latest *.summary.json",
+          "compareWindow": "next summary window",
+          "note": null
+        }
+      ],
+      "validationWorkflow": [],
+      "evidencePaths": [
+        "artifacts/evidence/p12-1/20260328T072524Z/cases/multi_parent_same_role.out.long.human_required/summary.json",
+        "artifacts/evidence/p12-1/20260328T072524Z/cases/multi_parent_same_role.out.long.human_required/d3.decision.json"
+      ],
+      "whenToStop": []
+    }
+  ],
+  "stopConditions": [
+    "HUMAN_ACTION_REQUIRED"
+  ]
+}

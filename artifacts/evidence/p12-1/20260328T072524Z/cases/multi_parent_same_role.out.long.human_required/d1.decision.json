@@ -1,0 +1,5 @@
+{
+  "loop": 1,
+  "policyDecision": "stop",
+  "reasonCode": "HUMAN_ACTION_REQUIRED"
+}
