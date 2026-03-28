@@ -1,0 +1,112 @@
+{
+  "ok": true,
+  "kind": "p7_2_gate",
+  "inputDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/single.in.long.pass",
+  "dispositionPolicyVersion": "p11-2-mvp.1",
+  "scenarioModes": [
+    "single"
+  ],
+  "matrixKey": "mode=single",
+  "gateLevel": "PASS",
+  "releaseDisposition": "long_run_ok",
+  "releaseReady": true,
+  "releaseReadiness": "ready",
+  "releaseBlockingReasons": [],
+  "requiredRegressionsComplete": true,
+  "evidenceSufficiency": "sufficient",
+  "SAFE_FOR_LONG_RUN": "yes",
+  "pass": true,
+  "results": [
+    {
+      "name": "single.in.long.pass",
+      "traceDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/single.in.long.pass",
+      "scenarioMode": "single",
+      "matrixKey": "mode=single",
+      "dispositionPolicyVersion": "p11-2-mvp.1",
+      "windowedMetrics": {
+        "loops": 60,
+        "handoff_ratio": 0,
+        "wait_ratio": 0.016666666666666666,
+        "act_fail_ratio": 0,
+        "human_required_ratio": 0,
+        "parent_count": 1,
+        "attention_req": 2,
+        "attention_req_per_parent": 2,
+        "yield_rate": 0,
+        "owner_stale_rate": 0,
+        "takeover_rate": 0
+      },
+      "matrixRuleId": "R0:single:baseline",
+      "matrixDecisionBasis": [],
+      "gateLevel": "PASS",
+      "releaseDisposition": "long_run_ok",
+      "matrixDispositionOverride": null,
+      "dispositionReason": [],
+      "SAFE_FOR_LONG_RUN": "yes",
+      "pass": true,
+      "gateReasons": [],
+      "recommendedActions": [],
+      "evidencePaths": [
+        "artifacts/evidence/p11-1/20260328T070328Z/cases/single.in.long.pass/summary.json"
+      ],
+      "keyMetrics": {
+        "health": "ok",
+        "windowLoops": 60,
+        "counts": {
+          "act_ok": 1,
+          "act_fail": 0,
+          "role_skip": 0,
+          "handoff": 0,
+          "wait": 1,
+          "noop": 0,
+          "HUMAN_ACTION_REQUIRED": 0,
+          "stale_skip": 0,
+          "precondition_failed": 0,
+          "dedupe_skip": 0
+        },
+        "conflictCounts": {},
+        "cost": {
+          "loops": 60,
+          "requestsTotal": 10,
+          "byStage": {
+            "token": 1,
+            "join": 1,
+            "attention": 2,
+            "task_get": 2,
+            "deliverable_get": 2,
+            "act": 1,
+            "echo": 1
+          },
+          "byParent": {
+            "p-single": 10
+          },
+          "refreshWillFetch": 2,
+          "refreshSkippedFreshCache": 1
+        },
+        "selection": {
+          "selection_churn": 0,
+          "parent_switch_count": 0,
+          "selection_churn_rate": 0
+        },
+        "derived": {
+          "actFail": 0,
+          "humanRequired": 0,
+          "stuckWindows": 0,
+          "degradedWindows": 0,
+          "ownerStale": 0,
+          "takeover": 0,
+          "yieldToPeer": 0,
+          "attentionReq": 2,
+          "topParentFetch": {
+            "parentTaskId": "p-single",
+            "attentionFetch": 10
+          },
+          "topStage": {
+            "stage": "attention",
+            "requests": 2
+          }
+        }
+      }
+    }
+  ]
+}

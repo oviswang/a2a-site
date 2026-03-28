@@ -600,6 +600,15 @@ function releaseSemantics({ overallLevel, overallDisposition, results, evidenceH
     if (!allowPartial) blocking.push('evidence_insufficient');
   }
 
+  if (CHANGE_TYPES.includes('selection_logic_change')) {
+    // selection evidence is mandatory for selection change type
+    const selectionCasePresent = (results || []).some(r =>
+      String(r.matrixRuleId || '').startsWith('Rsel') ||
+      (Array.isArray(r.gateReasons) && r.gateReasons.some(x => String(x.code || '').startsWith('selection_churn')))
+    );
+    if (!selectionCasePresent) blocking.push('selection_evidence_missing');
+  }
+
   // 2) Hard blocks from explicit boundary signals (per-result reasons or key metrics)
   for (const r of results || []) {
     const reasons = Array.isArray(r.gateReasons) ? r.gateReasons : [];
@@ -625,10 +634,18 @@ function releaseSemantics({ overallLevel, overallDisposition, results, evidenceH
   // - Evidence sufficiency is changeType-aware: some changeTypes allow partial as observe_only.
   const allowPartial = (CHANGE_TYPES.includes('runner_behavior_change')) && (CHANGE_TYPES.length === 1);
 
+  // P15-1: evidenceType hooks (MVP)
+  const selectionCasePresent = (results || []).some(r =>
+    String(r.matrixRuleId || '').startsWith('Rsel') ||
+    (Array.isArray(r.gateReasons) && r.gateReasons.some(x => String(x.code || '').startsWith('selection_churn')))
+  );
+
   let releaseReadiness = 'observe_only';
   if (uniq.length > 0) releaseReadiness = 'blocked';
   else if (!requiredRegressionsComplete) releaseReadiness = 'blocked';
   else if (evidenceSufficiency !== 'sufficient') releaseReadiness = allowPartial ? 'observe_only' : 'blocked';
+  // selection_logic_change requires selection evidence in addition to long-window
+  else if (CHANGE_TYPES.includes('selection_logic_change') && !selectionCasePresent) releaseReadiness = 'blocked';
   else releaseReadiness = 'ready';
 
   const releaseReady = (releaseReadiness === 'ready');
