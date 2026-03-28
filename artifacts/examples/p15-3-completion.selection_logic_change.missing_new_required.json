@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "kind": "p13_1_regression_completion",
+  "schemaVersion": "p13-1-mvp.1",
+  "releaseId": "p15-3-demo-selection-oldlike",
+  "changeType": [
+    "selection_logic_change"
+  ],
+  "requiredRuns": [
+    {
+      "name": "gate:multi_parent.out.long.selection_anomaly",
+      "command": "scripts/p7_2_gate_mvp.sh --dir <traceDir>",
+      "evidenceDir": "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly",
+      "gatePath": "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/gate.json",
+      "resultSummary": {
+        "gateLevel": "FAIL",
+        "releaseDisposition": "must_fix_first",
+        "releaseReadiness": "blocked",
+        "releaseBlockingReasons": [
+          "gate_failed_or_must_fix_first",
+          "required_regressions_incomplete",
+          "deep_policy_must_fix_first"
+        ],
+        "evidenceSufficiency": "sufficient",
+        "dispositionPolicyVersion": "p11-2-mvp.1"
+      }
+    },
+    {
+      "name": "gate:multi_parent_same_role.in.long.controlled",
+      "command": "scripts/p7_2_gate_mvp.sh --dir <traceDir>",
+      "evidenceDir": "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent_same_role.in.long.controlled",
+      "gatePath": "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent_same_role.in.long.controlled/gate.json",
+      "resultSummary": {
+        "gateLevel": "PASS",
+        "releaseDisposition": "long_run_ok",
+        "releaseBlockingReasons": []
+      }
+    }
+  ],
+  "requiredRegressionsComplete": false,
+  "missingRequired": [
+    {
+      "changeType": "selection_logic_change",
+      "name": "selection instability contrast (long) must stay observe_only",
+      "requiredMode": "multi_parent+same_role",
+      "requiredWindow": "long",
+      "expectedEvidenceDir": "artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent_same_role.out.long.selection_instability_mild",
+      "expectedCommand": "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type selection_logic_change",
+      "whyBlocking": "required run missing for changeType; release will be blocked by standards"
+    }
+  ],
+  "generatedAt": "2026-03-28T16:30:59.508Z",
+  "inputs": {
+    "commit": null,
+    "note": null,
+    "gates": [
+      "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly/gate.json",
+      "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent_same_role.in.long.controlled/gate.json"
+    ]
+  }
+}

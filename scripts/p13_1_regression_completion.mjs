@@ -86,6 +86,13 @@ const REQUIRED_RUNS = {
       requiredWindow: 'long',
     },
     {
+      name: 'selection instability contrast (long) must stay observe_only',
+      evidenceDirSuffix: 'artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent_same_role.out.long.selection_instability_mild',
+      command: 'scripts/p7_2_gate_mvp.sh --dir <dir> --change-type selection_logic_change',
+      requiredMode: 'multi_parent+same_role',
+      requiredWindow: 'long',
+    },
+    {
       name: 'combo long sanity (multi_parent+same_role)',
       evidenceDirSuffix: 'artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent_same_role.in.long.controlled',
       command: 'scripts/p7_2_gate_mvp.sh --dir <dir> --change-type selection_logic_change',
