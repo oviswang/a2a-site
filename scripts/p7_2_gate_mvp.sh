@@ -619,9 +619,20 @@ function releaseSemantics({ overallLevel, overallDisposition, results, evidenceH
     // selection evidence is mandatory for selection change type
     const selectionCasePresent = (results || []).some(r =>
       String(r.matrixRuleId || '').startsWith('Rsel') ||
-      (Array.isArray(r.gateReasons) && r.gateReasons.some(x => String(x.code || '').startsWith('selection_churn')))
+      (Array.isArray(r.gateReasons) && r.gateReasons.some(x => String(x.code || '').startsWith('selection_')))
     );
     if (!selectionCasePresent) blocking.push('selection_evidence_missing');
+  }
+
+  // boundary evidence (MVP): presence of human_boundary/health reasons
+  const boundaryCasePresent = (results || []).some(r => {
+    const codes = (Array.isArray(r.gateReasons) ? r.gateReasons.map(x => String(x.code || '')) : []);
+    return codes.some(c => ['human_action_required','act_fail','degraded','stuck'].includes(c));
+  });
+
+  if (CHANGE_TYPES.includes('gate_rule_change')) {
+    // gate rule changes must include boundary evidence
+    if (!boundaryCasePresent) blocking.push('boundary_evidence_missing');
   }
 
   // 2) Hard blocks from explicit boundary signals (per-result reasons or key metrics)
@@ -652,15 +663,21 @@ function releaseSemantics({ overallLevel, overallDisposition, results, evidenceH
   // P15-1: evidenceType hooks (MVP)
   const selectionCasePresent = (results || []).some(r =>
     String(r.matrixRuleId || '').startsWith('Rsel') ||
-    (Array.isArray(r.gateReasons) && r.gateReasons.some(x => String(x.code || '').startsWith('selection_churn')))
+    (Array.isArray(r.gateReasons) && r.gateReasons.some(x => String(x.code || '').startsWith('selection_')))
   );
 
   let releaseReadiness = 'observe_only';
   if (uniq.length > 0) releaseReadiness = 'blocked';
   else if (!requiredRegressionsComplete) releaseReadiness = 'blocked';
-  else if (evidenceSufficiency !== 'sufficient') releaseReadiness = allowPartial ? 'observe_only' : 'blocked';
+  else if (evidenceSufficiency !== 'sufficient') {
+    // P16-1: medium/partial handling for same_role_coordination_config
+    if (CHANGE_TYPES.includes('same_role_coordination_config')) releaseReadiness = 'observe_only';
+    else releaseReadiness = allowPartial ? 'observe_only' : 'blocked';
+  }
   // selection_logic_change requires selection evidence in addition to long-window
   else if (CHANGE_TYPES.includes('selection_logic_change') && !selectionCasePresent) releaseReadiness = 'blocked';
+  // gate_rule_change requires boundary evidence + long-window
+  else if (CHANGE_TYPES.includes('gate_rule_change') && !boundaryCasePresent) releaseReadiness = 'blocked';
   else releaseReadiness = 'ready';
 
   const releaseReady = (releaseReadiness === 'ready');
