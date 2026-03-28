@@ -16,10 +16,11 @@ No new logging system. We only standardize how to read existing:
 
 ## 1) First look when something breaks
 
-### P4-3 quick triage (new)
+### P4-3 / P5-3 quick triage
 1) Check the newest `*.decision.json` → tells you `policyDecision` (act/wait/handoff/noop/HUMAN_ACTION_REQUIRED) + reason.
-2) Check the newest `*.summary.json` (if present) → tells you windowed counts + `health` (ok/degraded/stuck) + deterministic recovery hints.
-3) Only then open `*.act.json` / `*.echo.json` for deep dives.
+2) Check the newest `*.summary.json` → tells you windowed counts + `health` (ok/degraded/stuck) + deterministic recovery hints.
+3) In multi-parent mode, also read `summary.perParent` / `summary.perRole` to decide **which parent/role to rescue first**.
+4) Only then open `*.act.json` / `*.echo.json` for deep dives.
 
 ### Step 1 — Identify entry type
 - **run**: `scripts/a2a_ops.sh run`

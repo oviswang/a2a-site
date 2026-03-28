@@ -125,6 +125,9 @@ function initWindow() {
       precondition_failed: 0,
       dedupe_skip: 0,
     },
+    // P5-3 governance views
+    perParent: {},
+    perRole: {},
     last: [],
   };
 }
@@ -132,6 +135,8 @@ function initWindow() {
 function bump(win, decision) {
   win.loops += 1;
   const pd = decision.policyDecision;
+
+  // global counts
   if (pd === 'act') {
     if (decision.reasonCode === CONFLICT_CODES.act_ok) win.counts.act_ok += 1;
     else if (decision.reasonCode === CONFLICT_CODES.act_fail) win.counts.act_fail += 1;
@@ -147,8 +152,52 @@ function bump(win, decision) {
   if (decision.reasonCode === CONFLICT_CODES.precondition_failed) win.counts.precondition_failed += 1;
   if (decision.reasonCode === CONFLICT_CODES.dedupe_skip) win.counts.dedupe_skip += 1;
 
+  // P5-3 per-parent view (selected parent for the loop)
+  const parentId = decision.selectedParentTaskId || decision.parentTaskId || null;
+  if (parentId) {
+    const p = (win.perParent[parentId] ||= {
+      loops: 0,
+      counts: { act_ok: 0, act_fail: 0, handoff: 0, wait: 0, noop: 0, HUMAN_ACTION_REQUIRED: 0, role_skip: 0, yield_to_peer: 0, stale_skip: 0, precondition_failed: 0, dedupe_skip: 0 },
+      topTypeCounts: {},
+      conflictCounts: {},
+      last: [],
+    });
+    p.loops += 1;
+    p.counts[pd] = (p.counts[pd] || 0) + 1;
+    if (decision.reasonCode) {
+      p.conflictCounts[decision.reasonCode] = (p.conflictCounts[decision.reasonCode] || 0) + 1;
+      if (decision.reasonCode === CONFLICT_CODES.role_skip) p.counts.role_skip += 1;
+      if (decision.reasonCode === CONFLICT_CODES.yield_to_peer) p.counts.yield_to_peer += 1;
+      if (decision.reasonCode === CONFLICT_CODES.stale_skip) p.counts.stale_skip += 1;
+      if (decision.reasonCode === CONFLICT_CODES.precondition_failed) p.counts.precondition_failed += 1;
+      if (decision.reasonCode === CONFLICT_CODES.dedupe_skip) p.counts.dedupe_skip += 1;
+      if (decision.reasonCode === CONFLICT_CODES.act_ok) p.counts.act_ok += 1;
+      if (decision.reasonCode === CONFLICT_CODES.act_fail) p.counts.act_fail += 1;
+    }
+    const t = decision.top?.type || null;
+    if (t) p.topTypeCounts[t] = (p.topTypeCounts[t] || 0) + 1;
+    p.last.push({ loop: decision.loop, policyDecision: pd, reasonCode: decision.reasonCode, taskId: decision.top?.taskId || null, type: t, action: decision.chosenAction });
+    if (p.last.length > 6) p.last.shift();
+  }
+
+  // P5-3 per-role view
+  const role = decision.role || 'any';
+  const r = (win.perRole[role] ||= {
+    loops: 0,
+    counts: { act_ok: 0, act_fail: 0, handoff: 0, wait: 0, noop: 0, HUMAN_ACTION_REQUIRED: 0 },
+    conflictCounts: {},
+    last: [],
+  });
+  r.loops += 1;
+  r.counts[pd] = (r.counts[pd] || 0) + 1;
+  if (decision.reasonCode) r.conflictCounts[decision.reasonCode] = (r.conflictCounts[decision.reasonCode] || 0) + 1;
+  r.last.push({ loop: decision.loop, parentTaskId: parentId, policyDecision: pd, reasonCode: decision.reasonCode, taskId: decision.top?.taskId || null, type: decision.top?.type || null, action: decision.chosenAction });
+  if (r.last.length > 6) r.last.shift();
+
+  // short global tail
   win.last.push({
     loop: decision.loop,
+    parentTaskId: parentId,
     policyDecision: decision.policyDecision,
     reasonCode: decision.reasonCode,
     taskId: decision.top?.taskId || null,
@@ -158,16 +207,16 @@ function bump(win, decision) {
   if (win.last.length > 10) win.last.shift();
 }
 
-function healthOf(win) {
-  // Deterministic heuristic (MVP):
-  // - stuck: no act_ok and no wait, but many noop/precondition/stale loops (spinning)
-  // - degraded: act_fail present OR many HUMAN_ACTION_REQUIRED
-  // - ok: otherwise
-  const c = win.counts;
-  const spinning = c.noop + c.precondition_failed + c.stale_skip + c.dedupe_skip;
-  if (c.act_ok === 0 && c.wait === 0 && spinning >= Math.max(3, Math.floor(win.loops * 0.6))) return 'stuck';
-  if (c.act_fail > 0 || c.HUMAN_ACTION_REQUIRED > 0) return 'degraded';
+function healthOfCounts(counts, loops) {
+  const c = counts;
+  const spinning = Number(c.noop || 0) + Number(c.precondition_failed || 0) + Number(c.stale_skip || 0) + Number(c.dedupe_skip || 0);
+  if (Number(c.act_ok || 0) === 0 && Number(c.wait || 0) === 0 && spinning >= Math.max(3, Math.floor(loops * 0.6))) return 'stuck';
+  if (Number(c.act_fail || 0) > 0 || Number(c.HUMAN_ACTION_REQUIRED || 0) > 0) return 'degraded';
   return 'ok';
+}
+
+function healthOf(win) {
+  return healthOfCounts(win.counts, win.loops);
 }
 
 function recoveryHints(win) {
@@ -179,12 +228,40 @@ function recoveryHints(win) {
   if (c.act_fail > 0) {
     hints.push('act_fail seen: inspect latest *.act.json and upstream API response bodies for deterministic error cause.');
   }
-  if (c.precondition_failed + c.stale_skip > 0) {
+  if ((c.precondition_failed || 0) + (c.stale_skip || 0) > 0) {
     hints.push('precondition_failed/stale_skip seen: likely stale attention or concurrent runners; verify review-state/deliverable status and reduce duplicate instances.');
   }
   if (c.wait > 0 && c.act_ok === 0 && (c.handoff + c.role_skip) > 0) {
     hints.push('mostly wait/handoff: verify role boundary (A2A_ROLE) and that A2A_PARENT_TASK_ID points to the parent coordination task.');
   }
+
+  // P5-3 governance hints (per-parent/role signals)
+  const perParent = win.perParent || {};
+  const parentHints = [];
+  for (const [pid, p] of Object.entries(perParent)) {
+    const h = healthOfCounts(p.counts, p.loops);
+    if (h === 'stuck') parentHints.push({ parentTaskId: pid, health: h, reason: 'spinning_without_progress' });
+    if ((p.counts.HUMAN_ACTION_REQUIRED || 0) > 0) parentHints.push({ parentTaskId: pid, health: 'degraded', reason: 'human_required' });
+    if ((p.counts.act_fail || 0) > 0) parentHints.push({ parentTaskId: pid, health: 'degraded', reason: 'act_fail' });
+    if ((p.counts.handoff || 0) > 0 && (p.topTypeCounts?.revision_requested || 0) > 0) {
+      parentHints.push({ parentTaskId: pid, health: 'degraded', reason: 'work_present_but_handoff' });
+    }
+  }
+  if (parentHints.length) {
+    // Recommend the most severe parent first (stuck > degraded).
+    parentHints.sort((a, b) => (a.health === 'stuck' ? -1 : 1) - (b.health === 'stuck' ? -1 : 1));
+    hints.push({ governance: 'per_parent', recommend: parentHints.slice(0, 3) });
+  }
+
+  const perRole = win.perRole || {};
+  const roleHints = [];
+  for (const [role, r] of Object.entries(perRole)) {
+    const loops = r.loops || 0;
+    if (loops >= 5 && (r.counts.wait || 0) === loops) roleHints.push({ role, reason: 'all_wait' });
+    if (loops >= 5 && (r.counts.handoff || 0) / loops > 0.8) roleHints.push({ role, reason: 'mostly_handoff' });
+  }
+  if (roleHints.length) hints.push({ governance: 'per_role', recommend: roleHints.slice(0, 3) });
+
   return hints;
 }
 
@@ -453,7 +530,9 @@ async function main() {
       bump(win, decision);
       if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
         const health = healthOf(win);
-        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: parents[0] || null, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+        const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
+        const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
+        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: parents[0] || null, windowLoops: win.loops, counts: win.counts, health, perParent, perRole, hints: recoveryHints(win), last: win.last };
         writeTrace(Date.now(), 'summary', summary);
       }
       console.log(`[loop ${loops}] idle: no attention items (parents=${parents.join(',')})`);
@@ -498,7 +577,9 @@ async function main() {
           bump(win, decision);
           if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
             const health = healthOf(win);
-            const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+            const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
+            const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
+            const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
             writeTrace(Date.now(), 'summary', summary);
           }
           await sleep(POLL_MS);
@@ -519,7 +600,9 @@ async function main() {
           bump(win, decision);
           if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
             const health = healthOf(win);
-            const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+            const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
+            const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
+            const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
             writeTrace(Date.now(), 'summary', summary);
           }
           await sleep(POLL_MS);
@@ -574,7 +657,9 @@ async function main() {
       bump(win, decision);
       if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
         const health = healthOf(win);
-        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+        const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
+        const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
+        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
         writeTrace(Date.now(), 'summary', summary);
       }
       console.log(`[loop ${loops}] role_skip role=${role} top=${top.type} task=${taskId}`);
@@ -613,7 +698,9 @@ async function main() {
       bump(win, decision);
       if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
         const health = healthOf(win);
-        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+        const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
+        const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
+        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
         writeTrace(Date.now(), 'summary', summary);
       }
       console.log(`[loop ${loops}] dedupe: skip ${sig} task=${taskId}`);
@@ -641,7 +728,9 @@ async function main() {
         bump(win, decision);
         if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
           const health = healthOf(win);
-          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+          const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
+          const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
+          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
           writeTrace(Date.now(), 'summary', summary);
         }
         console.error(`[loop ${loops}] HUMAN_ACTION_REQUIRED blocked_stale task=${taskId}`);
@@ -674,7 +763,9 @@ async function main() {
         bump(win, decision);
         if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
           const health = healthOf(win);
-          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+          const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
+          const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
+          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
           writeTrace(Date.now(), 'summary', summary);
         }
         await sleep(POLL_MS);
@@ -736,7 +827,9 @@ async function main() {
         bump(win, decision);
         if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
           const health = healthOf(win);
-          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+          const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
+          const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
+          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
           writeTrace(Date.now(), 'summary', summary);
         }
         await sleep(POLL_MS);
@@ -765,7 +858,9 @@ async function main() {
         bump(win, decision);
         if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
           const health = healthOf(win);
-          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+          const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, { loops: p.loops, counts: p.counts, health: healthOfCounts(p.counts, p.loops), topTypeCounts: p.topTypeCounts, conflictCounts: p.conflictCounts, last: p.last }]));
+          const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, { loops: r.loops, counts: r.counts, health: healthOfCounts(r.counts, r.loops), conflictCounts: r.conflictCounts, last: r.last }]));
+          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last , perParent, perRole };
           writeTrace(Date.now(), 'summary', summary);
         }
         await sleep(POLL_MS);
@@ -798,7 +893,24 @@ async function main() {
     bump(win, decision);
     if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
       const health = healthOf(win);
-      const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+      // P5-3 governance summary: include perParent/perRole rollups
+      const perParent = Object.fromEntries(Object.entries(win.perParent || {}).map(([pid, p]) => [pid, {
+        loops: p.loops,
+        counts: p.counts,
+        health: healthOfCounts(p.counts, p.loops),
+        topTypeCounts: p.topTypeCounts,
+        conflictCounts: p.conflictCounts,
+        last: p.last,
+      }]));
+      const perRole = Object.fromEntries(Object.entries(win.perRole || {}).map(([rk, r]) => [rk, {
+        loops: r.loops,
+        counts: r.counts,
+        health: healthOfCounts(r.counts, r.loops),
+        conflictCounts: r.conflictCounts,
+        last: r.last,
+      }]));
+
+      const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID || (decision.parentTaskIds && decision.parentTaskIds[0]) || null, windowLoops: win.loops, counts: win.counts, health, perParent, perRole, hints: recoveryHints(win), last: win.last };
       writeTrace(Date.now(), 'summary', summary);
     }
 
