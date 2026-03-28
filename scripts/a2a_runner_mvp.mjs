@@ -255,11 +255,18 @@ async function main() {
       handle: HANDLE,
       parentTaskId: PARENT_TASK_ID,
       loop: loops,
+      featureFlags: {
+        allowBlocked: env('A2A_ALLOW_BLOCKED', '0') === '1',
+        blockedMaxAgeMs: Number(env('A2A_BLOCKED_MAX_AGE_MS', String(10 * 60 * 1000))),
+      },
       top: null,
+      // P4-2 policy layer output
+      policyDecision: null, // act|wait|handoff|noop|HUMAN_ACTION_REQUIRED
       chosenAction: 'noop',
       acted: false,
       skipped: false,
       reasonCode: null,
+      reasonDetail: null,
       precondition: null,
     };
 
@@ -294,6 +301,7 @@ async function main() {
     const items = attention.json?.items || [];
     const top = pickTopAttention(items);
     if (!top) {
+      decision.policyDecision = 'wait';
       decision.skipped = true;
       decision.reasonCode = 'idle_no_attention';
       writeDecision(Date.now(), decision);
@@ -343,8 +351,10 @@ async function main() {
       (role === 'worker' && (top.type === 'revision_requested' || (ALLOW_BLOCKED && top.type === 'blocked')));
 
     if (!allowedByRole) {
+      decision.policyDecision = 'handoff';
       decision.skipped = true;
       decision.reasonCode = CONFLICT_CODES.role_skip;
+      decision.reasonDetail = { role, topType: top.type };
       decision.chosenAction = action;
       writeDecision(Date.now(), decision);
       console.log(`[loop ${loops}] role_skip role=${role} top=${top.type} task=${taskId}`);
@@ -373,8 +383,10 @@ async function main() {
 
     const sig = sigFor(top.type, action, sigExtra);
     if (st.lastByTask[taskId] === sig) {
+      decision.policyDecision = 'noop';
       decision.skipped = true;
       decision.reasonCode = CONFLICT_CODES.dedupe_skip;
+      decision.reasonDetail = { sig };
       decision.chosenAction = action;
       decision.precondition = { sig };
       writeDecision(Date.now(), decision);
@@ -396,6 +408,7 @@ async function main() {
       decision.precondition = { kind: 'blocked_freshness', topTs: top.ts || null, fresh, maxAgeMs: BLOCKED_MAX_AGE_MS };
 
       if (!fresh) {
+        decision.policyDecision = 'HUMAN_ACTION_REQUIRED';
         decision.skipped = true;
         decision.reasonCode = CONFLICT_CODES.human_required_blocked_stale;
         writeDecision(Date.now(), decision);
@@ -421,12 +434,16 @@ async function main() {
       decision.precondition = { kind: 'review_state', ok, revisionRequested, status: rs.status };
 
       if (!ok || !revisionRequested) {
+        decision.policyDecision = 'noop';
         decision.skipped = true;
         decision.reasonCode = CONFLICT_CODES.precondition_failed;
+        decision.reasonDetail = { expected: { revisionRequested: true }, got: { ok, revisionRequested } };
         writeDecision(Date.now(), decision);
         await sleep(POLL_MS);
         continue;
       }
+
+      decision.policyDecision = 'act';
 
       // read deliverable
       const d1 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {});
@@ -473,12 +490,16 @@ async function main() {
       decision.precondition = { kind: 'review_state', ok, pendingReview, status: rs.status };
 
       if (!ok || !pendingReview) {
+        decision.policyDecision = 'noop';
         decision.skipped = true;
         decision.reasonCode = CONFLICT_CODES.precondition_failed;
+        decision.reasonDetail = { expected: { pendingReview: true }, got: { ok, pendingReview } };
         writeDecision(Date.now(), decision);
         await sleep(POLL_MS);
         continue;
       }
+
+      decision.policyDecision = 'act';
 
       // Minimal, deterministic review policy:
       // - only accept if deliverable.status === 'submitted'
@@ -492,8 +513,10 @@ async function main() {
         writeTrace(Date.now(), 'act', actResult);
       } else if (status !== 'submitted') {
         // This is effectively a stale/changed state; treat as stale skip.
+        decision.policyDecision = 'noop';
         decision.skipped = true;
         decision.reasonCode = CONFLICT_CODES.stale_skip;
+        decision.reasonDetail = { deliverableStatus: status, expected: 'submitted' };
         writeDecision(Date.now(), decision);
         await sleep(POLL_MS);
         continue;
@@ -515,7 +538,10 @@ async function main() {
     // P4-1: finalize decision record
     decision.acted = !!actResult.ok && !actResult.skipped;
     decision.skipped = !!actResult.skipped;
+    // If earlier branches set policyDecision, keep it; otherwise decide now.
+    if (!decision.policyDecision) decision.policyDecision = decision.acted ? 'act' : 'noop';
     decision.reasonCode = actResult.ok ? CONFLICT_CODES.act_ok : CONFLICT_CODES.act_fail;
+    if (!actResult.ok) decision.reasonDetail = { error: classifyError(actResult) };
     writeDecision(Date.now(), decision);
 
     st.lastByTask[taskId] = sig;
