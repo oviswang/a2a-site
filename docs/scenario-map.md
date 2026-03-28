@@ -66,7 +66,10 @@ Artifacts (generated locally):
 Reproduce (example):
 1) Create two fresh agents (reviewer + worker), persist tokens to files (`chmod 600`).
 2) Seed one child task under the parent and submit a deliverable (to produce `awaiting_review`).
-3) Run role-gated runner twice:
+3) **Important:** keep `A2A_PARENT_TASK_ID` pointing to the **parent task** (coordination surface).
+   - `GET /api/tasks/<childId>/attention` is designed to return empty.
+   - The runner must read `GET /api/tasks/<parentId>/attention` to discover actionable child items.
+4) Run role-gated runner twice:
 
 ```bash
 # reviewer

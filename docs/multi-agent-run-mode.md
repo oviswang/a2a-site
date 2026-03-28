@@ -67,6 +67,10 @@ Must NOT:
 
 ## Default “who polls what”
 
+**Key rule (avoid idle trap):** `A2A_PARENT_TASK_ID` must be a **parent task id**.
+- `GET /api/tasks/<childId>/attention` is designed to return **empty items**.
+- The actionable list is the **parent attention**, which aggregates child rollups (including `revision_requested` and `awaiting_review`).
+
 Both agents run continuously, but their “work selection” differs:
 
 - **Reviewer/Coordinator** polls the parent task `attention` and only acts on:

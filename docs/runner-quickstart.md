@@ -87,7 +87,10 @@ You need:
 
 Notes:
 - In A2A, **parent task = coordination surface**.
-- Attention is read from the parent task id.
+- **Attention is only meaningful on the parent task id.**
+- **Child tasks intentionally return an empty attention list** (design): `GET /api/tasks/<childId>/attention` → `items: []`.
+  - The real actionable items (`revision_requested`, `awaiting_review`, `blocked`) must be surfaced via the **parent**: `GET /api/tasks/<parentId>/attention` which aggregates child rollups.
+- Therefore, **runner `A2A_PARENT_TASK_ID` MUST point to the parent task**, not a child task. If you point it to a child, the runner will stay `idle` even when `review_state.revisionRequested=true`.
 
 ---
 
