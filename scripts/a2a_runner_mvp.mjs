@@ -92,6 +92,39 @@ function writeTrace(ts, kind, obj) {
   fs.writeFileSync(tracePath(ts, kind), JSON.stringify(obj, null, 2));
 }
 
+// P4-1: structured decision trace + conflict governance codes
+const CONFLICT_CODES = {
+  role_skip: 'role_skip',
+  yield_to_peer: 'yield_to_peer',
+  dedupe_skip: 'dedupe_skip',
+  stale_skip: 'stale_skip',
+  precondition_failed: 'precondition_failed',
+  act_ok: 'act_ok',
+  act_fail: 'act_fail',
+  human_required_blocked_stale: 'human_required_blocked_stale',
+};
+
+function writeDecision(ts, decision) {
+  writeTrace(ts, 'decision', decision);
+}
+
+async function readReviewState({ taskId, handle, token }) {
+  // Lightweight fact surface for precondition/stale checks.
+  return await httpJson(
+    'GET',
+    `/api/tasks/${encodeURIComponent(taskId)}/review-state?actorType=agent&actorHandle=${encodeURIComponent(handle)}`,
+    { token }
+  );
+}
+
+function isFresh(tsIso, maxAgeMs) {
+  if (!tsIso) return false;
+  const t = Date.parse(String(tsIso));
+  if (!Number.isFinite(t)) return false;
+  return Date.now() - t <= maxAgeMs;
+}
+
+
 async function httpJson(method, urlPath, { token, body } = {}) {
   const url = `${BASE_URL}${urlPath}`;
   const headers = { 'Content-Type': 'application/json' };
@@ -216,6 +249,20 @@ async function main() {
     loops += 1;
     const loopStart = Date.now();
 
+    // P4-1 decision frame (filled progressively)
+    const decision = {
+      role: ROLE === '' ? 'any' : ROLE,
+      handle: HANDLE,
+      parentTaskId: PARENT_TASK_ID,
+      loop: loops,
+      top: null,
+      chosenAction: 'noop',
+      acted: false,
+      skipped: false,
+      reasonCode: null,
+      precondition: null,
+    };
+
     // 2) membership check
     {
       const r = await httpJson('POST', `/api/projects/${encodeURIComponent(PROJECT_SLUG)}/join`, {
@@ -247,10 +294,15 @@ async function main() {
     const items = attention.json?.items || [];
     const top = pickTopAttention(items);
     if (!top) {
+      decision.skipped = true;
+      decision.reasonCode = 'idle_no_attention';
+      writeDecision(Date.now(), decision);
       console.log(`[loop ${loops}] idle: no attention items (parent=${PARENT_TASK_ID})`);
       await sleep(POLL_MS);
       continue;
     }
+
+    decision.top = { taskId: String(top.taskId), type: String(top.type), ts: top.ts || null };
 
     const taskId = String(top.taskId);
 
@@ -291,6 +343,10 @@ async function main() {
       (role === 'worker' && (top.type === 'revision_requested' || (ALLOW_BLOCKED && top.type === 'blocked')));
 
     if (!allowedByRole) {
+      decision.skipped = true;
+      decision.reasonCode = CONFLICT_CODES.role_skip;
+      decision.chosenAction = action;
+      writeDecision(Date.now(), decision);
       console.log(`[loop ${loops}] role_skip role=${role} top=${top.type} task=${taskId}`);
       await sleep(POLL_MS);
       continue;
@@ -317,16 +373,37 @@ async function main() {
 
     const sig = sigFor(top.type, action, sigExtra);
     if (st.lastByTask[taskId] === sig) {
+      decision.skipped = true;
+      decision.reasonCode = CONFLICT_CODES.dedupe_skip;
+      decision.chosenAction = action;
+      decision.precondition = { sig };
+      writeDecision(Date.now(), decision);
       console.log(`[loop ${loops}] dedupe: skip ${sig} task=${taskId}`);
       await sleep(POLL_MS);
       continue;
     }
+
+    decision.chosenAction = action;
 
     // 7) execute action
     // Note: action may involve multiple calls; we record each step into traces.
     let actResult = { ok: true, skipped: true, reason: 'noop_mvp', action };
 
     if (action === 'clear_blocker') {
+      // P4-1: conservative blocked handling: enforce freshness or require human.
+      const BLOCKED_MAX_AGE_MS = Number(env('A2A_BLOCKED_MAX_AGE_MS', String(10 * 60 * 1000)));
+      const fresh = isFresh(top.ts, BLOCKED_MAX_AGE_MS);
+      decision.precondition = { kind: 'blocked_freshness', topTs: top.ts || null, fresh, maxAgeMs: BLOCKED_MAX_AGE_MS };
+
+      if (!fresh) {
+        decision.skipped = true;
+        decision.reasonCode = CONFLICT_CODES.human_required_blocked_stale;
+        writeDecision(Date.now(), decision);
+        console.error(`[loop ${loops}] HUMAN_ACTION_REQUIRED blocked_stale task=${taskId}`);
+        await sleep(POLL_MS);
+        continue;
+      }
+
       const r = await httpJson('POST', `/api/tasks/${encodeURIComponent(taskId)}/block`, {
         token,
         body: { isBlocked: false, actorHandle: HANDLE, actorType: 'agent' },
@@ -336,7 +413,22 @@ async function main() {
     }
 
     if (action === 'revise_resubmit') {
-      // read deliverable (already fetched above as d0, but re-fetch to keep step traces clean)
+      // P4-1: act-before-re-read: require review-state still says revisionRequested.
+      const rs = await readReviewState({ taskId, handle: HANDLE, token });
+      writeTrace(Date.now(), 'review_state_pre', rs);
+      const ok = !!(rs.ok && rs.json && rs.json.ok);
+      const revisionRequested = !!rs.json?.revisionRequested;
+      decision.precondition = { kind: 'review_state', ok, revisionRequested, status: rs.status };
+
+      if (!ok || !revisionRequested) {
+        decision.skipped = true;
+        decision.reasonCode = CONFLICT_CODES.precondition_failed;
+        writeDecision(Date.now(), decision);
+        await sleep(POLL_MS);
+        continue;
+      }
+
+      // read deliverable
       const d1 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {});
       writeTrace(Date.now(), 'deliverable_get_2', d1);
       if (!d1.ok || !d1.json?.deliverable) {
@@ -373,9 +465,23 @@ async function main() {
     }
 
     if (action === 'review_accept') {
+      // P4-1: act-before-re-read: require review-state still says pendingReview.
+      const rs = await readReviewState({ taskId, handle: HANDLE, token });
+      writeTrace(Date.now(), 'review_state_pre', rs);
+      const ok = !!(rs.ok && rs.json && rs.json.ok);
+      const pendingReview = !!rs.json?.pendingReview;
+      decision.precondition = { kind: 'review_state', ok, pendingReview, status: rs.status };
+
+      if (!ok || !pendingReview) {
+        decision.skipped = true;
+        decision.reasonCode = CONFLICT_CODES.precondition_failed;
+        writeDecision(Date.now(), decision);
+        await sleep(POLL_MS);
+        continue;
+      }
+
       // Minimal, deterministic review policy:
       // - only accept if deliverable.status === 'submitted'
-      // - otherwise noop with explicit reason
       const d1 = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}/deliverable`, {});
       writeTrace(Date.now(), 'deliverable_get_2', d1);
       const del = d1.json?.deliverable;
@@ -385,8 +491,12 @@ async function main() {
         actResult = { ok: false, error: 'deliverable_missing', status: d1.status, json: d1.json, action };
         writeTrace(Date.now(), 'act', actResult);
       } else if (status !== 'submitted') {
-        actResult = { ok: true, skipped: true, reason: 'noop_not_submitted', deliverableStatus: status, action };
-        writeTrace(Date.now(), 'act', actResult);
+        // This is effectively a stale/changed state; treat as stale skip.
+        decision.skipped = true;
+        decision.reasonCode = CONFLICT_CODES.stale_skip;
+        writeDecision(Date.now(), decision);
+        await sleep(POLL_MS);
+        continue;
       } else {
         const review = await httpJson('POST', `/api/tasks/${encodeURIComponent(taskId)}/deliverable/review`, {
           token,
@@ -401,6 +511,12 @@ async function main() {
     // 8) echo: re-read task
     const echo = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}`, {});
     writeTrace(Date.now(), 'echo', echo);
+
+    // P4-1: finalize decision record
+    decision.acted = !!actResult.ok && !actResult.skipped;
+    decision.skipped = !!actResult.skipped;
+    decision.reasonCode = actResult.ok ? CONFLICT_CODES.act_ok : CONFLICT_CODES.act_fail;
+    writeDecision(Date.now(), decision);
 
     st.lastByTask[taskId] = sig;
     saveState(st);
