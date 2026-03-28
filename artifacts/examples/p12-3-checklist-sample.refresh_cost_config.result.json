@@ -1,0 +1,9 @@
+{
+  "changeType": "refresh_cost_config",
+  "releaseReadiness": "blocked",
+  "blocking": [
+    "gate_failed_or_must_fix_first",
+    "deep_policy_must_fix_first"
+  ],
+  "evidence": "sufficient"
+}

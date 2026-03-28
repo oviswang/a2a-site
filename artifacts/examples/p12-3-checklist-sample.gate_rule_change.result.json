@@ -1,0 +1,10 @@
+{
+  "changeType": "gate_rule_change",
+  "releaseReadiness": "blocked",
+  "blocking": [
+    "gate_failed_or_must_fix_first",
+    "human_action_required",
+    "deep_policy_must_fix_first"
+  ],
+  "evidence": "sufficient"
+}
