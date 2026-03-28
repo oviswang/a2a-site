@@ -1,0 +1,213 @@
+{
+  "ok": true,
+  "kind": "p19_3_command_field_alignment_check",
+  "sourceOfTruth": "scripts/p13_1_regression_completion.mjs#REQUIRED_RUNS",
+  "hasDrift": true,
+  "report": [
+    {
+      "changeType": "refresh_cost_config",
+      "requiredItems": [
+        {
+          "name": "multi_parent long in-range sanity",
+          "command": "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type refresh_cost_config",
+          "evidenceDirSuffix": "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent.in.long.gating_effective",
+          "requiredMode": "multi_parent",
+          "requiredWindow": "long",
+          "expectedFields": null
+        },
+        {
+          "name": "multi_parent long out-of-range guardrail",
+          "command": "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type refresh_cost_config",
+          "evidenceDirSuffix": "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent.out.long.attention_too_high",
+          "requiredMode": "multi_parent",
+          "requiredWindow": "long",
+          "expectedFields": null
+        }
+      ],
+      "missingEvidenceInRequiredRegressionsDoc": [],
+      "missingEvidenceInChecklist": [],
+      "missingModeWindowInRequiredRegressionsDoc": [],
+      "missingModeWindowInChecklist": [],
+      "selectionKeywordPresence": null,
+      "missingRunNamesInChecklist": [],
+      "commandKeywordPresence": null,
+      "missingCommandsInChecklist": [
+        "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type refresh_cost_config",
+        "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type refresh_cost_config"
+      ],
+      "missingCommonFieldsInChecklist": [],
+      "missingSelectionFieldsInChecklist": []
+    },
+    {
+      "changeType": "same_role_coordination_config",
+      "requiredItems": [
+        {
+          "name": "same_role long stable should not be blocked",
+          "command": "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type same_role_coordination_config",
+          "evidenceDirSuffix": "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.in.long.stable",
+          "requiredMode": "same_role",
+          "requiredWindow": "long",
+          "expectedFields": null
+        },
+        {
+          "name": "same_role long yield_high must remain blocked (deep policy)",
+          "command": "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type same_role_coordination_config",
+          "evidenceDirSuffix": "artifacts/evidence/p11-1/20260328T070328Z/cases/same_role.out.long.yield_high",
+          "requiredMode": "same_role",
+          "requiredWindow": "long",
+          "expectedFields": null
+        }
+      ],
+      "missingEvidenceInRequiredRegressionsDoc": [],
+      "missingEvidenceInChecklist": [],
+      "missingModeWindowInRequiredRegressionsDoc": [],
+      "missingModeWindowInChecklist": [],
+      "selectionKeywordPresence": null,
+      "missingRunNamesInChecklist": [],
+      "commandKeywordPresence": {
+        "requiredRegressionsDoc": true,
+        "checklist": true
+      },
+      "missingCommandsInChecklist": [
+        "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type same_role_coordination_config",
+        "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type same_role_coordination_config"
+      ],
+      "missingCommonFieldsInChecklist": [],
+      "missingSelectionFieldsInChecklist": []
+    },
+    {
+      "changeType": "selection_logic_change",
+      "requiredItems": [
+        {
+          "name": "selection anomaly guardrail (long) must stay blocked",
+          "command": "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type selection_logic_change",
+          "evidenceDirSuffix": "artifacts/evidence/p13-2/20260328T154216Z/cases/multi_parent.out.long.selection_anomaly",
+          "requiredMode": "multi_parent",
+          "requiredWindow": "long",
+          "expectedFields": null
+        },
+        {
+          "name": "selection instability contrast (long) must stay observe_only",
+          "command": "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type selection_logic_change",
+          "evidenceDirSuffix": "artifacts/evidence/p15-2/20260328T162510Z/cases/multi_parent_same_role.out.long.selection_instability_mild",
+          "requiredMode": "multi_parent+same_role",
+          "requiredWindow": "long",
+          "expectedFields": null
+        },
+        {
+          "name": "combo long sanity (multi_parent+same_role)",
+          "command": "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type selection_logic_change",
+          "evidenceDirSuffix": "artifacts/evidence/p11-1/20260328T070328Z/cases/multi_parent_same_role.in.long.controlled",
+          "requiredMode": "multi_parent+same_role",
+          "requiredWindow": "long",
+          "expectedFields": null
+        }
+      ],
+      "missingEvidenceInRequiredRegressionsDoc": [],
+      "missingEvidenceInChecklist": [],
+      "missingModeWindowInRequiredRegressionsDoc": [],
+      "missingModeWindowInChecklist": [],
+      "selectionKeywordPresence": {
+        "requiredRegressionsDoc": true,
+        "checklist": true
+      },
+      "missingRunNamesInChecklist": [
+        "selection anomaly guardrail (long) must stay blocked",
+        "selection instability contrast (long) must stay observe_only",
+        "combo long sanity (multi_parent+same_role)"
+      ],
+      "commandKeywordPresence": {
+        "requiredRegressionsDoc": true,
+        "checklist": true
+      },
+      "missingCommandsInChecklist": [],
+      "missingCommonFieldsInChecklist": [],
+      "missingSelectionFieldsInChecklist": [
+        "selection_case_present"
+      ]
+    },
+    {
+      "changeType": "runner_behavior_change",
+      "requiredItems": [
+        {
+          "name": "contract: gate output exists (spot)",
+          "command": "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type runner_behavior_change",
+          "evidenceDirSuffix": "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass",
+          "requiredMode": "single",
+          "requiredWindow": "short",
+          "expectedFields": null
+        },
+        {
+          "name": "contract: signal_to_action works (spot)",
+          "command": "node scripts/p7_3_signal_to_action.mjs <gate.json>",
+          "evidenceDirSuffix": "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass",
+          "requiredMode": "single",
+          "requiredWindow": "short",
+          "expectedFields": null
+        }
+      ],
+      "missingEvidenceInRequiredRegressionsDoc": [],
+      "missingEvidenceInChecklist": [
+        "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass",
+        "artifacts/evidence/p10-1/20260328T064554Z/cases/single.in.short.pass"
+      ],
+      "missingModeWindowInRequiredRegressionsDoc": [],
+      "missingModeWindowInChecklist": [
+        {
+          "name": "contract: gate output exists (spot)",
+          "requiredMode": "single",
+          "requiredWindow": "short"
+        },
+        {
+          "name": "contract: signal_to_action works (spot)",
+          "requiredMode": "single",
+          "requiredWindow": "short"
+        }
+      ],
+      "selectionKeywordPresence": null,
+      "missingRunNamesInChecklist": [
+        "contract: gate output exists (spot)",
+        "contract: signal_to_action works (spot)"
+      ],
+      "commandKeywordPresence": {
+        "requiredRegressionsDoc": true,
+        "checklist": true
+      },
+      "missingCommandsInChecklist": [
+        "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type runner_behavior_change"
+      ],
+      "missingCommonFieldsInChecklist": [],
+      "missingSelectionFieldsInChecklist": []
+    },
+    {
+      "changeType": "gate_rule_change",
+      "requiredItems": [
+        {
+          "name": "boundary human_required must stay blocked",
+          "command": "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type gate_rule_change",
+          "evidenceDirSuffix": "artifacts/evidence/p12-1/20260328T072524Z/cases/multi_parent_same_role.out.long.human_required",
+          "requiredMode": "multi_parent+same_role",
+          "requiredWindow": "long",
+          "expectedFields": null
+        }
+      ],
+      "missingEvidenceInRequiredRegressionsDoc": [],
+      "missingEvidenceInChecklist": [],
+      "missingModeWindowInRequiredRegressionsDoc": [],
+      "missingModeWindowInChecklist": [],
+      "selectionKeywordPresence": null,
+      "missingRunNamesInChecklist": [
+        "boundary human_required must stay blocked"
+      ],
+      "commandKeywordPresence": {
+        "requiredRegressionsDoc": true,
+        "checklist": true
+      },
+      "missingCommandsInChecklist": [
+        "scripts/p7_2_gate_mvp.sh --dir <dir> --change-type gate_rule_change"
+      ],
+      "missingCommonFieldsInChecklist": [],
+      "missingSelectionFieldsInChecklist": []
+    }
+  ]
+}

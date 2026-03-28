@@ -48,6 +48,14 @@ function extractRequiredRuns(txt){
     if(rm) curObj.requiredMode=rm[1];
     const rw=line.match(/requiredWindow:\s*'([^']+)'/);
     if(rw) curObj.requiredWindow=rw[1];
+
+    // optional: expected check fields (array of strings)
+    const ef=line.match(/expectedFields:\s*\[([^\]]*)\]/);
+    if(ef){
+      const inner=ef[1];
+      const fields=[...inner.matchAll(/'([^']+)'/g)].map(x=>x[1]);
+      if(fields.length>0) curObj.expectedFields=fields;
+    }
   }
   return map;
 }
@@ -120,14 +128,59 @@ function main(){
     const selectionDocOk = selectionMust ? containsAny(req, selectionKeywords) : true;
     const selectionChkOk = selectionMust ? containsAny(chk, selectionKeywords) : true;
 
+    // command/field checks (P19-3 MVP)
+    const commandKeywordNeedles = ['p7_2_gate_mvp.sh','p7_3_signal_to_action.mjs','--change-type'];
+    const requiredRunNames = items.map(x=>x.name).filter(Boolean);
+    const requiredCommands = items.map(x=>x.command).filter(Boolean);
+
+    const missingRunNamesInChecklist = requiredRunNames.filter(n=>!containsAny(chk,[n]));
+
+    // command keywords are expected in checklist more than in required-regressions doc
+    const commandNeedleOkReq = true;
+    const commandNeedleOkChk = commandKeywordNeedles.every(k=>containsWord(chk,k));
+
+    const missingCommandsInChecklist = requiredCommands.filter(c=>!containsAny(chk,[c]));
+
+    const commonFields = [
+      'releaseReadiness',
+      'releaseBlockingReasons',
+      'requiredRegressionsComplete',
+      'evidenceSufficiency',
+      'matrixDispositionOverride',
+      'dispositionReason',
+    ];
+    const selectionFields = ['rsel','selection_case_present','selection_','keymetrics.selection'];
+
+    const strictCT = new Set(['selection_logic_change','runner_behavior_change','same_role_coordination_config','gate_rule_change']);
+    const needFields = strictCT.has(ct) ? commonFields : [];
+    const missingFieldsInChecklist = needFields.filter(f=>!containsWord(chk,f));
+
+    const missingSelectionFieldsInChecklist = (ct==='selection_logic_change')
+      ? selectionFields.filter(f=>!containsAny(chk,[f]))
+      : [];
+
     out.push({
       changeType: ct,
-      requiredItems: items.map(x=>({name:x.name||null, evidenceDirSuffix:x.evidenceDirSuffix||null, requiredMode:x.requiredMode||null, requiredWindow:x.requiredWindow||null})),
+      requiredItems: items.map(x=>({
+        name:x.name||null,
+        command:x.command||null,
+        evidenceDirSuffix:x.evidenceDirSuffix||null,
+        requiredMode:x.requiredMode||null,
+        requiredWindow:x.requiredWindow||null,
+        expectedFields:x.expectedFields||null,
+      })),
       missingEvidenceInRequiredRegressionsDoc: missingInReq,
       missingEvidenceInChecklist: missingInChk,
       missingModeWindowInRequiredRegressionsDoc: missingModeWindowInReq,
       missingModeWindowInChecklist: missingModeWindowInChk,
       selectionKeywordPresence: selectionMust ? { requiredRegressionsDoc: selectionDocOk, checklist: selectionChkOk } : null,
+
+      // P19-3
+      missingRunNamesInChecklist,
+      commandKeywordPresence: strictCT.has(ct) ? { requiredRegressionsDoc: commandNeedleOkReq, checklist: commandNeedleOkChk } : null,
+      missingCommandsInChecklist,
+      missingCommonFieldsInChecklist: missingFieldsInChecklist,
+      missingSelectionFieldsInChecklist,
     });
   }
 
@@ -136,10 +189,15 @@ function main(){
     x.missingEvidenceInChecklist.length>0 ||
     x.missingModeWindowInRequiredRegressionsDoc.length>0 ||
     x.missingModeWindowInChecklist.length>0 ||
-    (x.selectionKeywordPresence && (!x.selectionKeywordPresence.requiredRegressionsDoc || !x.selectionKeywordPresence.checklist))
+    (x.selectionKeywordPresence && (!x.selectionKeywordPresence.requiredRegressionsDoc || !x.selectionKeywordPresence.checklist)) ||
+    (x.missingRunNamesInChecklist && x.missingRunNamesInChecklist.length>0) ||
+    (x.commandKeywordPresence && (!x.commandKeywordPresence.requiredRegressionsDoc || !x.commandKeywordPresence.checklist)) ||
+    (x.missingCommandsInChecklist && x.missingCommandsInChecklist.length>0) ||
+    (x.missingCommonFieldsInChecklist && x.missingCommonFieldsInChecklist.length>0) ||
+    (x.missingSelectionFieldsInChecklist && x.missingSelectionFieldsInChecklist.length>0)
   );
 
-  const report={ ok:true, kind:'p18_3_alignment_check', sourceOfTruth:'scripts/p13_1_regression_completion.mjs#REQUIRED_RUNS', hasDrift, report: out };
+  const report={ ok:true, kind:'p19_3_command_field_alignment_check', sourceOfTruth:'scripts/p13_1_regression_completion.mjs#REQUIRED_RUNS', hasDrift, report: out };
   fs.writeFileSync('artifacts/examples/p17-3-alignment-check.json', JSON.stringify(report,null,2));
   console.log(JSON.stringify(report,null,2));
 }
