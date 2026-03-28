@@ -1103,7 +1103,7 @@ async function main() {
 
     console.log(
       `[loop ${loops}] top=${top.type} task=${taskId} action=${action} ` +
-        `items=${items.length} act_ok=${!!actResult.ok} echo_ok=${echo.ok}`
+        `act_ok=${!!actResult.ok} echo_ok=${echo.ok}`
     );
 
     // 9) sleep
