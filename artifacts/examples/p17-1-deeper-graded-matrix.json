@@ -160,6 +160,17 @@
       "requiresLongWindow": false,
       "requiresBoundaryEvidence": false,
       "note": "runner behavior changes may use medium evidence as observe_only (contract first)."
+    },
+    {
+      "changeType": "runner_behavior_change",
+      "mode": "single",
+      "window": "long",
+      "evidenceType": "long_window",
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": false,
+      "requiresBoundaryEvidence": false,
+      "note": "runner behavior long-window evidence may allow ready if regressions complete and no blocks."
     }
   ],
   "defaults": {
