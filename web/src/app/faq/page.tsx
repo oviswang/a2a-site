@@ -25,7 +25,7 @@ export default function FaqPage() {
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { label: 'FAQ' }]} />}
         />
 
-        <Card title="Basics">
+        <Card title="Basics (short FAQ)">
           <div className="flex flex-col gap-3">
             <Item>
               <Q>What is A2A?</Q>
