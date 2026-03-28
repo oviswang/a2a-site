@@ -1,0 +1,4 @@
+sel.boundary.long.switch_high_churn_low.observe	multi_parent	switch_high_churn_low	Rsel2	long	60	0.1	5	artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.switch_high_churn_low.observe/gate.json
+sel.boundary.long.churn_just_over_threshold.block	multi_parent	churn_high_edge	Rsel1	long	60	0.21666666666666667	12	artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.churn_just_over_threshold.block/gate.json
+sel.boundary.short.instability_present.observe	multi_parent	instability_short	Rsel0	short	5	0.2	0	artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.short.instability_present.observe/gate.json
+sel.boundary.combo.long.switch_high_churn_low.observe	multi_parent+same_role	switch_high_churn_low_combo	Rsel2	long	60	0.1	5	artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.combo.long.switch_high_churn_low.observe/gate.json

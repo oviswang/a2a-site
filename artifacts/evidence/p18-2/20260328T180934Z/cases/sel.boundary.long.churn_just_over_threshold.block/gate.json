@@ -1,0 +1,158 @@
+{
+  "ok": true,
+  "kind": "p7_2_gate",
+  "inputDir": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.churn_just_over_threshold.block",
+  "dispositionPolicyVersion": "p11-2-mvp.1",
+  "scenarioModes": [
+    "multi_parent"
+  ],
+  "matrixKey": "mode=multi_parent",
+  "gateLevel": "FAIL",
+  "releaseDisposition": "must_fix_first",
+  "releaseReady": false,
+  "releaseReadiness": "blocked",
+  "releaseBlockingReasons": [
+    "gate_failed_or_must_fix_first",
+    "required_regressions_incomplete",
+    "deep_policy_must_fix_first"
+  ],
+  "requiredRegressionsComplete": false,
+  "evidenceSufficiency": "sufficient",
+  "tableDriven": {
+    "enabled": false,
+    "matrixPath": "artifacts/examples/p17-1-deeper-graded-matrix.json",
+    "matchedCells": [],
+    "decision": null
+  },
+  "SAFE_FOR_LONG_RUN": "no",
+  "pass": false,
+  "results": [
+    {
+      "name": "sel.boundary.long.churn_just_over_threshold.block",
+      "traceDir": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.churn_just_over_threshold.block",
+      "scenarioMode": "multi_parent",
+      "matrixKey": "mode=multi_parent",
+      "dispositionPolicyVersion": "p11-2-mvp.1",
+      "windowedMetrics": {
+        "loops": 60,
+        "handoff_ratio": 0.3,
+        "wait_ratio": 0.5,
+        "act_fail_ratio": 0,
+        "human_required_ratio": 0,
+        "parent_count": 3,
+        "attention_req": 30,
+        "attention_req_per_parent": 10,
+        "yield_rate": 0,
+        "owner_stale_rate": 0,
+        "takeover_rate": 0
+      },
+      "matrixRuleId": "Rsel1:multi_parent:selection_churn_high",
+      "matrixDecisionBasis": [
+        "selection_churn_rate>0.2",
+        "parent_switch_count>=10"
+      ],
+      "gateLevel": "FAIL",
+      "releaseDisposition": "must_fix_first",
+      "matrixDispositionOverride": {
+        "from": {
+          "gateLevel": "FAIL",
+          "releaseDisposition": "must_fix_first"
+        },
+        "to": {
+          "gateLevel": "FAIL",
+          "releaseDisposition": "must_fix_first"
+        }
+      },
+      "dispositionReason": [
+        "multi_parent long-window attention_req_per_parent>5 => must_fix_first",
+        "multi_parent long-window selection churn => must_fix_first"
+      ],
+      "SAFE_FOR_LONG_RUN": "no",
+      "pass": false,
+      "gateReasons": [
+        {
+          "level": "fail",
+          "code": "selection_churn_high",
+          "signalClass": "unknown",
+          "matrixDisposition": "must_fix_first",
+          "detail": {
+            "selection_churn_rate": 0.21666666666666667,
+            "parent_switch_count": 12,
+            "loops": 60
+          }
+        }
+      ],
+      "recommendedActions": [],
+      "evidencePaths": [
+        "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.churn_just_over_threshold.block/sel5.decision.json",
+        "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.churn_just_over_threshold.block/sel6.decision.json",
+        "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.churn_just_over_threshold.block/sel7.decision.json",
+        "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.churn_just_over_threshold.block/sel8.decision.json",
+        "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.churn_just_over_threshold.block/sel9.decision.json",
+        "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.churn_just_over_threshold.block/summary.json"
+      ],
+      "keyMetrics": {
+        "health": "ok",
+        "windowLoops": 60,
+        "counts": {
+          "act_ok": 0,
+          "act_fail": 0,
+          "role_skip": 0,
+          "handoff": 18,
+          "wait": 30,
+          "noop": 0,
+          "HUMAN_ACTION_REQUIRED": 0,
+          "stale_skip": 0,
+          "precondition_failed": 0,
+          "dedupe_skip": 0
+        },
+        "conflictCounts": {
+          "selection_churn": 13
+        },
+        "cost": {
+          "loops": 60,
+          "requestsTotal": 10,
+          "byStage": {
+            "token": 1,
+            "join": 1,
+            "attention": 30,
+            "task_get": 2,
+            "deliverable_get": 2,
+            "act": 1,
+            "echo": 1
+          },
+          "byParent": {
+            "p-a": 10,
+            "p-b": 10,
+            "p-c": 10
+          },
+          "refreshWillFetch": 2,
+          "refreshSkippedFreshCache": 10
+        },
+        "selection": {
+          "selection_churn": 13,
+          "parent_switch_count": 12,
+          "selection_churn_rate": 0.21666666666666667
+        },
+        "derived": {
+          "actFail": 0,
+          "humanRequired": 0,
+          "stuckWindows": 0,
+          "degradedWindows": 0,
+          "ownerStale": 0,
+          "takeover": 0,
+          "yieldToPeer": 0,
+          "attentionReq": 30,
+          "topParentFetch": {
+            "parentTaskId": "p-a",
+            "attentionFetch": 10
+          },
+          "topStage": {
+            "stage": "attention",
+            "requests": 30
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "ok": true,
+  "kind": "p18_2_selection_boundary",
+  "ts": "20260328T180934Z",
+  "cases": [
+    {
+      "caseId": "sel.boundary.long.switch_high_churn_low.observe",
+      "mode": "multi_parent",
+      "window": "long",
+      "loops": 60,
+      "problemType": "switch_high_churn_low",
+      "supportsRule": "Rsel2",
+      "selectionMetrics": {
+        "selection_churn": 6,
+        "parent_switch_count": 5,
+        "selection_churn_rate": 0.1
+      },
+      "artifacts": {
+        "summary": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.switch_high_churn_low.observe/summary.json",
+        "gate": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.switch_high_churn_low.observe/gate.json",
+        "signal_to_action": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.switch_high_churn_low.observe/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "sel.boundary.long.churn_just_over_threshold.block",
+      "mode": "multi_parent",
+      "window": "long",
+      "loops": 60,
+      "problemType": "churn_high_edge",
+      "supportsRule": "Rsel1",
+      "selectionMetrics": {
+        "selection_churn": 13,
+        "parent_switch_count": 12,
+        "selection_churn_rate": 0.21666666666666667
+      },
+      "artifacts": {
+        "summary": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.churn_just_over_threshold.block/summary.json",
+        "gate": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.churn_just_over_threshold.block/gate.json",
+        "signal_to_action": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.long.churn_just_over_threshold.block/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "sel.boundary.short.instability_present.observe",
+      "mode": "multi_parent",
+      "window": "short",
+      "loops": 5,
+      "problemType": "instability_short",
+      "supportsRule": "Rsel0",
+      "selectionMetrics": {
+        "selection_churn": 1,
+        "parent_switch_count": 0,
+        "selection_churn_rate": 0.2
+      },
+      "artifacts": {
+        "summary": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.short.instability_present.observe/summary.json",
+        "gate": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.short.instability_present.observe/gate.json",
+        "signal_to_action": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.short.instability_present.observe/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "sel.boundary.combo.long.switch_high_churn_low.observe",
+      "mode": "multi_parent+same_role",
+      "window": "long",
+      "loops": 60,
+      "problemType": "switch_high_churn_low_combo",
+      "supportsRule": "Rsel2",
+      "selectionMetrics": {
+        "selection_churn": 6,
+        "parent_switch_count": 5,
+        "selection_churn_rate": 0.1
+      },
+      "artifacts": {
+        "summary": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.combo.long.switch_high_churn_low.observe/summary.json",
+        "gate": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.combo.long.switch_high_churn_low.observe/gate.json",
+        "signal_to_action": "artifacts/evidence/p18-2/20260328T180934Z/cases/sel.boundary.combo.long.switch_high_churn_low.observe/signal_to_action.json"
+      }
+    }
+  ]
+}
