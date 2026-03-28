@@ -884,6 +884,11 @@ async function main() {
 
     decision.chosenAction = action;
 
+    // Test-only: freeze owner before side effects for stable proofs (default off)
+    // Only triggers when explicitly configured, and only before we attempt to POST/PUT side effects.
+    const thisKey = `${taskId}:${String(top.type)}`;
+    const freezeThis = TEST_FREEZE_OWNER_ON_KEY && TEST_FREEZE_OWNER_ON_KEY === thisKey && !!decision.selfIsOwner;
+
     // 7) execute action
     // Note: action may involve multiple calls; we record each step into traces.
     let actResult = { ok: true, skipped: true, reason: 'noop_mvp', action };
@@ -893,6 +898,18 @@ async function main() {
       const BLOCKED_MAX_AGE_MS = Number(env('A2A_BLOCKED_MAX_AGE_MS', String(10 * 60 * 1000)));
       const fresh = isFresh(top.ts, BLOCKED_MAX_AGE_MS);
       decision.precondition = { kind: 'blocked_freshness', topTs: top.ts || null, fresh, maxAgeMs: BLOCKED_MAX_AGE_MS };
+
+      // Test-only freeze (default off): stop before side effects for a specific key.
+      if (freezeThis) {
+        decision.policyDecision = 'wait';
+        decision.skipped = true;
+        decision.reasonCode = CONFLICT_CODES.owner_frozen_for_test;
+        decision.reasonDetail = { key: thisKey, note: 'test-only freeze before clear_blocker side effect; no act attempted' };
+        writeDecision(Date.now(), decision);
+        bump(win, decision);
+        await sleep(POLL_MS);
+        continue;
+      }
 
       // Test-only freeze (default off): stop before side effects for a specific key.
       // Used to produce stable stale/takeover proofs without killing processes.
