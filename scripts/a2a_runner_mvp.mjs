@@ -249,9 +249,12 @@ function pickTopAttention(items) {
 function loadState() {
   const p = path.join(TRACE_DIR, 'state.json');
   try {
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
+    const st = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (!st.lastByTask) st.lastByTask = {};
+    if (!st.yieldByItem) st.yieldByItem = {};
+    return st;
   } catch {
-    return { lastByTask: {} };
+    return { lastByTask: {}, yieldByItem: {} };
   }
 }
 function saveState(st) {
@@ -341,7 +344,13 @@ async function main() {
       featureFlags: {
         allowBlocked: env('A2A_ALLOW_BLOCKED', '0') === '1',
         blockedMaxAgeMs: Number(env('A2A_BLOCKED_MAX_AGE_MS', String(10 * 60 * 1000))),
+        sameRoleCoordination: env('A2A_SAME_ROLE_COORDINATION', '0') === '1',
+        yieldWindowMs: Number(env('A2A_YIELD_WINDOW_MS', '60000')),
       },
+      coordinationMode: (env('A2A_SAME_ROLE_COORDINATION', '0') === '1') ? 'same_role_multi_instance' : 'single_instance',
+      ownerHandle: null,
+      selfIsOwner: null,
+      yieldUntil: null,
       top: null,
       // P4-2 policy layer output
       policyDecision: null, // act|wait|handoff|noop|HUMAN_ACTION_REQUIRED
@@ -402,6 +411,66 @@ async function main() {
     decision.top = { taskId: String(top.taskId), type: String(top.type), ts: top.ts || null };
 
     const taskId = String(top.taskId);
+
+    // P5-1: same-role multi-instance coordination (deterministic, no locks)
+    const SAME_ROLE = env('A2A_SAME_ROLE_COORDINATION', '0') === '1';
+    const YIELD_WINDOW_MS = Number(env('A2A_YIELD_WINDOW_MS', '60000'));
+    const HANDLES_RAW = env('A2A_SAME_ROLE_HANDLES', '').trim();
+    if (SAME_ROLE) {
+      const handles = HANDLES_RAW ? HANDLES_RAW.split(',').map((s) => s.trim()).filter(Boolean) : [];
+      // If misconfigured, fall back to single-instance semantics.
+      if (handles.length >= 2 && handles.includes(HANDLE)) {
+        const sorted = [...handles].sort();
+        const key = `${taskId}:${String(top.type)}`;
+        // Simple deterministic hash (stable across processes): sum of char codes.
+        let h = 0;
+        for (const ch of key) h = (h + ch.charCodeAt(0)) >>> 0;
+        const owner = sorted[h % sorted.length];
+        decision.ownerHandle = owner;
+        decision.selfIsOwner = owner === HANDLE;
+
+        // yield window check
+        const now = Date.now();
+        const until = Number(st.yieldByItem?.[key] || 0);
+        if (until && now < until && owner !== HANDLE) {
+          decision.policyDecision = 'handoff';
+          decision.skipped = true;
+          decision.reasonCode = CONFLICT_CODES.yield_to_peer;
+          decision.reasonDetail = { ownerHandle: owner, yieldUntil: new Date(until).toISOString() };
+          decision.yieldUntil = new Date(until).toISOString();
+          writeDecision(Date.now(), decision);
+          bump(win, decision);
+          if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
+            const health = healthOf(win);
+            const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+            writeTrace(Date.now(), 'summary', summary);
+          }
+          await sleep(POLL_MS);
+          continue;
+        }
+
+        if (owner !== HANDLE) {
+          const newUntil = now + YIELD_WINDOW_MS;
+          st.yieldByItem[key] = newUntil;
+          saveState(st);
+
+          decision.policyDecision = 'handoff';
+          decision.skipped = true;
+          decision.reasonCode = CONFLICT_CODES.yield_to_peer;
+          decision.reasonDetail = { ownerHandle: owner, yieldUntil: new Date(newUntil).toISOString() };
+          decision.yieldUntil = new Date(newUntil).toISOString();
+          writeDecision(Date.now(), decision);
+          bump(win, decision);
+          if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
+            const health = healthOf(win);
+            const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+            writeTrace(Date.now(), 'summary', summary);
+          }
+          await sleep(POLL_MS);
+          continue;
+        }
+      }
+    }
 
     // 4) read task + events
     const task = await httpJson('GET', `/api/tasks/${encodeURIComponent(taskId)}`, {});
