@@ -1,0 +1,47 @@
+{
+  "ok": true,
+  "kind": "p7_2_gate",
+  "inputDir": "artifacts/a2a-runner/p1-1-20260327-204209",
+  "SAFE_FOR_LONG_RUN": "yes",
+  "pass": true,
+  "results": [
+    {
+      "name": "p1-1-20260327-204209",
+      "traceDir": "artifacts/a2a-runner/p1-1-20260327-204209",
+      "SAFE_FOR_LONG_RUN": "yes",
+      "pass": true,
+      "gateReasons": [
+        {
+          "level": "warn",
+          "code": "no_summary_cost",
+          "detail": {
+            "note": "summary.cost missing; run with summary enabled to gate cost"
+          }
+        }
+      ],
+      "evidencePaths": [
+        "artifacts/a2a-runner/p1-1-20260327-204209/2026-03-27T12-42-22-184Z.act.json",
+        "artifacts/a2a-runner/p1-1-20260327-204209/2026-03-27T12-42-22-190Z.echo.json"
+      ],
+      "keyMetrics": {
+        "health": null,
+        "windowLoops": 0,
+        "counts": {},
+        "conflictCounts": {},
+        "cost": null,
+        "derived": {
+          "actFail": 0,
+          "humanRequired": 0,
+          "stuckWindows": 0,
+          "degradedWindows": 0,
+          "ownerStale": 0,
+          "takeover": 0,
+          "yieldToPeer": 0,
+          "attentionReq": 0,
+          "topParentFetch": null,
+          "topStage": null
+        }
+      }
+    }
+  ]
+}

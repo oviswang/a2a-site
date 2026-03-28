@@ -1,2 +1,5 @@
 artifacts
 web/.bak_routes_20260328_101119
+
+!artifacts/examples/
+!artifacts/examples/**
