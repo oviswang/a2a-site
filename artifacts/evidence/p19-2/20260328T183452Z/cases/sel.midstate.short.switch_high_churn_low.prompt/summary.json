@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "kind": "summary",
+  "role": "any",
+  "handle": "example",
+  "parentTaskId": "p-example",
+  "windowLoops": 5,
+  "counts": {
+    "act_ok": 0,
+    "act_fail": 0,
+    "role_skip": 0,
+    "handoff": 0,
+    "wait": 1,
+    "noop": 0,
+    "HUMAN_ACTION_REQUIRED": 0,
+    "stale_skip": 0,
+    "precondition_failed": 0,
+    "dedupe_skip": 0
+  },
+  "health": "ok",
+  "perParent": {},
+  "perRole": {},
+  "cost": {
+    "loops": 5,
+    "requests": {
+      "total": 10,
+      "byStage": {
+        "token": 1,
+        "join": 1,
+        "attention": 30,
+        "task_get": 2,
+        "deliverable_get": 2,
+        "act": 1,
+        "echo": 1
+      },
+      "byParent": {
+        "p-a": 10,
+        "p-b": 10,
+        "p-c": 10
+      }
+    },
+    "refreshPlan": {
+      "willFetch": 2,
+      "skippedByFreshCache": 10
+    }
+  },
+  "hints": [],
+  "last": [],
+  "parentTaskIds": [
+    "p-a",
+    "p-b",
+    "p-c"
+  ]
+}

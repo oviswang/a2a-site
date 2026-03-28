@@ -1,0 +1,171 @@
+{
+  "ok": true,
+  "kind": "p19_2_selection_midstate",
+  "ts": "20260328T183452Z",
+  "cases": [
+    {
+      "caseId": "sel.midstate.short.switch_high_churn_low.prompt",
+      "mode": "multi_parent",
+      "windowClass": "short",
+      "loops": 5,
+      "problemType": "switch_high_churn_low",
+      "boundaryBand": "prompt",
+      "supportsRule": "unknown",
+      "selectionMetrics": {
+        "selection_churn": 1,
+        "parent_switch_count": 0,
+        "selection_churn_rate": 0.2
+      },
+      "gateFacts": {
+        "matrixRuleId": "Rmp1:multi_parent:attention_per_parent_high",
+        "gateReasons": [
+          "selection_churn_present"
+        ],
+        "gateLevel": "WARN",
+        "releaseDisposition": "observe_only"
+      },
+      "artifacts": {
+        "summary": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.short.switch_high_churn_low.prompt/summary.json",
+        "gate": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.short.switch_high_churn_low.prompt/gate.json",
+        "signal_to_action": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.short.switch_high_churn_low.prompt/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "sel.midstate.medium.switch_high_churn_low.observe",
+      "mode": "multi_parent",
+      "windowClass": "medium",
+      "loops": 20,
+      "problemType": "switch_high_churn_low",
+      "boundaryBand": "observe",
+      "supportsRule": "unknown",
+      "selectionMetrics": {
+        "selection_churn": 3,
+        "parent_switch_count": 2,
+        "selection_churn_rate": 0.15
+      },
+      "gateFacts": {
+        "matrixRuleId": "Rmp1:multi_parent:attention_per_parent_high",
+        "gateReasons": [
+          "selection_churn_present"
+        ],
+        "gateLevel": "WARN",
+        "releaseDisposition": "observe_only"
+      },
+      "artifacts": {
+        "summary": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.medium.switch_high_churn_low.observe/summary.json",
+        "gate": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.medium.switch_high_churn_low.observe/gate.json",
+        "signal_to_action": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.medium.switch_high_churn_low.observe/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "sel.midstate.long.switch_high_churn_low.observe",
+      "mode": "multi_parent",
+      "windowClass": "long",
+      "loops": 60,
+      "problemType": "switch_high_churn_low",
+      "boundaryBand": "observe",
+      "supportsRule": "Rsel2",
+      "selectionMetrics": {
+        "selection_churn": 6,
+        "parent_switch_count": 5,
+        "selection_churn_rate": 0.1
+      },
+      "gateFacts": {
+        "matrixRuleId": "Rsel2:multi_parent:selection_instability",
+        "gateReasons": [
+          "selection_churn_present",
+          "selection_instability"
+        ],
+        "gateLevel": "WARN",
+        "releaseDisposition": "observe_only"
+      },
+      "artifacts": {
+        "summary": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.long.switch_high_churn_low.observe/summary.json",
+        "gate": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.long.switch_high_churn_low.observe/gate.json",
+        "signal_to_action": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.long.switch_high_churn_low.observe/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "sel.midstate.long.churn_medium.observe",
+      "mode": "multi_parent",
+      "windowClass": "long",
+      "loops": 60,
+      "problemType": "churn_medium",
+      "boundaryBand": "observe",
+      "supportsRule": "Rsel2",
+      "selectionMetrics": {
+        "selection_churn": 10,
+        "parent_switch_count": 8,
+        "selection_churn_rate": 0.16666666666666666
+      },
+      "gateFacts": {
+        "matrixRuleId": "Rsel2:multi_parent:selection_instability",
+        "gateReasons": [
+          "selection_churn_present",
+          "selection_instability"
+        ],
+        "gateLevel": "WARN",
+        "releaseDisposition": "observe_only"
+      },
+      "artifacts": {
+        "summary": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.long.churn_medium.observe/summary.json",
+        "gate": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.long.churn_medium.observe/gate.json",
+        "signal_to_action": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.long.churn_medium.observe/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "sel.midstate.long.churn_just_over_threshold.block",
+      "mode": "multi_parent",
+      "windowClass": "long",
+      "loops": 60,
+      "problemType": "churn_high_edge",
+      "boundaryBand": "block",
+      "supportsRule": "Rsel1",
+      "selectionMetrics": {
+        "selection_churn": 13,
+        "parent_switch_count": 12,
+        "selection_churn_rate": 0.21666666666666667
+      },
+      "gateFacts": {
+        "matrixRuleId": "Rsel1:multi_parent:selection_churn_high",
+        "gateReasons": [
+          "selection_churn_high"
+        ],
+        "gateLevel": "FAIL",
+        "releaseDisposition": "must_fix_first"
+      },
+      "artifacts": {
+        "summary": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.long.churn_just_over_threshold.block/summary.json",
+        "gate": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.long.churn_just_over_threshold.block/gate.json",
+        "signal_to_action": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.long.churn_just_over_threshold.block/signal_to_action.json"
+      }
+    },
+    {
+      "caseId": "sel.midstate.medium.combo.instability.observe",
+      "mode": "multi_parent+same_role",
+      "windowClass": "medium",
+      "loops": 20,
+      "problemType": "instability_combo",
+      "boundaryBand": "observe",
+      "supportsRule": "unknown",
+      "selectionMetrics": {
+        "selection_churn": 3,
+        "parent_switch_count": 2,
+        "selection_churn_rate": 0.15
+      },
+      "gateFacts": {
+        "matrixRuleId": "Rmp1:multi_parent:attention_per_parent_high",
+        "gateReasons": [
+          "selection_churn_present"
+        ],
+        "gateLevel": "WARN",
+        "releaseDisposition": "observe_only"
+      },
+      "artifacts": {
+        "summary": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.medium.combo.instability.observe/summary.json",
+        "gate": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.medium.combo.instability.observe/gate.json",
+        "signal_to_action": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.medium.combo.instability.observe/signal_to_action.json"
+      }
+    }
+  ]
+}

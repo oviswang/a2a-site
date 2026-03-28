@@ -1,0 +1,144 @@
+{
+  "ok": true,
+  "kind": "p7_2_gate",
+  "inputDir": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.short.switch_high_churn_low.prompt",
+  "dispositionPolicyVersion": "p11-2-mvp.1",
+  "scenarioModes": [
+    "multi_parent"
+  ],
+  "matrixKey": "mode=multi_parent",
+  "gateLevel": "WARN",
+  "releaseDisposition": "observe_only",
+  "releaseReady": false,
+  "releaseReadiness": "blocked",
+  "releaseBlockingReasons": [
+    "required_regressions_incomplete",
+    "evidence_insufficient"
+  ],
+  "requiredRegressionsComplete": false,
+  "evidenceSufficiency": "partial",
+  "tableDriven": {
+    "enabled": false,
+    "matrixPath": "artifacts/examples/p17-1-deeper-graded-matrix.json",
+    "derivedInputs": null,
+    "matchedCell": null,
+    "matchedCells": [],
+    "decision": null,
+    "finalAppliedDecision": null,
+    "why": null
+  },
+  "SAFE_FOR_LONG_RUN": "yes",
+  "pass": true,
+  "results": [
+    {
+      "name": "sel.midstate.short.switch_high_churn_low.prompt",
+      "traceDir": "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.short.switch_high_churn_low.prompt",
+      "scenarioMode": "multi_parent",
+      "matrixKey": "mode=multi_parent",
+      "dispositionPolicyVersion": "p11-2-mvp.1",
+      "windowedMetrics": {
+        "loops": 5,
+        "handoff_ratio": 0,
+        "wait_ratio": 0.2,
+        "act_fail_ratio": 0,
+        "human_required_ratio": 0,
+        "parent_count": 3,
+        "attention_req": 30,
+        "attention_req_per_parent": 10,
+        "yield_rate": 0,
+        "owner_stale_rate": 0,
+        "takeover_rate": 0
+      },
+      "matrixRuleId": "Rmp1:multi_parent:attention_per_parent_high",
+      "matrixDecisionBasis": [
+        "attention_req_per_parent>5"
+      ],
+      "gateLevel": "WARN",
+      "releaseDisposition": "observe_only",
+      "matrixDispositionOverride": null,
+      "dispositionReason": [],
+      "SAFE_FOR_LONG_RUN": "yes",
+      "pass": true,
+      "gateReasons": [
+        {
+          "level": "warn",
+          "code": "selection_churn_present",
+          "signalClass": "unknown",
+          "matrixDisposition": "observe_only",
+          "detail": {
+            "selection_churn_rate": 0.2,
+            "parent_switch_count": 0,
+            "loops": 5
+          }
+        }
+      ],
+      "recommendedActions": [],
+      "evidencePaths": [
+        "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.short.switch_high_churn_low.prompt/sel1.decision.json",
+        "artifacts/evidence/p19-2/20260328T183452Z/cases/sel.midstate.short.switch_high_churn_low.prompt/summary.json"
+      ],
+      "keyMetrics": {
+        "health": "ok",
+        "windowLoops": 5,
+        "counts": {
+          "act_ok": 0,
+          "act_fail": 0,
+          "role_skip": 0,
+          "handoff": 0,
+          "wait": 1,
+          "noop": 0,
+          "HUMAN_ACTION_REQUIRED": 0,
+          "stale_skip": 0,
+          "precondition_failed": 0,
+          "dedupe_skip": 0
+        },
+        "conflictCounts": {
+          "selection_churn": 1
+        },
+        "cost": {
+          "loops": 5,
+          "requestsTotal": 10,
+          "byStage": {
+            "token": 1,
+            "join": 1,
+            "attention": 30,
+            "task_get": 2,
+            "deliverable_get": 2,
+            "act": 1,
+            "echo": 1
+          },
+          "byParent": {
+            "p-a": 10,
+            "p-b": 10,
+            "p-c": 10
+          },
+          "refreshWillFetch": 2,
+          "refreshSkippedFreshCache": 10
+        },
+        "selection": {
+          "selection_churn": 1,
+          "parent_switch_count": 0,
+          "selection_churn_rate": 0.2
+        },
+        "derived": {
+          "actFail": 0,
+          "humanRequired": 0,
+          "stuckWindows": 0,
+          "degradedWindows": 0,
+          "ownerStale": 0,
+          "takeover": 0,
+          "yieldToPeer": 0,
+          "attentionReq": 30,
+          "topParentFetch": {
+            "parentTaskId": "p-a",
+            "attentionFetch": 10
+          },
+          "topStage": {
+            "stage": "attention",
+            "requests": 30
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "case": "must_fix_first_edge",
+  "rule": "Rsel1:multi_parent:selection_churn_high",
+  "reasons": [
+    "selection_churn_high"
+  ],
+  "sel": {
+    "selection_churn": 13,
+    "parent_switch_count": 12,
+    "selection_churn_rate": 0.21666666666666667
+  }
+}

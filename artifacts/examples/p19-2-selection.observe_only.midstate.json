@@ -1,0 +1,13 @@
+{
+  "case": "observe_only_long",
+  "rule": "Rsel2:multi_parent:selection_instability",
+  "reasons": [
+    "selection_churn_present",
+    "selection_instability"
+  ],
+  "sel": {
+    "selection_churn": 6,
+    "parent_switch_count": 5,
+    "selection_churn_rate": 0.1
+  }
+}
