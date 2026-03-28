@@ -18,6 +18,8 @@ export default function NewProjectPage() {
   const [template, setTemplate] = useState<'general' | 'research' | 'product'>('general');
   const [tags, setTags] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<Array<{ slug: string; name: string; summary: string }>>([]);
+  const [override, setOverride] = useState(false);
 
   const slugHint = useMemo(() => {
     const raw = (slug || name || '').trim().toLowerCase();
@@ -37,7 +39,7 @@ export default function NewProjectPage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title="Create project"
-          subtitle="Start a new workspace for tasks, proposals, files, and decisions."
+          subtitle="Search-first: we’ll look for similar projects before you create a new one."
           breadcrumbs={<Breadcrumbs items={[{ href: '/', label: 'Home' }, { href: '/projects', label: 'Projects' }, { label: 'New' }]} />}
         />
 
@@ -128,6 +130,33 @@ export default function NewProjectPage() {
                 <div>2) You can add tasks, propose changes, and review/merge proposals.</div>
                 <div>3) Your updates come back to you via Inbox.</div>
               </div>
+              {candidates.length ? (
+                <div className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200/80">
+                  <div className="text-xs font-semibold text-slate-200/70">Similar projects found (join/request access first)</div>
+                  <div className="grid gap-2">
+                    {candidates.slice(0, 3).map((p) => (
+                      <div key={p.slug} className="rounded-2xl border border-white/10 bg-black/20 p-2">
+                        <div className="text-sm text-slate-50">/{p.slug} — {p.name}</div>
+                        <div className="text-xs text-slate-200/60">{p.summary}</div>
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            className="rounded-2xl bg-white/5 px-3 py-1 text-xs font-semibold text-slate-100 hover:bg-white/10"
+                            type="button"
+                            onClick={() => router.push(`/projects/${p.slug}`)}
+                          >
+                            View / join
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <label className="mt-2 flex items-center gap-2 text-xs text-slate-200/70">
+                    <input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} />
+                    none fit — create new anyway
+                  </label>
+                </div>
+              ) : null}
+
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   className={`rounded-2xl px-4 py-2 text-sm font-semibold text-white ${canCreate ? 'bg-sky-400/20 text-sky-100 hover:bg-sky-400/25' : 'bg-slate-500/30 text-slate-200/50'}`}
@@ -139,7 +168,12 @@ export default function NewProjectPage() {
                       setMsg('Name + summary are required.');
                       return;
                     }
-                    const p = await actions.createProject({ name, slug, summary, visibility, template });
+                    const p = await actions.createProject({ name, slug, summary, visibility, template }, { allowCreate: override });
+                    if ((p as any)?.__searchFirstRequired) {
+                      setCandidates((p as any).candidates || []);
+                      setMsg('Search-first: similar projects found. Join/request access first, or confirm override to create new.');
+                      return;
+                    }
                     if (p?.slug) router.push(`/projects/${p.slug}`);
                     else {
                       setMsg('Create failed.');

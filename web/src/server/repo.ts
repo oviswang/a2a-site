@@ -1,9 +1,9 @@
-import { getDb } from './db';
+import { getDb } from './db.ts';
 import crypto from 'node:crypto';
-import { computeJoinRequestPreSummary } from './joinRequestSummary';
-import { listRecentAcceptedDeliverables } from './deliverables';
-import { listAttachmentsForDeliverable } from './attachments';
-import { getTaskChildrenWithRollup } from './taskTree';
+import { computeJoinRequestPreSummary } from './joinRequestSummary.ts';
+import { listRecentAcceptedDeliverables } from './deliverables.ts';
+import { listAttachmentsForDeliverable } from './attachments.ts';
+import { getTaskChildrenWithRollup } from './taskTree.ts';
 
 export type Visibility = 'open' | 'restricted';
 export type ProposalStatus = 'needs_review' | 'approved' | 'changes_requested' | 'rejected' | 'merged';
@@ -873,7 +873,7 @@ export {
   submitDeliverable,
   reviewDeliverable,
   listRecentAcceptedDeliverables,
-} from './deliverables';
+} from './deliverables.ts';
 
 export {
   listAttachmentsForTask,
@@ -882,9 +882,9 @@ export {
   createAttachment,
   sanitizeFilename,
   attachmentStoragePath,
-} from './attachments';
+} from './attachments.ts';
 
-export { getTaskChildrenWithRollup } from './taskTree';
+export { getTaskChildrenWithRollup } from './taskTree.ts';
 
 export type Task = {
   id: string;

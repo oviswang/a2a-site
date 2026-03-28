@@ -286,22 +286,40 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function createProject(args: {
-    name: string;
-    slug?: string;
-    summary: string;
-    visibility: 'open' | 'restricted';
-    template?: 'general' | 'research' | 'product';
-  }) {
+  async function createProject(
+    args: {
+      name: string;
+      slug?: string;
+      summary: string;
+      visibility: 'open' | 'restricted';
+      template?: 'general' | 'research' | 'product';
+      tags?: string;
+    },
+    opts?: { allowCreate?: boolean }
+  ) {
     try {
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...args, template: args.template || 'general', actorHandle: state.actor.handle, actorType: state.actor.actorType }),
+        body: JSON.stringify({
+          ...args,
+          template: args.template || 'general',
+          actorHandle: state.actor.handle,
+          actorType: state.actor.actorType,
+          allowCreate: opts?.allowCreate === true,
+        }),
       });
-      const data = await json<{ ok: boolean; project: WorkspaceProject }>(res);
+
+      const data = await res.json().catch(() => null);
+      if (!data) return null;
+
+      if (!res.ok && data?.error === 'search_first_required') {
+        return { __searchFirstRequired: true, candidates: (data.search?.recommendedProjects || []) } as any;
+      }
+
+      if (!data.ok) return null;
       setState((s) => ({ ...s, projects: [data.project, ...s.projects] }));
-      return data.project;
+      return data.project as WorkspaceProject;
     } catch {
       return null;
     }

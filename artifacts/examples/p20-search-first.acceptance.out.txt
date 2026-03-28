@@ -1,0 +1,13 @@
+OK open: search hits
+OK open: create not allowed when hits exist
+OK open: recommended contains open project
+OK restricted: search hits
+OK restricted: create not allowed when hits exist
+OK restricted: join returns requested/joined
+OK no-match: 0 results
+OK no-match: create allowed
+OK repeat: search-first deterministic
+OK query builder produced query
+OK query returns project results
+OK audit: events written
+ALL_OK
