@@ -171,6 +171,50 @@
       "requiresLongWindow": false,
       "requiresBoundaryEvidence": false,
       "note": "runner behavior long-window evidence may allow ready if regressions complete and no blocks."
+    },
+    {
+      "changeType": "gate_rule_change",
+      "mode": "single",
+      "window": "long",
+      "evidenceType": "boundary_case_present",
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": true,
+      "note": "gate_rule_change requires boundary evidence even in single mode."
+    },
+    {
+      "changeType": "gate_rule_change",
+      "mode": "single",
+      "window": "long",
+      "evidenceType": "long_window",
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": true,
+      "note": "long-window alone is insufficient for gate_rule_change without boundary evidence."
+    },
+    {
+      "changeType": "gate_rule_change",
+      "mode": "multi_parent",
+      "window": "long",
+      "evidenceType": "boundary_case_present",
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": true,
+      "note": "gate_rule_change requires boundary evidence in multi_parent mode."
+    },
+    {
+      "changeType": "gate_rule_change",
+      "mode": "multi_parent",
+      "window": "long",
+      "evidenceType": "long_window",
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": true,
+      "note": "gate_rule_change long-window alone insufficient without boundary evidence."
     }
   ],
   "defaults": {

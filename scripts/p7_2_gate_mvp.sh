@@ -602,8 +602,12 @@ function releaseSemantics({ overallLevel, overallDisposition, results, evidenceH
   const tableDriven = {
     enabled: Boolean(matrixPolicy && matrixPolicy.enabled),
     matrixPath: matrixPolicy?.matrixPath || null,
+    derivedInputs: matrixPolicy?.derivedInputs || null,
+    matchedCell: matrixPolicy?.matchedCell || null,
     matchedCells: matrixPolicy?.matchedCells || [],
     decision: matrixPolicy?.decision || null,
+    finalAppliedDecision: null,
+    why: null,
   };
 
   const blocking = [];
@@ -682,8 +686,10 @@ function releaseSemantics({ overallLevel, overallDisposition, results, evidenceH
 
   if (uniq.length > 0) {
     releaseReadiness = 'blocked';
+    if (tableDriven.enabled) { tableDriven.finalAppliedDecision = null; tableDriven.why = 'hard blocks present'; }
   } else if (!requiredRegressionsComplete) {
     releaseReadiness = 'blocked';
+    if (tableDriven.enabled) { tableDriven.finalAppliedDecision = null; tableDriven.why = 'required regressions incomplete'; }
   } else {
     // table-driven policy (MVP) for selected changeTypes only
     const td = tableDriven.enabled ? tableDriven.decision : null;
@@ -691,23 +697,37 @@ function releaseSemantics({ overallLevel, overallDisposition, results, evidenceH
     const tdRequiresLongWindow = td ? Boolean(td.requiresLongWindow) : null;
     const tdRequiresBoundaryEvidence = td ? Boolean(td.requiresBoundaryEvidence) : null;
 
-    // evidence constraints from table
+    if (tableDriven.enabled && td) {
+      tableDriven.finalAppliedDecision = {
+        allowObserveOnly: tdAllowObserveOnly,
+        requiresLongWindow: tdRequiresLongWindow,
+        requiresBoundaryEvidence: tdRequiresBoundaryEvidence,
+      };
+    }
+
+    // evidence constraints from table (matrix-first)
     if (tdRequiresBoundaryEvidence && !boundaryCasePresent) {
       releaseReadiness = 'blocked';
+      if (tableDriven.enabled) tableDriven.why = 'matrix requires boundary evidence';
     } else if (tdRequiresLongWindow && evidenceSufficiency !== 'sufficient') {
       releaseReadiness = (tdAllowObserveOnly && evidenceSufficiency === 'partial') ? 'observe_only' : 'blocked';
+      if (tableDriven.enabled) tableDriven.why = 'matrix requires long-window evidence';
+    } else if (tableDriven.enabled && tdAllowObserveOnly && evidenceSufficiency === 'partial') {
+      releaseReadiness = 'observe_only';
+      tableDriven.why = 'matrix allows observe_only on partial evidence';
     } else {
-      // fall back to existing (pre-table) semantics
+      // fall back to existing (pre-table) semantics as stricter-only fallback
       if (evidenceSufficiency !== 'sufficient') {
-        // P16-1: medium/partial handling for same_role_coordination_config
         if (CHANGE_TYPES.includes('same_role_coordination_config')) releaseReadiness = 'observe_only';
         else releaseReadiness = allowPartial ? 'observe_only' : 'blocked';
+      } else if (CHANGE_TYPES.includes('selection_logic_change') && !selectionCasePresent) {
+        releaseReadiness = 'blocked';
+      } else if (CHANGE_TYPES.includes('gate_rule_change') && !boundaryCasePresent) {
+        releaseReadiness = 'blocked';
+      } else {
+        releaseReadiness = 'ready';
       }
-      // selection_logic_change requires selection evidence in addition to long-window
-      else if (CHANGE_TYPES.includes('selection_logic_change') && !selectionCasePresent) releaseReadiness = 'blocked';
-      // gate_rule_change requires boundary evidence + long-window
-      else if (CHANGE_TYPES.includes('gate_rule_change') && !boundaryCasePresent) releaseReadiness = 'blocked';
-      else releaseReadiness = 'ready';
+      if (tableDriven.enabled && !tableDriven.why) tableDriven.why = 'fallback semantics';
     }
   }
 
@@ -734,8 +754,8 @@ function loadMatrixPolicy() {
   const matrix = readJson(matrixPath);
   if (!matrix || !Array.isArray(matrix.cells)) return { enabled:false, matrixPath, matchedCells:[], decision:null };
 
-  // Only enable table-driven for a small allowlist (P18-1 MVP)
-  const allowed = new Set(['runner_behavior_change','same_role_coordination_config','selection_logic_change']);
+  // Only enable table-driven for a small allowlist (P19-1 MVP)
+  const allowed = new Set(['runner_behavior_change','same_role_coordination_config','selection_logic_change','gate_rule_change']);
   const activeChangeTypes = CHANGE_TYPES.filter(ct => allowed.has(ct));
   if (activeChangeTypes.length !== 1) return { enabled:false, matrixPath, matchedCells:[], decision:null };
   const changeType = activeChangeTypes[0];
@@ -766,16 +786,24 @@ function loadMatrixPolicy() {
     const cell = matrix.cells.find(c => c.changeType===changeType && c.mode===primaryMode && c.window===window && c.evidenceType===et);
     if (cell) { matched.push(cell); break; }
   }
+  const derivedInputs = { changeType, mode: primaryMode, window, desiredEvidenceTypes };
+
   const decision = matched[0] ? {
     minEvidenceSufficiency: matched[0].minEvidenceSufficiency,
     allowObserveOnly: matched[0].allowObserveOnly,
     requiresLongWindow: matched[0].requiresLongWindow,
     requiresBoundaryEvidence: matched[0].requiresBoundaryEvidence,
     note: matched[0].note || null,
-    derived: { changeType, primaryMode, window, desiredEvidenceTypes },
   } : null;
 
-  return { enabled:true, matrixPath, matchedCells: matched.map(c=>({changeType:c.changeType,mode:c.mode,window:c.window,evidenceType:c.evidenceType})), decision };
+  return {
+    enabled:true,
+    matrixPath,
+    derivedInputs,
+    matchedCell: matched[0] ? {changeType:matched[0].changeType,mode:matched[0].mode,window:matched[0].window,evidenceType:matched[0].evidenceType} : null,
+    matchedCells: matched.map(c=>({changeType:c.changeType,mode:c.mode,window:c.window,evidenceType:c.evidenceType})),
+    decision,
+  };
 }
 
 const completion = readCompletion(REGRESSIONS_JSON);
