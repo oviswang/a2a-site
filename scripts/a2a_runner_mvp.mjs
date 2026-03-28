@@ -108,6 +108,85 @@ function writeDecision(ts, decision) {
   writeTrace(ts, 'decision', decision);
 }
 
+// P4-3: lightweight windowed health summary
+function initWindow() {
+  return {
+    loops: 0,
+    counts: {
+      act_ok: 0,
+      act_fail: 0,
+      role_skip: 0,
+      handoff: 0,
+      wait: 0,
+      noop: 0,
+      HUMAN_ACTION_REQUIRED: 0,
+      stale_skip: 0,
+      precondition_failed: 0,
+      dedupe_skip: 0,
+    },
+    last: [],
+  };
+}
+
+function bump(win, decision) {
+  win.loops += 1;
+  const pd = decision.policyDecision;
+  if (pd === 'act') {
+    if (decision.reasonCode === CONFLICT_CODES.act_ok) win.counts.act_ok += 1;
+    else if (decision.reasonCode === CONFLICT_CODES.act_fail) win.counts.act_fail += 1;
+  }
+  if (pd === 'handoff') {
+    win.counts.handoff += 1;
+    if (decision.reasonCode === CONFLICT_CODES.role_skip) win.counts.role_skip += 1;
+  }
+  if (pd === 'wait') win.counts.wait += 1;
+  if (pd === 'noop') win.counts.noop += 1;
+  if (pd === 'HUMAN_ACTION_REQUIRED') win.counts.HUMAN_ACTION_REQUIRED += 1;
+  if (decision.reasonCode === CONFLICT_CODES.stale_skip) win.counts.stale_skip += 1;
+  if (decision.reasonCode === CONFLICT_CODES.precondition_failed) win.counts.precondition_failed += 1;
+  if (decision.reasonCode === CONFLICT_CODES.dedupe_skip) win.counts.dedupe_skip += 1;
+
+  win.last.push({
+    loop: decision.loop,
+    policyDecision: decision.policyDecision,
+    reasonCode: decision.reasonCode,
+    taskId: decision.top?.taskId || null,
+    type: decision.top?.type || null,
+    action: decision.chosenAction,
+  });
+  if (win.last.length > 10) win.last.shift();
+}
+
+function healthOf(win) {
+  // Deterministic heuristic (MVP):
+  // - stuck: no act_ok and no wait, but many noop/precondition/stale loops (spinning)
+  // - degraded: act_fail present OR many HUMAN_ACTION_REQUIRED
+  // - ok: otherwise
+  const c = win.counts;
+  const spinning = c.noop + c.precondition_failed + c.stale_skip + c.dedupe_skip;
+  if (c.act_ok === 0 && c.wait === 0 && spinning >= Math.max(3, Math.floor(win.loops * 0.6))) return 'stuck';
+  if (c.act_fail > 0 || c.HUMAN_ACTION_REQUIRED > 0) return 'degraded';
+  return 'ok';
+}
+
+function recoveryHints(win) {
+  const c = win.counts;
+  const hints = [];
+  if (c.HUMAN_ACTION_REQUIRED > 0) {
+    hints.push('HUMAN_ACTION_REQUIRED seen: check decision.json reasonCode (e.g. blocked_stale) and resolve manually before continuing.');
+  }
+  if (c.act_fail > 0) {
+    hints.push('act_fail seen: inspect latest *.act.json and upstream API response bodies for deterministic error cause.');
+  }
+  if (c.precondition_failed + c.stale_skip > 0) {
+    hints.push('precondition_failed/stale_skip seen: likely stale attention or concurrent runners; verify review-state/deliverable status and reduce duplicate instances.');
+  }
+  if (c.wait > 0 && c.act_ok === 0 && (c.handoff + c.role_skip) > 0) {
+    hints.push('mostly wait/handoff: verify role boundary (A2A_ROLE) and that A2A_PARENT_TASK_ID points to the parent coordination task.');
+  }
+  return hints;
+}
+
 async function readReviewState({ taskId, handle, token }) {
   // Lightweight fact surface for precondition/stale checks.
   return await httpJson(
@@ -245,6 +324,10 @@ async function main() {
   let loops = 0;
   const st = loadState();
 
+  // P4-3 rolling window summary
+  const SUMMARY_EVERY = Number(env('A2A_SUMMARY_EVERY', '20'));
+  let win = initWindow();
+
   while (MAX_LOOPS === 0 || loops < MAX_LOOPS) {
     loops += 1;
     const loopStart = Date.now();
@@ -305,6 +388,12 @@ async function main() {
       decision.skipped = true;
       decision.reasonCode = 'idle_no_attention';
       writeDecision(Date.now(), decision);
+      bump(win, decision);
+      if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
+        const health = healthOf(win);
+        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+        writeTrace(Date.now(), 'summary', summary);
+      }
       console.log(`[loop ${loops}] idle: no attention items (parent=${PARENT_TASK_ID})`);
       await sleep(POLL_MS);
       continue;
@@ -357,6 +446,12 @@ async function main() {
       decision.reasonDetail = { role, topType: top.type };
       decision.chosenAction = action;
       writeDecision(Date.now(), decision);
+      bump(win, decision);
+      if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
+        const health = healthOf(win);
+        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+        writeTrace(Date.now(), 'summary', summary);
+      }
       console.log(`[loop ${loops}] role_skip role=${role} top=${top.type} task=${taskId}`);
       await sleep(POLL_MS);
       continue;
@@ -390,6 +485,12 @@ async function main() {
       decision.chosenAction = action;
       decision.precondition = { sig };
       writeDecision(Date.now(), decision);
+      bump(win, decision);
+      if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
+        const health = healthOf(win);
+        const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+        writeTrace(Date.now(), 'summary', summary);
+      }
       console.log(`[loop ${loops}] dedupe: skip ${sig} task=${taskId}`);
       await sleep(POLL_MS);
       continue;
@@ -412,6 +513,12 @@ async function main() {
         decision.skipped = true;
         decision.reasonCode = CONFLICT_CODES.human_required_blocked_stale;
         writeDecision(Date.now(), decision);
+        bump(win, decision);
+        if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
+          const health = healthOf(win);
+          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+          writeTrace(Date.now(), 'summary', summary);
+        }
         console.error(`[loop ${loops}] HUMAN_ACTION_REQUIRED blocked_stale task=${taskId}`);
         await sleep(POLL_MS);
         continue;
@@ -439,6 +546,12 @@ async function main() {
         decision.reasonCode = CONFLICT_CODES.precondition_failed;
         decision.reasonDetail = { expected: { revisionRequested: true }, got: { ok, revisionRequested } };
         writeDecision(Date.now(), decision);
+        bump(win, decision);
+        if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
+          const health = healthOf(win);
+          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+          writeTrace(Date.now(), 'summary', summary);
+        }
         await sleep(POLL_MS);
         continue;
       }
@@ -495,6 +608,12 @@ async function main() {
         decision.reasonCode = CONFLICT_CODES.precondition_failed;
         decision.reasonDetail = { expected: { pendingReview: true }, got: { ok, pendingReview } };
         writeDecision(Date.now(), decision);
+        bump(win, decision);
+        if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
+          const health = healthOf(win);
+          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+          writeTrace(Date.now(), 'summary', summary);
+        }
         await sleep(POLL_MS);
         continue;
       }
@@ -518,6 +637,12 @@ async function main() {
         decision.reasonCode = CONFLICT_CODES.stale_skip;
         decision.reasonDetail = { deliverableStatus: status, expected: 'submitted' };
         writeDecision(Date.now(), decision);
+        bump(win, decision);
+        if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
+          const health = healthOf(win);
+          const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+          writeTrace(Date.now(), 'summary', summary);
+        }
         await sleep(POLL_MS);
         continue;
       } else {
@@ -543,6 +668,14 @@ async function main() {
     decision.reasonCode = actResult.ok ? CONFLICT_CODES.act_ok : CONFLICT_CODES.act_fail;
     if (!actResult.ok) decision.reasonDetail = { error: classifyError(actResult) };
     writeDecision(Date.now(), decision);
+
+    // P4-3: update rolling window + periodic summary trace
+    bump(win, decision);
+    if (SUMMARY_EVERY > 0 && win.loops % SUMMARY_EVERY === 0) {
+      const health = healthOf(win);
+      const summary = { ok: true, kind: 'summary', role: decision.role, handle: HANDLE, parentTaskId: PARENT_TASK_ID, windowLoops: win.loops, counts: win.counts, health, hints: recoveryHints(win), last: win.last };
+      writeTrace(Date.now(), 'summary', summary);
+    }
 
     st.lastByTask[taskId] = sig;
     saveState(st);
