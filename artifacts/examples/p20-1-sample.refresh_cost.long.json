@@ -1,0 +1,151 @@
+{
+  "ok": true,
+  "kind": "p7_2_gate",
+  "inputDir": "artifacts/evidence/p20-1/20260328T190043Z/cases/refresh_cost.out.long.reasons",
+  "dispositionPolicyVersion": "p11-2-mvp.1",
+  "scenarioModes": [
+    "multi_parent"
+  ],
+  "matrixKey": "mode=multi_parent",
+  "gateLevel": "PASS",
+  "releaseDisposition": "long_run_ok",
+  "releaseReady": false,
+  "releaseReadiness": "blocked",
+  "releaseBlockingReasons": [
+    "required_regressions_incomplete"
+  ],
+  "requiredRegressionsComplete": false,
+  "evidenceSufficiency": "sufficient",
+  "tableDriven": {
+    "enabled": true,
+    "matrixPath": "artifacts/examples/p17-1-deeper-graded-matrix.json",
+    "derivedInputs": {
+      "changeType": "refresh_cost_config",
+      "mode": "multi_parent",
+      "window": "long",
+      "desiredEvidenceTypes": [
+        "long_window"
+      ]
+    },
+    "matchedCell": {
+      "changeType": "refresh_cost_config",
+      "mode": "multi_parent",
+      "window": "long",
+      "evidenceType": "long_window"
+    },
+    "matchedCells": [
+      {
+        "changeType": "refresh_cost_config",
+        "mode": "multi_parent",
+        "window": "long",
+        "evidenceType": "long_window"
+      }
+    ],
+    "decision": {
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": true,
+      "note": "cost/refresh changes must be validated on long-window multi_parent evidence and keep out-of-range guardrail blocked."
+    },
+    "finalAppliedDecision": null,
+    "why": "hard blocks present"
+  },
+  "SAFE_FOR_LONG_RUN": "yes",
+  "pass": true,
+  "results": [
+    {
+      "name": "refresh_cost.out.long.reasons",
+      "traceDir": "artifacts/evidence/p20-1/20260328T190043Z/cases/refresh_cost.out.long.reasons",
+      "scenarioMode": "multi_parent",
+      "matrixKey": "mode=multi_parent",
+      "dispositionPolicyVersion": "p11-2-mvp.1",
+      "windowedMetrics": {
+        "loops": 60,
+        "handoff_ratio": 0.25,
+        "wait_ratio": 0.6666666666666666,
+        "act_fail_ratio": 0,
+        "human_required_ratio": 0,
+        "parent_count": 3,
+        "attention_req": 2,
+        "attention_req_per_parent": 0.6666666666666666,
+        "yield_rate": 0,
+        "owner_stale_rate": 0,
+        "takeover_rate": 0
+      },
+      "matrixRuleId": "R0:multi_parent:baseline",
+      "matrixDecisionBasis": [],
+      "gateLevel": "PASS",
+      "releaseDisposition": "long_run_ok",
+      "matrixDispositionOverride": null,
+      "dispositionReason": [],
+      "SAFE_FOR_LONG_RUN": "yes",
+      "pass": true,
+      "gateReasons": [],
+      "recommendedActions": [],
+      "evidencePaths": [
+        "artifacts/evidence/p20-1/20260328T190043Z/cases/refresh_cost.out.long.reasons/summary.json"
+      ],
+      "keyMetrics": {
+        "health": "ok",
+        "windowLoops": 60,
+        "counts": {
+          "act_ok": 0,
+          "act_fail": 0,
+          "role_skip": 0,
+          "handoff": 15,
+          "wait": 40,
+          "noop": 0,
+          "HUMAN_ACTION_REQUIRED": 0,
+          "stale_skip": 0,
+          "precondition_failed": 0,
+          "dedupe_skip": 0
+        },
+        "conflictCounts": {},
+        "cost": {
+          "loops": 60,
+          "requestsTotal": 10,
+          "byStage": {
+            "token": 1,
+            "join": 1,
+            "attention": 2,
+            "task_get": 2,
+            "deliverable_get": 2,
+            "act": 1,
+            "echo": 1
+          },
+          "byParent": {
+            "p-a": 10,
+            "p-b": 10,
+            "p-c": 10
+          },
+          "refreshWillFetch": 2,
+          "refreshSkippedFreshCache": 1
+        },
+        "selection": {
+          "selection_churn": 0,
+          "parent_switch_count": 0,
+          "selection_churn_rate": 0
+        },
+        "derived": {
+          "actFail": 0,
+          "humanRequired": 0,
+          "stuckWindows": 0,
+          "degradedWindows": 0,
+          "ownerStale": 0,
+          "takeover": 0,
+          "yieldToPeer": 0,
+          "attentionReq": 2,
+          "topParentFetch": {
+            "parentTaskId": "p-a",
+            "attentionFetch": 10
+          },
+          "topStage": {
+            "stage": "attention",
+            "requests": 2
+          }
+        }
+      }
+    }
+  ]
+}

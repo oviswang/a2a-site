@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "kind": "p20_1_gap_report",
+  "inputs": {
+    "matrixPath": "artifacts/examples/p17-1-deeper-graded-matrix.json",
+    "completionPath": "scripts/p13_1_regression_completion.mjs",
+    "checklistPath": "docs/p12-release-checklist.md"
+  },
+  "coveredCount": 17,
+  "requiredRunCount": 10,
+  "coveredKeysSample": [
+    "refresh_cost_config|multi_parent|long|long_window",
+    "refresh_cost_config|multi_parent|short|short_or_medium",
+    "runner_behavior_change|single|short|short_or_medium",
+    "selection_logic_change|multi_parent|long|selection_case_present",
+    "selection_logic_change|multi_parent|long|long_window",
+    "same_role_coordination_config|same_role|long|long_window",
+    "same_role_coordination_config|same_role|medium|short_or_medium",
+    "gate_rule_change|multi_parent+same_role|long|boundary_case_present",
+    "gate_rule_change|multi_parent+same_role|long|long_window",
+    "selection_logic_change|multi_parent+same_role|medium|selection_case_present",
+    "gate_rule_change|multi_parent+same_role|medium|boundary_case_present",
+    "runner_behavior_change|multi_parent+same_role|medium|boundary_case_present",
+    "runner_behavior_change|single|long|long_window",
+    "gate_rule_change|single|long|boundary_case_present",
+    "gate_rule_change|single|long|long_window",
+    "gate_rule_change|multi_parent|long|boundary_case_present",
+    "gate_rule_change|multi_parent|long|long_window"
+  ],
+  "gapsCount": 4,
+  "topGaps": [
+    {
+      "ct": "selection_logic_change",
+      "mode": "multi_parent+same_role",
+      "window": "long",
+      "evidenceType": "long_window",
+      "why": "missing matrix cell for required run (likely causes fallback/gray semantics)",
+      "exampleRun": "selection instability contrast (long) must stay observe_only"
+    },
+    {
+      "ct": "runner_behavior_change",
+      "mode": "single",
+      "window": "short",
+      "evidenceType": "unknown",
+      "why": "missing matrix cell for required run (likely causes fallback/gray semantics)",
+      "exampleRun": "contract: gate output exists (spot)"
+    }
+  ],
+  "checklistGaps": []
+}

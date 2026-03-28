@@ -755,7 +755,7 @@ function loadMatrixPolicy() {
   if (!matrix || !Array.isArray(matrix.cells)) return { enabled:false, matrixPath, matchedCells:[], decision:null };
 
   // Only enable table-driven for a small allowlist (P19-1 MVP)
-  const allowed = new Set(['runner_behavior_change','same_role_coordination_config','selection_logic_change','gate_rule_change']);
+  const allowed = new Set(['runner_behavior_change','same_role_coordination_config','selection_logic_change','gate_rule_change','refresh_cost_config']);
   const activeChangeTypes = CHANGE_TYPES.filter(ct => allowed.has(ct));
   if (activeChangeTypes.length !== 1) return { enabled:false, matrixPath, matchedCells:[], decision:null };
   const changeType = activeChangeTypes[0];
