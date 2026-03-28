@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "matrixPath": "artifacts/examples/p16-1-deeper-graded-matrix.json",
+  "inMatrix": [
+    "gate_rule_change",
+    "refresh_cost_config",
+    "runner_behavior_change",
+    "same_role_coordination_config",
+    "selection_logic_change"
+  ],
+  "notInMatrix": [],
+  "patchOnly": [],
+  "sources": {
+    "completion": [
+      "gate_rule_change",
+      "refresh_cost_config",
+      "runner_behavior_change",
+      "same_role_coordination_config",
+      "selection_logic_change"
+    ],
+    "checklist": [
+      "gate_rule_change",
+      "refresh_cost_config",
+      "runner_behavior_change",
+      "same_role_coordination_config",
+      "selection_logic_change"
+    ],
+    "gate": [
+      "gate_rule_change",
+      "runner_behavior_change",
+      "same_role_coordination_config",
+      "selection_logic_change"
+    ]
+  }
+}

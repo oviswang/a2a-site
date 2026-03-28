@@ -1,0 +1,171 @@
+{
+  "ok": true,
+  "kind": "p15_1_deeper_graded_matrix",
+  "schemaVersion": "p17-1-mvp.1",
+  "dimensions": {
+    "changeType": [
+      "refresh_cost_config",
+      "runner_behavior_change",
+      "selection_logic_change",
+      "same_role_coordination_config",
+      "gate_rule_change"
+    ],
+    "mode": [
+      "single",
+      "multi_parent",
+      "same_role",
+      "multi_parent+same_role"
+    ],
+    "window": [
+      "short",
+      "medium",
+      "long"
+    ],
+    "evidenceType": [
+      "long_window",
+      "short_or_medium",
+      "boundary_case_present",
+      "selection_case_present"
+    ]
+  },
+  "cells": [
+    {
+      "changeType": "refresh_cost_config",
+      "mode": "multi_parent",
+      "window": "long",
+      "evidenceType": "long_window",
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": true,
+      "note": "cost/refresh changes must be validated on long-window multi_parent evidence and keep out-of-range guardrail blocked."
+    },
+    {
+      "changeType": "refresh_cost_config",
+      "mode": "multi_parent",
+      "window": "short",
+      "evidenceType": "short_or_medium",
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": true,
+      "note": "short/medium cannot substitute long-window for refresh_cost_config."
+    },
+    {
+      "changeType": "runner_behavior_change",
+      "mode": "single",
+      "window": "short",
+      "evidenceType": "short_or_medium",
+      "minEvidenceSufficiency": "partial",
+      "allowObserveOnly": true,
+      "requiresLongWindow": false,
+      "requiresBoundaryEvidence": false,
+      "note": "runner behavior may allow partial evidence as observe_only (must still have completion=true)."
+    },
+    {
+      "changeType": "selection_logic_change",
+      "mode": "multi_parent",
+      "window": "long",
+      "evidenceType": "selection_case_present",
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": false,
+      "note": "selection changes require long-window selection evidence (selection anomaly guardrail)."
+    },
+    {
+      "changeType": "selection_logic_change",
+      "mode": "multi_parent",
+      "window": "long",
+      "evidenceType": "long_window",
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": false,
+      "note": "long-window alone is not enough if selection-case evidence is missing (handled by gate branch)."
+    },
+    {
+      "changeType": "same_role_coordination_config",
+      "mode": "same_role",
+      "window": "long",
+      "evidenceType": "long_window",
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": false,
+      "note": "same_role coordination changes require long-window evidence (yield/owner_stale/takeover stability)."
+    },
+    {
+      "changeType": "same_role_coordination_config",
+      "mode": "same_role",
+      "window": "medium",
+      "evidenceType": "short_or_medium",
+      "minEvidenceSufficiency": "partial",
+      "allowObserveOnly": true,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": false,
+      "note": "medium evidence can be used for observe_only signal, not release-ready."
+    },
+    {
+      "changeType": "gate_rule_change",
+      "mode": "multi_parent+same_role",
+      "window": "long",
+      "evidenceType": "boundary_case_present",
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": true,
+      "note": "gate rule changes must validate boundary cases (human_boundary/health) on long-window evidence."
+    },
+    {
+      "changeType": "gate_rule_change",
+      "mode": "multi_parent+same_role",
+      "window": "long",
+      "evidenceType": "long_window",
+      "minEvidenceSufficiency": "sufficient",
+      "allowObserveOnly": false,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": true,
+      "note": "long-window alone is insufficient if boundary evidence is missing."
+    },
+    {
+      "changeType": "selection_logic_change",
+      "mode": "multi_parent+same_role",
+      "window": "medium",
+      "evidenceType": "selection_case_present",
+      "minEvidenceSufficiency": "partial",
+      "allowObserveOnly": true,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": false,
+      "note": "medium selection evidence is observe_only; release requires long-window selection cases."
+    },
+    {
+      "changeType": "gate_rule_change",
+      "mode": "multi_parent+same_role",
+      "window": "medium",
+      "evidenceType": "boundary_case_present",
+      "minEvidenceSufficiency": "partial",
+      "allowObserveOnly": true,
+      "requiresLongWindow": true,
+      "requiresBoundaryEvidence": true,
+      "note": "medium boundary evidence may be used for observe_only; release-ready requires long-window boundary cases."
+    },
+    {
+      "changeType": "runner_behavior_change",
+      "mode": "multi_parent+same_role",
+      "window": "medium",
+      "evidenceType": "boundary_case_present",
+      "minEvidenceSufficiency": "partial",
+      "allowObserveOnly": true,
+      "requiresLongWindow": false,
+      "requiresBoundaryEvidence": false,
+      "note": "runner behavior changes may use medium evidence as observe_only (contract first)."
+    }
+  ],
+  "defaults": {
+    "minEvidenceSufficiency": "sufficient",
+    "allowObserveOnly": false,
+    "requiresLongWindow": true,
+    "requiresBoundaryEvidence": true
+  }
+}
