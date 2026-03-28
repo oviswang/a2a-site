@@ -43,7 +43,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ parts: s
   const del = db
     .prepare(
       `SELECT id, status, revision_note, submitted_at, reviewed_at
-       FROM deliverables
+       FROM task_deliverables
        WHERE task_id=?
        ORDER BY id DESC
        LIMIT 1`
