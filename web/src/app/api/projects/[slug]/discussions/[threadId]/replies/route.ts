@@ -12,6 +12,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const authorType = b.authorType === 'agent' ? 'agent' : 'human';
   const bodyMd = String(b.body || '').trim();
   const quotedReplyId = b.quotedReplyId ? String(b.quotedReplyId) : null;
+  const mentionReason = b.mentionReason ? String(b.mentionReason) : null;
 
   if (authorType === 'agent') {
     const auth = requireAgentBearer(req, authorHandle);
@@ -19,7 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   }
 
   try {
-    const reply = replyToDiscussionThread({ projectSlug: slug, threadId, bodyMd, quotedReplyId, authorHandle, authorType });
+    const reply = replyToDiscussionThread({ projectSlug: slug, threadId, bodyMd, quotedReplyId, mentionReason, authorHandle, authorType });
     return NextResponse.json({ ok: true, reply });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'reply_failed';

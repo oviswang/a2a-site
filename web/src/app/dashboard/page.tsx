@@ -26,7 +26,26 @@ type AttentionItem = {
 type AgentRow = { handle: string; displayName: string | null; claimState: string | null; lastSeen: string; link: string };
 type ProjectRow = { slug: string; name: string; visibility: 'open' | 'restricted'; lastTs: string | null; link: string };
 
-type Dashboard = { ok: true; needsAttention: AttentionItem[]; agents: AgentRow[]; projects: ProjectRow[] };
+type DiscussionFeedItem = {
+  ts: string;
+  eventType:
+    | 'thread.created'
+    | 'thread.closed'
+    | 'thread.locked'
+    | 'thread.unlocked'
+    | 'reply.mentioned_you'
+    | 'reply.in_your_thread';
+  whyShown: 'governance' | 'mentioned_you' | 'your_thread';
+  projectSlug: string;
+  projectName: string;
+  threadId: string;
+  threadTitle: string;
+  actorHandle: string;
+  actorType: 'human' | 'agent';
+  link: string;
+};
+
+type Dashboard = { ok: true; needsAttention: AttentionItem[]; agents: AgentRow[]; projects: ProjectRow[]; discussionFeed?: DiscussionFeedItem[] };
 
 function fmt(ts: string | null | undefined) {
   if (!ts) return '—';
@@ -35,11 +54,17 @@ function fmt(ts: string | null | undefined) {
 
 export default function DashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null);
+  const [feed, setFeed] = useState<DiscussionFeedItem[] | null>(null);
 
   useEffect(() => {
     fetch('/api/dashboard', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => setData((j || null) as Dashboard | null))
+      .catch(() => void 0);
+
+    fetch('/api/dashboard/discussions?limit=20', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setFeed((j?.ok ? j.items : null) as DiscussionFeedItem[] | null))
       .catch(() => void 0);
   }, []);
 
@@ -188,8 +213,34 @@ export default function DashboardPage() {
             {data && (data.projects || []).length === 0 ? <div className="text-sm text-slate-200/60">No projects found.</div> : null}
           </div>
         </Card>
+
+        {/* Module 4: Joined discussions (Layer B Phase 1) */}
+        <Card title="Joined discussions">
+          <div className="text-xs text-slate-200/70">Recent discussion activity in projects you joined (low-noise). This does not replace Inbox.</div>
+          <div className="mt-3 grid gap-2">
+            {(feed || []).map((it) => (
+              <Link key={`${it.ts}:${it.projectSlug}:${it.threadId}:${it.eventType}`} href={it.link} className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Tag>{it.eventType}</Tag>
+                      <span className="font-mono text-[11px] text-slate-200/50">/{it.projectSlug}</span>
+                      <span className="text-[11px] text-slate-200/50">{fmt(it.ts)}</span>
+                    </div>
+                    <div className="mt-1 text-sm text-slate-50">{it.threadTitle}</div>
+                    <div className="mt-1 text-xs text-slate-200/60">
+                      by @{it.actorHandle} ({it.actorType}) · why: {it.whyShown}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-slate-200/40">→</div>
+                </div>
+              </Link>
+            ))}
+            {feed && feed.length === 0 ? <div className="text-sm text-slate-200/60">No recent joined discussion activity.</div> : null}
+            {!feed ? <div className="text-sm text-slate-200/60">Loading…</div> : null}
+          </div>
+        </Card>
       </div>
     </Layout>
   );
 }
-

@@ -51,6 +51,16 @@ export default function ProjectDetailPage() {
   const [discEntityId, setDiscEntityId] = useState('');
   const [discMsg, setDiscMsg] = useState<string | null>(null);
 
+  // Layer B Phase 1: project agent policy (minimal panel)
+  const [policyAgentHandle, setPolicyAgentHandle] = useState('');
+  const [agentPolicy, setAgentPolicy] = useState<any | null>(null);
+  const [policyMsg, setPolicyMsg] = useState<string | null>(null);
+  const [polEnabled, setPolEnabled] = useState(false);
+  const [polAllowCreate, setPolAllowCreate] = useState(false);
+  const [polAllowMentions, setPolAllowMentions] = useState(false);
+  const [polMentionDailyLimit, setPolMentionDailyLimit] = useState(3);
+  const [polRequireReason, setPolRequireReason] = useState(true);
+
   useEffect(() => {
     if (!slug) return;
     fetch(`/api/projects/${encodeURIComponent(slug)}/create-search-audit`, { cache: 'no-store' })
@@ -586,6 +596,121 @@ export default function ProjectDetailPage() {
                     {discMsg ? <div className="text-xs text-slate-200/70">{discMsg}</div> : null}
                   </div>
                 </div>
+
+                {/* Layer B Phase 1: Agent participation policy (default OFF) */}
+                {isOwnerOrMaintainer ? (
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div className="text-xs font-semibold text-slate-200/70">Layer B: agent participation policy (default OFF)</div>
+                    <div className="mt-1 text-[11px] text-slate-200/60">
+                      This controls whether a specific agent can create entity-linked threads and/or @mention maintainers. No policy = OFF.
+                    </div>
+
+                    <div className="mt-2 grid gap-2">
+                      <div className="flex flex-wrap items-end gap-2">
+                        <label className="grid flex-1 gap-1">
+                          <span className="text-[11px] text-slate-200/60">Agent handle</span>
+                          <input
+                            className="w-full rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                            value={policyAgentHandle}
+                            onChange={(e) => setPolicyAgentHandle(e.target.value)}
+                            placeholder="alice-agent"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
+                          onClick={async () => {
+                            setPolicyMsg(null);
+                            setAgentPolicy(null);
+                            const h = policyAgentHandle.trim();
+                            if (!h) {
+                              setPolicyMsg('missing_agent_handle');
+                              return;
+                            }
+                            const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/agent-policy?agentHandle=${encodeURIComponent(h)}`, { cache: 'no-store' });
+                            const j = await res.json().catch(() => null);
+                            if (!res.ok || !j?.ok) {
+                              setPolicyMsg(j?.error || 'get_failed');
+                              return;
+                            }
+                            setAgentPolicy(j.policy || null);
+                            const p = j.policy || null;
+                            setPolEnabled(Boolean(p?.enabled));
+                            setPolAllowCreate(Boolean(p?.allowEntityThreadCreate));
+                            setPolAllowMentions(Boolean(p?.allowMentions));
+                            setPolMentionDailyLimit(Number(p?.mentionDailyLimit || 3));
+                            setPolRequireReason(Boolean(p?.requireReasonForMention ?? true));
+                          }}
+                        >
+                          Load
+                        </button>
+                      </div>
+
+                      <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <label className="flex items-center gap-2 text-xs text-slate-100">
+                          <input type="checkbox" checked={polEnabled} onChange={(e) => setPolEnabled(e.target.checked)} /> enabled
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-slate-100">
+                          <input type="checkbox" checked={polAllowCreate} onChange={(e) => setPolAllowCreate(e.target.checked)} /> allow entity-linked thread create
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-slate-100">
+                          <input type="checkbox" checked={polAllowMentions} onChange={(e) => setPolAllowMentions(e.target.checked)} /> allow mentions (owner/maintainer)
+                        </label>
+                        <label className="grid gap-1">
+                          <span className="text-[11px] text-slate-200/60">mention daily limit</span>
+                          <input
+                            className="w-full rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                            type="number"
+                            value={polMentionDailyLimit}
+                            onChange={(e) => setPolMentionDailyLimit(Number(e.target.value || 0))}
+                            min={0}
+                            max={50}
+                          />
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-slate-100">
+                          <input type="checkbox" checked={polRequireReason} onChange={(e) => setPolRequireReason(e.target.checked)} /> require reason for mention
+                        </label>
+                        <button
+                          type="button"
+                          className="rounded-xl bg-sky-400/20 px-3 py-2 text-xs font-semibold text-sky-100 hover:bg-sky-400/25"
+                          onClick={async () => {
+                            setPolicyMsg(null);
+                            const h = policyAgentHandle.trim();
+                            if (!h) {
+                              setPolicyMsg('missing_agent_handle');
+                              return;
+                            }
+                            const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/agent-policy`, {
+                              method: 'POST',
+                              headers: { 'content-type': 'application/json' },
+                              body: JSON.stringify({
+                                agentHandle: h,
+                                enabled: polEnabled,
+                                allowEntityThreadCreate: polAllowCreate,
+                                allowMentions: polAllowMentions,
+                                mentionDailyLimit: polMentionDailyLimit,
+                                allowedMentionRoles: ['owner', 'maintainer'],
+                                requireReasonForMention: polRequireReason,
+                              }),
+                            });
+                            const j = await res.json().catch(() => null);
+                            if (!res.ok || !j?.ok) {
+                              setPolicyMsg(j?.error || 'save_failed');
+                              return;
+                            }
+                            setAgentPolicy(j.policy || null);
+                            setPolicyMsg('saved');
+                          }}
+                        >
+                          Save
+                        </button>
+                        <div className="text-[11px] text-slate-200/60">Current: {agentPolicy ? JSON.stringify(agentPolicy) : 'null (OFF)'}</div>
+                      </div>
+
+                      {policyMsg ? <div className="text-xs text-slate-200/70">{policyMsg}</div> : null}
+                    </div>
+                  </div>
+                ) : null}
               </Card>
             </section>
 

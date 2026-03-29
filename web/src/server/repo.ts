@@ -487,10 +487,264 @@ function addActivity(args: {
   );
 }
 
+function addDiscussionActivity(args: {
+  projectId: number;
+  ts: string;
+  kind:
+    | 'discussion.thread_created'
+    | 'discussion.thread_closed'
+    | 'discussion.thread_locked'
+    | 'discussion.thread_unlocked'
+    | 'discussion.reply';
+  text: string;
+  threadId: string;
+  threadTitle: string;
+  actorHandle: string;
+  actorType: MemberType;
+  extra?: any;
+}) {
+  const db = getDb();
+  db.prepare(
+    'INSERT INTO activity (project_id, ts, text, kind, entity_type, entity_id, thread_id, thread_title, actor_handle, actor_type, extra_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(
+    args.projectId,
+    args.ts,
+    args.text,
+    args.kind,
+    'project',
+    null,
+    args.threadId,
+    args.threadTitle,
+    args.actorHandle,
+    args.actorType,
+    args.extra ? JSON.stringify(args.extra) : null
+  );
+}
+
 // --- Discussion layer (v1) ---
 
 export type DiscussionEntityType = 'project' | 'task' | 'proposal';
 export type DiscussionThreadStatus = 'open' | 'closed';
+
+// --- Layer B Phase 1: policy / enforcement ---
+
+type AllowedMentionRole = 'owner' | 'maintainer';
+
+export type ProjectAgentPolicy = {
+  projectSlug: string;
+  agentHandle: string;
+  enabled: boolean;
+  allowEntityThreadCreate: boolean;
+  allowMentions: boolean;
+  mentionDailyLimit: number;
+  allowedMentionRoles: AllowedMentionRole[];
+  requireReasonForMention: boolean;
+  updatedAt: string;
+};
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function parseAllowedRoles(input: string): AllowedMentionRole[] {
+  const raw = String(input || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const out: AllowedMentionRole[] = [];
+  for (const r of raw) {
+    if (r === 'owner' || r === 'maintainer') out.push(r);
+  }
+  return out.length ? out : ['owner', 'maintainer'];
+}
+
+function serializeAllowedRoles(roles: AllowedMentionRole[]) {
+  const uniq = Array.from(new Set((roles || []).filter((r) => r === 'owner' || r === 'maintainer')));
+  return uniq.length ? uniq.join(',') : 'owner,maintainer';
+}
+
+function getPolicyRow(db: any, projectId: number, agentHandle: string) {
+  agentHandle = normalizeHandle(agentHandle);
+  return db
+    .prepare(
+      `SELECT enabled, allow_entity_thread_create, allow_mentions, mention_daily_limit, allowed_mention_roles, require_reason_for_mention, updated_at
+       FROM project_agent_policy
+       WHERE project_id=? AND agent_handle=?`
+    )
+    .get(projectId, agentHandle) as
+    | {
+        enabled: number;
+        allow_entity_thread_create: number;
+        allow_mentions: number;
+        mention_daily_limit: number;
+        allowed_mention_roles: string;
+        require_reason_for_mention: number;
+        updated_at: string;
+      }
+    | undefined;
+}
+
+export function getProjectAgentPolicy(args: { projectSlug: string; agentHandle: string }): ProjectAgentPolicy | null {
+  const db = getDb();
+  const p = getProjectBySlug(args.projectSlug);
+  if (!p) throw new Error('project_not_found');
+  const agentHandle = normalizeHandle(args.agentHandle);
+  if (!agentHandle) throw new Error('invalid_agent');
+
+  const r = getPolicyRow(db, p.id, agentHandle);
+  if (!r) return null;
+  return {
+    projectSlug: args.projectSlug,
+    agentHandle,
+    enabled: Boolean(r.enabled),
+    allowEntityThreadCreate: Boolean(r.allow_entity_thread_create),
+    allowMentions: Boolean(r.allow_mentions),
+    mentionDailyLimit: Number(r.mention_daily_limit || 0),
+    allowedMentionRoles: parseAllowedRoles(r.allowed_mention_roles),
+    requireReasonForMention: Boolean(r.require_reason_for_mention),
+    updatedAt: r.updated_at,
+  };
+}
+
+export function upsertProjectAgentPolicy(args: {
+  projectSlug: string;
+  agentHandle: string;
+  enabled: boolean;
+  allowEntityThreadCreate: boolean;
+  allowMentions: boolean;
+  mentionDailyLimit: number;
+  allowedMentionRoles: AllowedMentionRole[];
+  requireReasonForMention: boolean;
+  actorHandle: string;
+  actorType: MemberType;
+}) {
+  const db = getDb();
+  const p = getProjectBySlug(args.projectSlug);
+  if (!p) throw new Error('project_not_found');
+
+  if (args.actorType === 'agent') throw new Error('not_supported');
+  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) throw new Error('not_allowed');
+
+  const agentHandle = normalizeHandle(args.agentHandle);
+  if (!agentHandle) throw new Error('invalid_agent');
+
+  ensureIdentity(agentHandle, 'agent');
+
+  const now = nowIso();
+  const enabled = args.enabled ? 1 : 0;
+  const allowEntityThreadCreate = args.allowEntityThreadCreate ? 1 : 0;
+  const allowMentions = args.allowMentions ? 1 : 0;
+  const mentionDailyLimit = Math.max(0, Math.min(50, Number(args.mentionDailyLimit || 0)));
+  const allowedRoles = serializeAllowedRoles(args.allowedMentionRoles);
+  const requireReason = args.requireReasonForMention ? 1 : 0;
+
+  db.prepare(
+    `INSERT INTO project_agent_policy (project_id, agent_handle, enabled, allow_entity_thread_create, allow_mentions, mention_daily_limit, allowed_mention_roles, require_reason_for_mention, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(project_id, agent_handle) DO UPDATE SET
+       enabled=excluded.enabled,
+       allow_entity_thread_create=excluded.allow_entity_thread_create,
+       allow_mentions=excluded.allow_mentions,
+       mention_daily_limit=excluded.mention_daily_limit,
+       allowed_mention_roles=excluded.allowed_mention_roles,
+       require_reason_for_mention=excluded.require_reason_for_mention,
+       updated_at=excluded.updated_at`
+  ).run(p.id, agentHandle, enabled, allowEntityThreadCreate, allowMentions, mentionDailyLimit, allowedRoles, requireReason, now);
+
+  // audit
+  try {
+    const payload = {
+      kind: 'layerb.policy.upsert',
+      ts: now,
+      actorHandle: args.actorHandle,
+      projectSlug: args.projectSlug,
+      agentHandle,
+      enabled: Boolean(enabled),
+      allowEntityThreadCreate: Boolean(allowEntityThreadCreate),
+      allowMentions: Boolean(allowMentions),
+      mentionDailyLimit,
+      allowedRoles,
+      requireReason: Boolean(requireReason),
+    };
+    db.prepare('INSERT INTO audit_events (ts, kind, payload_json) VALUES (?, ?, ?)').run(now, 'layerb.policy.upsert', JSON.stringify(payload));
+  } catch {}
+
+  return getProjectAgentPolicy({ projectSlug: args.projectSlug, agentHandle });
+}
+
+function incrementAgentMentionCounter(db: any, projectId: number, agentHandle: string, day: string) {
+  const now = nowIso();
+  const row = db
+    .prepare('SELECT count FROM agent_mention_counters WHERE project_id=? AND agent_handle=? AND day=?')
+    .get(projectId, agentHandle, day) as { count: number } | undefined;
+  const next = (row?.count || 0) + 1;
+  db.prepare(
+    `INSERT INTO agent_mention_counters (project_id, agent_handle, day, count, updated_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(project_id, agent_handle, day) DO UPDATE SET count=excluded.count, updated_at=excluded.updated_at`
+  ).run(projectId, agentHandle, day, next, now);
+  return next;
+}
+
+function getAgentMentionCount(db: any, projectId: number, agentHandle: string, day: string) {
+  const row = db
+    .prepare('SELECT count FROM agent_mention_counters WHERE project_id=? AND agent_handle=? AND day=?')
+    .get(projectId, agentHandle, day) as { count: number } | undefined;
+  return row?.count || 0;
+}
+
+function isHandleAllowedByRole(db: any, projectId: number, handle: string, allowed: AllowedMentionRole[]) {
+  const row = db
+    .prepare("SELECT role FROM project_members WHERE project_id=? AND member_handle=? AND member_type='human'")
+    .get(projectId, handle) as { role: string } | undefined;
+  if (!row) return false;
+  const role = row.role === 'owner' ? 'owner' : row.role === 'maintainer' ? 'maintainer' : 'contributor';
+  return allowed.includes(role as any);
+}
+
+function enforceAgentMentionPolicy(args: {
+  projectId: number;
+  projectSlug: string;
+  agentHandle: string;
+  mentionedHandles: string[];
+  reason: string | null;
+}) {
+  const db = getDb();
+  const policy = getPolicyRow(db, args.projectId, args.agentHandle);
+  if (!policy) throw new Error('not_supported');
+  if (!policy.enabled || !policy.allow_mentions) throw new Error('forbidden_by_project_agent_policy');
+
+  const targets = (args.mentionedHandles || []).map(normalizeUserHandle).filter(Boolean) as string[];
+  if (!targets.length) return;
+  if (targets.length > 1) throw new Error('too_many_mentions');
+
+  if (policy.require_reason_for_mention && !String(args.reason || '').trim()) throw new Error('mention_reason_required');
+
+  const allowedRoles = parseAllowedRoles(policy.allowed_mention_roles);
+  const target = targets[0];
+  if (!isHandleAllowedByRole(db, args.projectId, target, allowedRoles)) throw new Error('mention_target_not_allowed');
+
+  const day = todayStr();
+  const used = getAgentMentionCount(db, args.projectId, args.agentHandle, day);
+  if (used >= Number(policy.mention_daily_limit || 0)) throw new Error('mention_daily_limit_exceeded');
+
+  const next = incrementAgentMentionCounter(db, args.projectId, args.agentHandle, day);
+  // audit
+  try {
+    const now = nowIso();
+    const payload = {
+      kind: 'layerb.agent.mention',
+      ts: now,
+      projectSlug: args.projectSlug,
+      agentHandle: args.agentHandle,
+      targets: [target],
+      reason: args.reason ? String(args.reason).slice(0, 240) : null,
+      usedBefore: used,
+      usedAfter: next,
+    };
+    db.prepare('INSERT INTO audit_events (ts, kind, payload_json) VALUES (?, ?, ?)').run(now, 'layerb.agent.mention', JSON.stringify(payload));
+  } catch {}
+}
 
 export type DiscussionThreadListItem = {
   id: string;
@@ -710,13 +964,20 @@ export function createDiscussionThread(args: {
   authorType: MemberType;
   entityType: DiscussionEntityType;
   entityId?: string | null;
+  mentionReason?: string | null;
 }) {
   const db = getDb();
   const p = getProjectBySlug(args.projectSlug);
   if (!p) throw new Error('project_not_found');
 
-  // v1 policy: agent cannot freely create threads.
-  if (args.authorType === 'agent') throw new Error('not_supported');
+  // Layer B Phase 1: agent create is gated and defaults OFF.
+  if (args.authorType === 'agent') {
+    const policy = getPolicyRow(db, p.id, args.authorHandle);
+    if (!policy) throw new Error('not_supported');
+    if (!policy.enabled || !policy.allow_entity_thread_create) throw new Error('forbidden_by_project_agent_policy');
+    // Only entity-linked
+    if (args.entityType === 'project') throw new Error('agent_thread_requires_entity_link');
+  }
 
   if (!isProjectMember(p.id, args.authorHandle, args.authorType)) throw new Error('not_allowed');
 
@@ -740,18 +1001,32 @@ export function createDiscussionThread(args: {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(id, p.id, title, bodyMd, args.authorHandle, args.authorType, entityType, entityId, 'open', now, now);
 
-  // Timeline (low noise)
-  addActivity({
+  // Timeline / dashboard feed source (low noise)
+  addDiscussionActivity({
     projectId: p.id,
     ts: now,
     kind: 'discussion.thread_created',
-    entityType: 'unknown',
-    entityId: id,
     text: `Discussion thread created: ${id} by @${args.authorHandle} (${args.authorType})`,
+    threadId: id,
+    threadTitle: title,
+    actorHandle: args.authorHandle,
+    actorType: args.authorType,
   });
 
   // Mention notifications
   const mentions = parseMentions(bodyMd);
+  if (args.authorType === 'agent') {
+    if (mentions.length) {
+      // Agent mentions are gated (Layer B) — default OFF.
+      enforceAgentMentionPolicy({
+        projectId: p.id,
+        projectSlug: p.slug,
+        agentHandle: args.authorHandle,
+        mentionedHandles: mentions,
+        reason: args.mentionReason ? String(args.mentionReason) : null,
+      });
+    }
+  }
   for (const m of mentions) {
     if (m === args.authorHandle) continue;
     notifyHuman(m, 'discussion.mention', `Mentioned in discussion: ${title}`, `/projects/${p.slug}/discussions/${id}`);
@@ -765,6 +1040,7 @@ export function replyToDiscussionThread(args: {
   threadId: string;
   bodyMd: string;
   quotedReplyId?: string | null;
+  mentionReason?: string | null;
   authorHandle: string;
   authorType: MemberType;
 }) {
@@ -801,12 +1077,37 @@ export function replyToDiscussionThread(args: {
     notifyHuman(threadAuthor, 'discussion.reply', `New reply in discussion: ${String(t.title)}`, `/projects/${p.slug}/discussions/${String(t.id)}`);
   }
 
+  // Timeline / feed source for replies (feed will filter to mentioned-you / your-thread)
+  addDiscussionActivity({
+    projectId: p.id,
+    ts: now,
+    kind: 'discussion.reply',
+    text: `Discussion reply: ${id} in ${String(t.id)} by @${args.authorHandle} (${args.authorType})`,
+    threadId: String(t.id),
+    threadTitle: String(t.title),
+    actorHandle: args.authorHandle,
+    actorType: args.authorType,
+    extra: {
+      mentionedHandles: parseMentions(bodyMd),
+      threadAuthorHandle: String(t.author_handle),
+    },
+  });
+
   // Mention notifications (for replies, too)
   const mentions = parseMentions(bodyMd);
+  if (args.authorType === 'agent') {
+    if (mentions.length) {
+      enforceAgentMentionPolicy({
+        projectId: p.id,
+        projectSlug: p.slug,
+        agentHandle: args.authorHandle,
+        mentionedHandles: mentions,
+        reason: args.mentionReason ? String(args.mentionReason) : null,
+      });
+    }
+  }
   for (const m of mentions) {
     if (m === args.authorHandle) continue;
-    // v1 boundary: agents should not auto-mention humans by default; API caller is responsible.
-    // We still deliver the mention notification if the body includes it.
     notifyHuman(m, 'discussion.mention', `Mentioned in discussion: ${String(t.title)}`, `/projects/${p.slug}/discussions/${String(t.id)}`);
   }
 
@@ -879,13 +1180,16 @@ export function setDiscussionThreadLock(args: { projectSlug: string; threadId: s
     db.prepare('INSERT INTO audit_events (ts, kind, payload_json) VALUES (?, ?, ?)').run(now, 'discussion.thread_lock', JSON.stringify(payload));
   } catch {}
   // optional low-noise timeline: include thread lock/unlock
-  addActivity({
+  const t = db.prepare('SELECT title FROM discussion_threads WHERE id=? AND project_id=?').get(args.threadId, p.id) as { title: string } | undefined;
+  addDiscussionActivity({
     projectId: p.id,
     ts: now,
     kind: args.locked ? 'discussion.thread_locked' : 'discussion.thread_unlocked',
-    entityType: 'unknown',
-    entityId: args.threadId,
     text: `${args.locked ? 'Discussion thread locked' : 'Discussion thread unlocked'}: ${args.threadId} by @${args.actorHandle}`,
+    threadId: args.threadId,
+    threadTitle: t?.title ? String(t.title) : args.threadId,
+    actorHandle: args.actorHandle,
+    actorType: args.actorType,
   });
   return { ok: true };
 }
@@ -969,13 +1273,16 @@ export function closeDiscussionThread(args: { projectSlug: string; threadId: str
   const now = nowIso();
   db.prepare("UPDATE discussion_threads SET status='closed', updated_at=? WHERE id=? AND project_id=?").run(now, args.threadId, p.id);
 
-  addActivity({
+  const t = db.prepare('SELECT title FROM discussion_threads WHERE id=? AND project_id=?').get(args.threadId, p.id) as { title: string } | undefined;
+  addDiscussionActivity({
     projectId: p.id,
     ts: now,
     kind: 'discussion.thread_closed',
-    entityType: 'unknown',
-    entityId: args.threadId,
     text: `Discussion thread closed: ${args.threadId} by @${args.actorHandle}`,
+    threadId: args.threadId,
+    threadTitle: t?.title ? String(t.title) : args.threadId,
+    actorHandle: args.actorHandle,
+    actorType: args.actorType,
   });
 
   return { ok: true };
@@ -1399,6 +1706,170 @@ export type TaskDeliverable = {
   submittedAt: string | null;
   reviewedAt: string | null;
 };
+
+// --- Layer B Phase 1: joined-project discussions feed (dashboard module) ---
+
+export type JoinedDiscussionFeedItem = {
+  ts: string;
+  eventType: 'thread.created' | 'thread.closed' | 'thread.locked' | 'thread.unlocked' | 'reply.mentioned_you' | 'reply.in_your_thread';
+  whyShown: 'governance' | 'mentioned_you' | 'your_thread';
+  projectSlug: string;
+  projectName: string;
+  threadId: string;
+  threadTitle: string;
+  actorHandle: string;
+  actorType: MemberType;
+  link: string;
+};
+
+export function listJoinedProjectsDiscussionFeed(args: { actorHandle: string; actorType: MemberType; limit: number }): JoinedDiscussionFeedItem[] {
+  if (args.actorType !== 'human') throw new Error('not_supported');
+  const db = getDb();
+  const limit = Math.max(1, Math.min(50, Number(args.limit || 20)));
+
+  // Joined projects
+  const joined = db
+    .prepare(
+      `SELECT p.id AS project_id, p.slug AS project_slug, p.name AS project_name
+       FROM project_members pm
+       JOIN projects p ON p.id=pm.project_id
+       WHERE pm.member_handle=? AND pm.member_type='human'`
+    )
+    .all(args.actorHandle) as { project_id: number; project_slug: string; project_name: string }[];
+  if (!joined.length) return [];
+  const byId = new Map(joined.map((j) => [j.project_id, j]));
+  const ids = joined.map((j) => j.project_id);
+  const placeholders = ids.map(() => '?').join(',');
+
+  const rows = db
+    .prepare(
+      `SELECT a.ts, a.kind, a.actor_handle, a.actor_type, a.project_id, a.thread_id, a.thread_title, a.extra_json
+       FROM activity a
+       WHERE a.project_id IN (${placeholders})
+         AND a.kind IN (
+           'discussion.thread_created',
+           'discussion.thread_closed',
+           'discussion.thread_locked',
+           'discussion.thread_unlocked',
+           'discussion.reply'
+         )
+         AND a.thread_id IS NOT NULL
+       ORDER BY a.ts DESC
+       LIMIT ?`
+    )
+    .all(...ids, limit * 5) as {
+    ts: string;
+    kind: string;
+    actor_handle: string;
+    actor_type: MemberType;
+    project_id: number;
+    thread_id: string;
+    thread_title: string;
+    extra_json: string | null;
+  }[];
+
+  const out: JoinedDiscussionFeedItem[] = [];
+  for (const r of rows) {
+    const p = byId.get(r.project_id);
+    if (!p) continue;
+    const link = `/projects/${p.project_slug}/discussions/${r.thread_id}`;
+
+    if (r.kind === 'discussion.thread_created') {
+      out.push({
+        ts: r.ts,
+        eventType: 'thread.created',
+        whyShown: 'governance',
+        projectSlug: p.project_slug,
+        projectName: p.project_name,
+        threadId: r.thread_id,
+        threadTitle: r.thread_title,
+        actorHandle: r.actor_handle,
+        actorType: r.actor_type,
+        link,
+      });
+    } else if (r.kind === 'discussion.thread_closed') {
+      out.push({
+        ts: r.ts,
+        eventType: 'thread.closed',
+        whyShown: 'governance',
+        projectSlug: p.project_slug,
+        projectName: p.project_name,
+        threadId: r.thread_id,
+        threadTitle: r.thread_title,
+        actorHandle: r.actor_handle,
+        actorType: r.actor_type,
+        link,
+      });
+    } else if (r.kind === 'discussion.thread_locked') {
+      out.push({
+        ts: r.ts,
+        eventType: 'thread.locked',
+        whyShown: 'governance',
+        projectSlug: p.project_slug,
+        projectName: p.project_name,
+        threadId: r.thread_id,
+        threadTitle: r.thread_title,
+        actorHandle: r.actor_handle,
+        actorType: r.actor_type,
+        link,
+      });
+    } else if (r.kind === 'discussion.thread_unlocked') {
+      out.push({
+        ts: r.ts,
+        eventType: 'thread.unlocked',
+        whyShown: 'governance',
+        projectSlug: p.project_slug,
+        projectName: p.project_name,
+        threadId: r.thread_id,
+        threadTitle: r.thread_title,
+        actorHandle: r.actor_handle,
+        actorType: r.actor_type,
+        link,
+      });
+    } else if (r.kind === 'discussion.reply') {
+      // Low-noise rule: only show reply events if you were mentioned, or you are thread author.
+      let extra: any = null;
+      try {
+        extra = r.extra_json ? JSON.parse(r.extra_json) : null;
+      } catch {
+        extra = null;
+      }
+      const mentioned = Array.isArray(extra?.mentionedHandles) ? extra.mentionedHandles.map(String) : [];
+      const threadAuthor = extra?.threadAuthorHandle ? String(extra.threadAuthorHandle) : null;
+      if (mentioned.includes(args.actorHandle)) {
+        out.push({
+          ts: r.ts,
+          eventType: 'reply.mentioned_you',
+          whyShown: 'mentioned_you',
+          projectSlug: p.project_slug,
+          projectName: p.project_name,
+          threadId: r.thread_id,
+          threadTitle: r.thread_title,
+          actorHandle: r.actor_handle,
+          actorType: r.actor_type,
+          link,
+        });
+      } else if (threadAuthor && threadAuthor === args.actorHandle) {
+        out.push({
+          ts: r.ts,
+          eventType: 'reply.in_your_thread',
+          whyShown: 'your_thread',
+          projectSlug: p.project_slug,
+          projectName: p.project_name,
+          threadId: r.thread_id,
+          threadTitle: r.thread_title,
+          actorHandle: r.actor_handle,
+          actorType: r.actor_type,
+          link,
+        });
+      }
+    }
+
+    if (out.length >= limit) break;
+  }
+
+  return out.slice(0, limit);
+}
 
 export {
   getDeliverableForTask,

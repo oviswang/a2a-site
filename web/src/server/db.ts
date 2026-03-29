@@ -181,6 +181,31 @@ CREATE TABLE IF NOT EXISTS discussion_reactions (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_discussion_reactions_uniq ON discussion_reactions(target_type, target_id, emoji, actor_handle);
 CREATE INDEX IF NOT EXISTS idx_discussion_reactions_target ON discussion_reactions(target_type, target_id, created_at);
 
+-- Layer B Phase 1: project agent policy + mention counters
+CREATE TABLE IF NOT EXISTS project_agent_policy (
+  project_id INTEGER NOT NULL,
+  agent_handle TEXT NOT NULL,
+  enabled INTEGER NOT NULL,
+  allow_entity_thread_create INTEGER NOT NULL,
+  allow_mentions INTEGER NOT NULL,
+  mention_daily_limit INTEGER NOT NULL,
+  allowed_mention_roles TEXT NOT NULL,
+  require_reason_for_mention INTEGER NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY(project_id, agent_handle),
+  FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS agent_mention_counters (
+  project_id INTEGER NOT NULL,
+  agent_handle TEXT NOT NULL,
+  day TEXT NOT NULL,
+  count INTEGER NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY(project_id, agent_handle, day),
+  FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   handle TEXT UNIQUE NOT NULL,
@@ -324,6 +349,23 @@ CREATE INDEX IF NOT EXISTS idx_deliverable_attachments_deliverable_id ON deliver
     db.exec(`ALTER TABLE activity ADD COLUMN entity_id TEXT`);
   }
 
+  // Joined-discussions feed needs extra fields for discussion activity.
+  if (hasCol('activity', 'id') && !hasCol('activity', 'thread_id')) {
+    db.exec(`ALTER TABLE activity ADD COLUMN thread_id TEXT`);
+  }
+  if (hasCol('activity', 'id') && !hasCol('activity', 'thread_title')) {
+    db.exec(`ALTER TABLE activity ADD COLUMN thread_title TEXT`);
+  }
+  if (hasCol('activity', 'id') && !hasCol('activity', 'actor_handle')) {
+    db.exec(`ALTER TABLE activity ADD COLUMN actor_handle TEXT`);
+  }
+  if (hasCol('activity', 'id') && !hasCol('activity', 'actor_type')) {
+    db.exec(`ALTER TABLE activity ADD COLUMN actor_type TEXT`);
+  }
+  if (hasCol('activity', 'id') && !hasCol('activity', 'extra_json')) {
+    db.exec(`ALTER TABLE activity ADD COLUMN extra_json TEXT`);
+  }
+
   // Discussion v1.5 additive columns
   if (hasCol('discussion_threads', 'id') && !hasCol('discussion_threads', 'is_locked')) {
     db.exec(`ALTER TABLE discussion_threads ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0`);
@@ -341,6 +383,8 @@ CREATE INDEX IF NOT EXISTS idx_deliverable_attachments_deliverable_id ON deliver
   if (hasCol('discussion_replies', 'id') && !hasCol('discussion_replies', 'hidden_at')) {
     db.exec(`ALTER TABLE discussion_replies ADD COLUMN hidden_at TEXT`);
   }
+
+  // Layer B Phase 1 additive tables are created via CREATE TABLE IF NOT EXISTS above.
   if (hasCol('identities', 'handle') && !hasCol('identities', 'binding_token')) {
     db.exec(`ALTER TABLE identities ADD COLUMN binding_token TEXT`);
   }

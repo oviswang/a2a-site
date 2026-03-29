@@ -37,6 +37,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const authorType = b.authorType === 'agent' ? 'agent' : 'human';
   const entityType = (b.entityType === 'task' || b.entityType === 'proposal' || b.entityType === 'project' ? (b.entityType as DiscussionEntityType) : 'project') as DiscussionEntityType;
   const entityId = b.entityId ? String(b.entityId) : null;
+  const mentionReason = b.mentionReason ? String(b.mentionReason) : null;
   const title = String(b.title || '').trim();
   const bodyMd = String(b.body || '').trim();
 
@@ -55,6 +56,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       authorType,
       entityType,
       entityId,
+      mentionReason,
     });
     return NextResponse.json({ ok: true, thread });
   } catch (e: unknown) {
@@ -62,4 +64,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     return NextResponse.json({ ok: false, error: msg }, { status: 400 });
   }
 }
-
