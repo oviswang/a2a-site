@@ -60,6 +60,13 @@
 - UI notes: `docs/discussion-v1_5-ui-notes.md`
 - Validation: `docs/discussion-v1_5-validation.md`
 
+### 12) Discussion layer Layer B Phase 1 (controlled)
+- Baseline freeze: `docs/discussion-layer-b-phase1-baseline-freeze.md`
+- Contracts: `docs/discussion-layer-b-phase1-contracts.md`
+- UI notes: `docs/discussion-layer-b-phase1-ui-notes.md`
+- Validation: `docs/discussion-layer-b-phase1-validation.md`
+- Auth runtime env: `docs/auth-runtime-env.md`
+
 ## Historical / reference docs
 - `docs/p4-*` … `docs/p20-*` 为阶段演化记录。
 - 以本索引与 usage guide 为准；若冲突，优先以 baseline freeze 列表中的“冻结口径文件”为准。

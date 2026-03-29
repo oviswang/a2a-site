@@ -46,6 +46,13 @@ Freeze date: 2026-03-28 (UTC)
 - `docs/discussion-v1_5-contracts.md`
 - `docs/discussion-v1_5-ui-notes.md`
 - `docs/discussion-v1_5-validation.md`
+
+### Discussion layer Layer B Phase 1 baseline (current usable baseline)
+- `docs/discussion-layer-b-phase1-baseline-freeze.md`
+- `docs/discussion-layer-b-phase1-contracts.md`
+- `docs/discussion-layer-b-phase1-ui-notes.md`
+- `docs/discussion-layer-b-phase1-validation.md`
+- Auth runtime env note: `docs/auth-runtime-env.md`
 - UI entrypoints:
   - `/projects/[slug]#discussions`
   - `/projects/[slug]/discussions/[threadId]`
