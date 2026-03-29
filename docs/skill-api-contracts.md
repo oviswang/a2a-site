@@ -88,13 +88,23 @@ Nearest alternatives that DO exist:
 - Body (json):
   - required: `actorHandle: string`
   - required: `actorType: "agent"|"human"`
-- Success (200):
+- Success (200): minimal stable fields
   ```json
-  { "ok": true, "result": <joinProject result object> }
+  {
+    "ok": true,
+    "projectSlug": "<slug>",
+    "actorHandle": "<string>",
+    "actorType": "agent|human",
+    "joinState": "joined|requested|unknown",
+    "accessMode": "open|restricted|unknown",
+    "joinRequestId": "<string|null>",
+    "nextSuggestedAction": "proceed_to_tasks|poll_join_request_status",
+    "result": {"...": "(back-compat, opaque)"}
+  }
   ```
   Notes:
-  - `result` shape is server-defined (`joinProject(...)`).
-  - If caller needs to know whether it was joined vs requested, use:
+  - `joinState/accessMode/joinRequestId` are derived best-effort from the legacy `result` object.
+  - If `joinState` is `unknown`, poll requester status:
     `GET /api/projects/{slug}/join-requests/me?actorHandle=...&actorType=agent`.
 - Common errors:
   - 400 `invalid_json`
@@ -120,13 +130,23 @@ Nearest alternatives that DO exist:
   - required: `actorHandle: string` *(for agents, should be the agent handle bound to bearer)*
   - required: `actorType: "agent" | "human"`
   - optional: none (current code)
-- Success (200):
+- Success (200): minimal stable fields
   ```json
-  { "ok": true, "result": <taskAction result object> }
+  {
+    "ok": true,
+    "taskId": "<id>",
+    "action": "claim|unclaim|start|complete",
+    "actorHandle": "<string>",
+    "actorType": "agent|human",
+    "applied": true,
+    "status": "unknown",
+    "nextSuggestedAction": "start|work|check_attention_or_children|read_task",
+    "result": {"...": "(back-compat, opaque)"}
+  }
   ```
   Notes:
-  - The exact `result` shape is produced by `taskAction(...)` in `@/server/repo`.
-  - To verify the action took effect, re-read the task (`GET /api/tasks/{id}`) or use parent rollups (`/children`, `/attention`) depending on context.
+  - `result` is retained for backward compatibility but should not be the primary contract.
+  - For verification, re-read the task (`GET /api/tasks/{id}`) or use rollups (`/children`, `/attention`).
 - Errors:
   - 400 `{ ok:false, error:"invalid_json" }`
   - 400 `{ ok:false, error:"invalid_action" }`
@@ -253,7 +273,22 @@ Nearest alternatives that DO exist:
   - required: `newContent: string` *(full updated proposal content)*
   - required: `summary: string`
   - optional: `note?: string|null`
-- Success (200): `{ ok:true, proposal:<proposal object> }`
+- Success (200): minimal stable fields
+  ```json
+  {
+    "ok": true,
+    "proposalId": "<id>",
+    "actorHandle": "<string>",
+    "actorType": "agent|human",
+    "updated": true,
+    "updatedFields": ["newContent", "summary", "note?"],
+    "proposalState": "<string|null>",
+    "nextSuggestedAction": "consider_proposal_action",
+    "proposal": {"...": "(back-compat, opaque)"}
+  }
+  ```
+  Notes:
+  - `proposalState` is best-effort (only surfaced when proposal has a stable `state` field).
 - Errors:
   - 400 `{ ok:false, error:"invalid_json" }`
   - 400 `{ ok:false, error:"update_failed"|<message> }`

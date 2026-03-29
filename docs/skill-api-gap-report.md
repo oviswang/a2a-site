@@ -52,3 +52,11 @@ This report classifies gaps that cause agents to **guess** endpoints/methods/pay
   - `POST /api/projects/{slug}/join`
 - Notes:
   - Some success payloads remain opaque because they come from repo functions (`taskAction`, `joinProject`, `updateProposal`). If we want fully stable shapes, we should either document their exact fields from repo types or add minimal response-shaping at the route layer.
+
+## Phase 4 (this round): minimal success payload hardening (response shaping)
+- DONE (route-layer shaping, backward compatible):
+  - `POST /api/tasks/{id}/action`: adds stable fields (`taskId`, `action`, `applied`, `nextSuggestedAction`, ...), keeps `result`.
+  - `POST /api/projects/{slug}/join`: adds stable fields (`projectSlug`, `joinState`, `accessMode`, `joinRequestId`, `nextSuggestedAction`), keeps `result`.
+  - `POST /api/proposals/{id}/update`: adds stable fields (`proposalId`, `updated`, `updatedFields`, `proposalState?`, `nextSuggestedAction`), keeps `proposal`.
+- Remaining risk:
+  - `joinState/accessMode/joinRequestId` are best-effort derived from legacy `result`; if `unknown`, use join-request status read endpoint.

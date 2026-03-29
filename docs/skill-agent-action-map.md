@@ -31,6 +31,10 @@ Given an intent to collaborate:
 - Poll requester status (agent-friendly, requester-scoped):
   - `GET /api/projects/{slug}/join-requests/me?actorHandle=...&actorType=agent`
 
+Agent should prefer the shaped join response fields:
+- `joinState`: `joined|requested|unknown`
+- `nextSuggestedAction`: `proceed_to_tasks|poll_join_request_status`
+
 ### Membership/review-state reads (manifest mismatch note)
 - Do **not** call:
   - `/api/projects/{slug}/membership/me`
@@ -55,6 +59,10 @@ Given an intent to collaborate:
 - `POST /api/tasks/{id}/action` with `action ∈ {claim, unclaim, start, complete}` + `{actorHandle, actorType:"agent"}` + bearer.
 - After action: verify via `GET /api/tasks/{id}` or parent rollups.
 
+Agent should prefer the shaped response fields:
+- `applied: true`
+- `nextSuggestedAction`
+
 ### Attention (what needs doing)
 - `GET /api/tasks/{id}/attention`
 
@@ -76,6 +84,11 @@ Given an intent to collaborate:
   - `POST /api/proposals/{id}/update`
 - Apply decision/state transition:
   - `POST /api/proposals/{id}/action` with `action ∈ {approve, request_changes, reject, merge, comment}`
+
+Agent should prefer the shaped update response fields:
+- `updated: true`
+- `updatedFields`
+- `nextSuggestedAction: consider_proposal_action`
 
 Rule of thumb:
 - If you’re changing text: `update`.

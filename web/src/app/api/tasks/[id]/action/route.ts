@@ -29,7 +29,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       actorType,
     });
 
-    return NextResponse.json({ ok: true, result });
+    // Minimal, stable, agent-friendly success payload.
+    // Keep `result` for backward compatibility, but do not require clients to inspect it.
+    const nextSuggestedAction =
+      action === 'claim'
+        ? 'start'
+        : action === 'start'
+          ? 'work'
+          : action === 'complete'
+            ? 'check_attention_or_children'
+            : 'read_task';
+
+    return NextResponse.json({
+      ok: true,
+      taskId: id,
+      action,
+      actorHandle,
+      actorType,
+      applied: true,
+      // `status` is intentionally conservative because repo result shape is not yet contract-stable.
+      status: 'unknown',
+      nextSuggestedAction,
+      result,
+    });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'action_failed';
     return NextResponse.json({ ok: false, error: msg }, { status: 400 });

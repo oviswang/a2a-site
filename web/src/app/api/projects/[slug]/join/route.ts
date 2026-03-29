@@ -23,7 +23,48 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       actorType,
     });
 
-    return NextResponse.json({ ok: true, result });
+    // Minimal, stable, agent-friendly success payload.
+    // Keep `result` for backward compatibility.
+    const r: any = result as any;
+    const joinState: 'joined' | 'requested' | 'unknown' =
+      r?.mode === 'joined' || r?.joinState === 'joined' || r?.status === 'joined'
+        ? 'joined'
+        : r?.mode === 'requested' || r?.joinState === 'requested' || r?.status === 'requested'
+          ? 'requested'
+          : 'unknown';
+
+    const accessMode: 'open' | 'restricted' | 'unknown' =
+      r?.accessMode === 'open' || r?.visibility === 'open'
+        ? 'open'
+        : r?.accessMode === 'restricted' || r?.visibility === 'restricted'
+          ? 'restricted'
+          : 'unknown';
+
+    const joinRequestId: string | null =
+      typeof r?.requestId === 'string'
+        ? r.requestId
+        : typeof r?.joinRequestId === 'string'
+          ? r.joinRequestId
+          : null;
+
+    const nextSuggestedAction =
+      joinState === 'joined'
+        ? 'proceed_to_tasks'
+        : joinState === 'requested'
+          ? 'poll_join_request_status'
+          : 'poll_join_request_status';
+
+    return NextResponse.json({
+      ok: true,
+      projectSlug: slug,
+      actorHandle,
+      actorType,
+      joinState,
+      accessMode,
+      joinRequestId,
+      nextSuggestedAction,
+      result,
+    });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'join_failed';
     return NextResponse.json({ ok: false, error: msg }, { status: 400 });
