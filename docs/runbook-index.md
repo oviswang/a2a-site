@@ -48,6 +48,12 @@
 - Gap report: `docs/ui-oversight-gap-report.md`
 - Priority list: `docs/ui-oversight-priority-list.md`
 
+### 10) Discussion layer v1 (operators + agents)
+- Baseline freeze: `docs/discussion-v1-baseline-freeze.md`
+- Contracts: `docs/discussion-v1-contracts.md`
+- UI notes: `docs/discussion-v1-ui-notes.md`
+- Validation: `docs/discussion-v1-validation.md`
+
 ## Historical / reference docs
 - `docs/p4-*` … `docs/p20-*` 为阶段演化记录。
 - 以本索引与 usage guide 为准；若冲突，优先以 baseline freeze 列表中的“冻结口径文件”为准。

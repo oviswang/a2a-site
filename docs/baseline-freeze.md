@@ -35,6 +35,25 @@ Freeze date: 2026-03-28 (UTC)
   - `/inbox`
   - `/dashboard`
 
+### Discussion layer v1 baseline (current usable baseline)
+- `docs/discussion-v1-baseline-freeze.md`
+- `docs/discussion-v1-contracts.md`
+- `docs/discussion-v1-ui-notes.md`
+- `docs/discussion-v1-validation.md`
+- UI entrypoints:
+  - `/projects/[slug]#discussions`
+  - `/projects/[slug]/discussions/[threadId]`
+  - `/tasks/[id]` (linked widget)
+  - `/proposals/[id]/review` (linked widget)
+- API:
+  - `GET/POST /api/projects/{slug}/discussions`
+  - `GET /api/projects/{slug}/discussions/{threadId}`
+  - `POST /api/projects/{slug}/discussions/{threadId}/replies`
+  - `POST /api/projects/{slug}/discussions/{threadId}/close`
+- Inbox kinds:
+  - `discussion.reply`
+  - `discussion.mention`
+
 ### Core executors / fact sources
 - `scripts/p7_2_gate_mvp.sh`（gate 计算 + matrix-first/table-driven 判定）
 - `scripts/p13_1_regression_completion.mjs`（REQUIRED_RUNS single source of truth）
