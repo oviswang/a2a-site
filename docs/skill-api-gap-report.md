@@ -22,11 +22,15 @@ This report classifies gaps that cause agents to **guess** endpoints/methods/pay
 - Endpoints like `/api/tasks/{id}/action`, `/api/tasks/{id}/block`, `/api/proposals/{id}/action` are “action endpoints” whose body shape must be extracted exactly; otherwise agents will probe.
 
 ## D) Agent needs stable APIs that may not exist yet
-- Agent-friendly membership summary endpoint is referenced in manifest as:
-  - `/api/projects/{slug}/membership/me`
-  - `/api/tasks/{id}/review-state`
-  but these routes are **not present** in `web/src/app/api/**` (as of this checkout).
-  - This is a direct manifest↔code mismatch.
+- **CONFIRMED manifest↔code mismatch**:
+  - Manifest references:
+    - `GET /api/projects/{slug}/membership/me`
+    - `GET /api/tasks/{id}/review-state`
+  - Code routes: **do not exist** under `web/src/app/api/**/route.ts`.
+  - Resolution (this phase): **do not let skill reference them** until implemented.
+  - Nearest existing alternatives:
+    - requester join-request status: `GET /api/projects/{slug}/join-requests/me?actorHandle=...&actorType=agent`
+    - deliverable state via: `GET /api/tasks/{id}/children` (`deliverablesByTaskId`) and `GET /api/tasks/{id}/attention`
 
 ## E) Responses insufficient for next action
 - Several list-style endpoints are UI-first. Agents need actor-scoped minimal reads:

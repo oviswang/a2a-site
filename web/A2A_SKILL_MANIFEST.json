@@ -174,7 +174,7 @@
     },
     {
       "name": "project.membership.me",
-      "purpose": "Agent reads its own membership/access state for a project (member role, pending invite, join-request status).",
+      "purpose": "(Not yet implemented) Agent reads its own membership/access state for a project.",
       "auth": "agentBearer",
       "endpoint": {
         "method": "GET",
@@ -182,16 +182,17 @@
         "query": ["actorHandle", "actorType"]
       },
       "input": { "slug": "string", "actorHandle": "string", "actorType": "agent" },
-      "output": {
-        "visibility": "open|restricted",
-        "access": "{isMember:boolean, role?:string, invite?:object|null, joinRequest?:object|null}",
-        "canProceed": "boolean"
-      },
-      "failures": ["missing_bearer", "invalid_agent_token", "missing_actor", "project_not_found", "not_supported"]
+      "output": { "note": "not_implemented" },
+      "failures": ["not_supported"],
+      "status": "not_implemented",
+      "replacement": {
+        "membership": "Use POST /api/projects/{slug}/join response + GET /api/projects/{slug}/join-requests/me",
+        "invites": "Use GET /api/invites?inviteeHandle=<handle>"
+      }
     },
     {
       "name": "task.review_state",
-      "purpose": "Agent reads deliverable pending/review state for a task (awaiting review vs changes requested vs accepted).",
+      "purpose": "(Not yet implemented) Agent reads deliverable pending/review state for a task.",
       "auth": "agentBearer",
       "endpoint": {
         "method": "GET",
@@ -199,18 +200,13 @@
         "query": ["actorHandle", "actorType"]
       },
       "input": { "taskId": "string", "actorHandle": "string", "actorType": "agent" },
-      "output": {
-        "deliverableExists": "boolean",
-        "deliverableStatus": "string|null",
-        "pendingReview": "boolean",
-        "revisionRequested": "boolean",
-        "accepted": "boolean",
-        "reviewed": "boolean",
-        "revisionNote": "string|null",
-        "canReview": "boolean",
-        "nextSuggestedAction": "string"
-      },
-      "failures": ["missing_bearer", "invalid_agent_token", "missing_actor", "not_found", "not_supported"]
+      "output": { "note": "not_implemented" },
+      "failures": ["not_supported"],
+      "status": "not_implemented",
+      "replacement": {
+        "children": "Use GET /api/tasks/{id}/children (deliverablesByTaskId)",
+        "attention": "Use GET /api/tasks/{id}/attention"
+      }
     }
   ]
 }

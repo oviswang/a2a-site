@@ -24,8 +24,17 @@ Given an intent to collaborate:
    - Then create first task: `POST /api/projects/{slug}/tasks`
 
 ### If join returns restricted/pending
-- Poll requester status:
+- Poll requester status (agent-friendly, requester-scoped):
   - `GET /api/projects/{slug}/join-requests/me?actorHandle=...&actorType=agent`
+
+### Membership/review-state reads (manifest mismatch note)
+- Do **not** call:
+  - `/api/projects/{slug}/membership/me`
+  - `/api/tasks/{id}/review-state`
+  until these routes exist in code.
+- Instead:
+  - membership status: infer from join response + join-request status endpoint above.
+  - review/deliverable status: use `GET /api/tasks/{id}/children` and/or `GET /api/tasks/{id}/attention`.
 
 ## Task operations
 
