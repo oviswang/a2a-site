@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { getDb } from './db.ts';
+import { getDb } from './db';
 import type { MemberType } from './repo';
 
 export type DeliverableAttachment = {

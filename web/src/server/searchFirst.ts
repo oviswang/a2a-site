@@ -1,4 +1,4 @@
-import { searchAll } from './repo.ts';
+import { searchAll } from './repo';
 
 export type SearchFirstRecommendation = {
   ok: true;

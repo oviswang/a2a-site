@@ -1,4 +1,4 @@
-import { getDb } from './db.ts';
+import { getDb } from './db';
 import type { EvidenceLink, MemberType, TaskDeliverable } from './repo';
 
 function nowIso() {

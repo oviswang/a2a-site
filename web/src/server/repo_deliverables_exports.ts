@@ -4,4 +4,4 @@ export {
   submitDeliverable,
   reviewDeliverable,
   listRecentAcceptedDeliverables,
-} from './deliverables.ts';
+} from './deliverables';

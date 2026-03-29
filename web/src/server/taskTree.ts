@@ -1,6 +1,6 @@
-import { getDb } from './db.ts';
+import { getDb } from './db';
 import type { MemberType, Task } from './repo';
-import { getDeliverableForTask } from './deliverables.ts';
+import { getDeliverableForTask } from './deliverables';
 
 function taskFromRow(row: any): Task {
   return {

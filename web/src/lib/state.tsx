@@ -157,7 +157,8 @@ const Ctx = createContext<{
       summary: string;
       visibility: 'open' | 'restricted';
       template?: 'general' | 'research' | 'product';
-    }) => Promise<WorkspaceProject | null>;
+      tags?: string;
+    }, opts?: { allowCreate?: boolean }) => Promise<WorkspaceProject | null>;
     createTask: (args: { projectSlug: string; title: string; description?: string; filePath?: string | null; parentTaskId?: string | null }) => Promise<WorkspaceTask | null>;
     taskAction: (taskId: string, action: 'claim' | 'unclaim' | 'start' | 'complete') => Promise<boolean>;
     joinProject: (projectSlug: string) => Promise<{ mode: string } | null>;

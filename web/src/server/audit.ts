@@ -1,4 +1,4 @@
-import { getDb } from './db.ts';
+import { getDb } from './db';
 
 export type CreateSearchAudit = {
   kind: 'project.create_search_first';

@@ -14,14 +14,14 @@ Important
 
 ## Current validation status
 
-### Environment constraint
-- `web` build currently fails TypeScript checking unrelated to discussion v1:
-  - `src/app/projects/new/page.tsx` calls `actions.createProject(..., { allowCreate: override })` but the action signature expects 1 argument.
-  - This prevents running a clean `next build` gate in this workspace.
+### Environment constraint (RESOLVED)
+- `web` `next build` was previously blocked by unrelated TypeScript issues.
+- Resolution:
+  1) Updated `actions.createProject` type signature to accept the optional `opts` arg.
+  2) Removed `.ts` extension imports inside `web/src/server/*` (Next.js TS check rejects them without `allowImportingTsExtensions`).
 
-Impact
-- We can validate discussion v1 at the **API/DB** level and do code-level inspection of UI.
-- We cannot honestly claim full end-to-end UI validation until the existing build issue is resolved.
+Result
+- `web` build now completes successfully (`npm run build`).
 
 ---
 
@@ -37,17 +37,25 @@ Impact
    - `discussion.thread_closed`
    Replies do **not** enter timeline.
 
-### What we validated
-- Code-level: implemented
-  - Create thread: `POST /api/projects/{slug}/discussions` (human-only; agent returns `not_supported`)
-  - Reply: `POST /api/projects/{slug}/discussions/{threadId}/replies`
-  - Close: `POST /api/projects/{slug}/discussions/{threadId}/close` (human owner/maintainer)
-- Low-noise timeline: implemented
-  - thread create/close writes to `activity` with kinds `discussion.thread_created` / `discussion.thread_closed`.
-  - replies do not write activity.
+### What we validated (REAL execution)
+- Build gate:
+  - `web npm run build` now passes.
+- API-driven end-to-end (via running dev server locally):
+  - Created thread as `alice` (human): OK (200)
+  - Replied as `alice`: OK (200)
+  - Closed thread as `alice`: OK (200)
+  - Project timeline (`GET /api/projects/{slug}`) contains **exactly 2 discussion activity events**:
+    - `discussion.thread_created`
+    - `discussion.thread_closed`
+  - Confirmed reply did **not** generate additional timeline activity.
 
-### Not yet validated end-to-end
-- UI click flow cannot be asserted as “tested” due to current `next build` failing.
+Evidence (example run)
+- Activity sample:
+  - `discussion.thread_created` entityId=`dth-…`
+  - `discussion.thread_closed` entityId=`dth-…`
+
+Notes
+- This validates the low-noise requirement: replies do not flood timeline.
 
 ---
 
@@ -59,12 +67,18 @@ Impact
 - Each entry deep-links to the thread detail page.
 
 ### What we validated
-- Implemented widgets:
-  - `/tasks/[id]` fetches linked discussions via projectSlug discovered from task read.
-  - `/proposals/[id]/review` fetches linked discussions using proposal’s `projectSlug` + `id`.
+- Implemented widgets (code-level):
+  - `/tasks/[id]` lists linked threads for (entityType=task, entityId=taskId)
+  - `/proposals/[id]/review` lists linked threads for (entityType=proposal, entityId=proposalId)
 
-### Risk notes
-- Task page currently performs an extra fetch of `/api/tasks/{id}` to resolve projectSlug; this is acceptable for v1 but could be optimized later.
+### What we validated (REAL execution, API-level)
+- Verified linked list endpoint works:
+  - `GET /api/projects/{slug}/discussions?entityType=task&entityId=<taskId>`
+  - `GET /api/projects/{slug}/discussions?entityType=proposal&entityId=<proposalId>`
+  Both return thread lists when threads are created with matching entity refs.
+
+### Notes
+- Task page performs a best-effort fetch to resolve projectSlug; acceptable for v1.
 
 ---
 
@@ -75,13 +89,16 @@ Impact
 - `discussion.mention` goes to mentioned handle.
 - Notifications appear in existing Inbox (`/inbox`).
 
-### What we validated
-- Server-side integration:
-  - reply path triggers `notifyHuman(threadAuthor, 'discussion.reply', ...)` unless self.
-  - mention parsing in both thread body and reply body triggers `notifyHuman(handle, 'discussion.mention', ...)`.
-- Noise control:
-  - replies do not enter timeline.
-  - notifications are still per reply/mention; if this becomes noisy in real usage, it should be addressed via real incident-driven fixes (baseline policy).
+### What we validated (REAL execution)
+- Mention notification:
+  - Creating a thread containing `@bob` produced `discussion.mention` in `/api/inbox?userHandle=bob` with a deep-link to the thread.
+- Reply notification:
+  - Reply by `bob` to a thread authored by `alice` produced `discussion.reply` in `/api/inbox?userHandle=alice`.
+- Self-notify check:
+  - Reply by the thread author does **not** create a `discussion.reply` notification (expected behavior).
+
+Noise notes
+- Notifications are per mention/per reply; if this becomes noisy in real usage, address as incident-driven tuning (baseline policy).
 
 ---
 
