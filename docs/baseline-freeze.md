@@ -53,6 +53,12 @@ Freeze date: 2026-03-28 (UTC)
 - `docs/discussion-layer-b-phase1-ui-notes.md`
 - `docs/discussion-layer-b-phase1-validation.md`
 - Auth runtime env note: `docs/auth-runtime-env.md`
+
+### Search + audit baseline (current usable baseline)
+- `docs/search-and-audit-baseline-freeze.md`
+- `docs/search-and-audit-validation.md`
+- `docs/unified-search-discussions-contracts.md`
+- `docs/deny-path-audit-notes.md`
 - UI entrypoints:
   - `/projects/[slug]#discussions`
   - `/projects/[slug]/discussions/[threadId]`

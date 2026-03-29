@@ -67,6 +67,12 @@
 - Validation: `docs/discussion-layer-b-phase1-validation.md`
 - Auth runtime env: `docs/auth-runtime-env.md`
 
+### 13) Search + audit (unified search discussions + deny-path audit)
+- Baseline freeze: `docs/search-and-audit-baseline-freeze.md`
+- Validation: `docs/search-and-audit-validation.md`
+- Unified search discussions contracts: `docs/unified-search-discussions-contracts.md`
+- Deny-path audit notes: `docs/deny-path-audit-notes.md`
+
 ## Historical / reference docs
 - `docs/p4-*` … `docs/p20-*` 为阶段演化记录。
 - 以本索引与 usage guide 为准；若冲突，优先以 baseline freeze 列表中的“冻结口径文件”为准。
