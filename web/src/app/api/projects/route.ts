@@ -44,6 +44,11 @@ export async function POST(req: Request) {
         recommendedProjects: sf.recommended.map((p) => ({ slug: p.slug, name: p.name, why: p.why })),
         chosenAction: sf.createAllowed || allowCreate ? 'create_new' : 'join',
         createReason: sf.createAllowed ? 'no_results' : allowCreate ? 'user_override' : 'low_relevance',
+        // NOTE: We intentionally do not change search-first semantics here.
+        // Adding projectSlug makes the audit record discoverable for UI oversight.
+        // This is additive and backward-compatible.
+        projectSlugHint: b.slug ? String(b.slug) : undefined,
+        projectNameHint: name,
       });
     } catch {}
 

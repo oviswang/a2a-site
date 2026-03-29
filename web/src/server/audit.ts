@@ -11,6 +11,10 @@ export type CreateSearchAudit = {
   recommendedProjects: Array<{ slug: string; name: string; visibility?: string; why?: string }>;
   chosenAction: 'join' | 'request_access' | 'create_new';
   createReason?: 'no_results' | 'low_relevance' | 'user_override' | null;
+  // Additive hints so UI can find the relevant record after creation.
+  // Not required for search-first semantics.
+  projectSlugHint?: string;
+  projectNameHint?: string;
 };
 
 export function logCreateSearchAudit(a: CreateSearchAudit) {

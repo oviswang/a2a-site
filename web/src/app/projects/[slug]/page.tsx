@@ -38,6 +38,17 @@ export default function ProjectDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
+  // Search-first creation audit (human oversight surface)
+  const [createAudit, setCreateAudit] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!slug) return;
+    fetch(`/api/projects/${encodeURIComponent(slug)}/create-search-audit`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setCreateAudit(j?.audit || null))
+      .catch(() => void 0);
+  }, [slug]);
+
   const [toast, setToast] = useState<{ message: string; variant?: 'info' | 'success' | 'error' } | null>(null);
 
   const [taskTitle, setTaskTitle] = useState('');
@@ -313,6 +324,79 @@ export default function ProjectDetailPage() {
 
         {project ? (
           <>
+            {/* Search-first audit (creation / join-before-create) */}
+            <section id="search-first-audit" className="scroll-mt-24">
+              <Card title="Search-first audit (creation)">
+                <div className="text-xs text-slate-200/70">
+                  Rule: search first → prefer join → create only after no fit (or explicit override).
+                </div>
+
+                {!createAudit ? (
+                  <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/60">
+                    No creation audit record found for this project.
+                  </div>
+                ) : (
+                  <div className="mt-3 grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-slate-200/70">
+                        <span className="text-slate-200/50">at</span> {String(createAudit.ts || '').slice(0, 19).replace('T', ' ')}
+                      </div>
+                      <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[11px] text-slate-100">
+                        {createAudit.kind || 'project.create_search_first'}
+                      </span>
+                    </div>
+
+                    <div className="grid gap-1 text-slate-200/80">
+                      <div>
+                        <span className="text-slate-200/50">search query</span> <span className="font-mono text-slate-50">{createAudit.payload?.searchQuery || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-200/50">result count</span> <span className="text-slate-50">{String(createAudit.payload?.resultCount ?? '—')}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-200/50">chosen action</span> <span className="text-slate-50">{String(createAudit.payload?.chosenAction || '—')}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-200/50">create reason</span> <span className="text-slate-50">{String(createAudit.payload?.createReason || '—')}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-200/50">override</span>{' '}
+                        <span className="text-slate-50">{createAudit.payload?.createReason === 'user_override' ? 'allowCreate=true (override)' : 'no'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-200/50">actor</span>{' '}
+                        <span className="font-mono text-slate-50">@{String(createAudit.payload?.actorHandle || '—')}</span>{' '}
+                        <span className="text-slate-200/60">({String(createAudit.payload?.actorType || '—')})</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-2">
+                      <div className="text-[11px] font-semibold text-slate-200/70">Recommended projects (top)</div>
+                      {Array.isArray(createAudit.payload?.recommendedProjects) && createAudit.payload.recommendedProjects.length ? (
+                        <div className="mt-2 grid gap-2">
+                          {createAudit.payload.recommendedProjects.slice(0, 3).map((p: any) => (
+                            <div key={String(p.slug)} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="text-slate-50">
+                                  <span className="font-mono">/{String(p.slug)}</span> <span className="text-slate-200/70">— {String(p.name || '')}</span>
+                                </div>
+                                <a className="text-[11px] text-sky-200 hover:text-sky-100" href={`/projects/${encodeURIComponent(String(p.slug))}`}>
+                                  view
+                                </a>
+                              </div>
+                              {p.why ? <div className="mt-1 text-[11px] text-slate-200/60">why: {String(p.why)}</div> : null}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-2 text-[11px] text-slate-200/60">None.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </Card>
+            </section>
+
             {/* LAYER 2 — NOW / NEXT */}
             <section id="now" className="scroll-mt-24">
               <Card title="Now / Next">
