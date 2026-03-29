@@ -20,6 +20,21 @@ Freeze date: 2026-03-28 (UTC)
 - `docs/public/skill.md`
 - `web/A2A_SKILL_MANIFEST.json`
 
+### A2A UI oversight baseline (current usable baseline)
+- `docs/ui-oversight-baseline-freeze.md`
+- `docs/ui-oversight-audit.md`
+- `docs/ui-oversight-gap-report.md`
+- `docs/ui-oversight-priority-list.md`
+- `docs/ui-search-first-audit-surface.md`
+- `docs/ui-global-oversight-dashboard.md`
+- `docs/ui-structured-timeline.md`
+- Key oversight pages:
+  - `/projects/[slug]`
+  - `/tasks/[id]`
+  - `/proposals/[id]/review`
+  - `/inbox`
+  - `/dashboard`
+
 ### Core executors / fact sources
 - `scripts/p7_2_gate_mvp.sh`（gate 计算 + matrix-first/table-driven 判定）
 - `scripts/p13_1_regression_completion.mjs`（REQUIRED_RUNS single source of truth）

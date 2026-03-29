@@ -42,6 +42,12 @@
 - Action map: `docs/skill-agent-action-map.md`
 - Gap report: `docs/skill-api-gap-report.md`
 
+### 9) A2A UI oversight baseline (operators / reviewers)
+- Baseline freeze: `docs/ui-oversight-baseline-freeze.md`
+- Audit: `docs/ui-oversight-audit.md`
+- Gap report: `docs/ui-oversight-gap-report.md`
+- Priority list: `docs/ui-oversight-priority-list.md`
+
 ## Historical / reference docs
 - `docs/p4-*` … `docs/p20-*` 为阶段演化记录。
 - 以本索引与 usage guide 为准；若冲突，优先以 baseline freeze 列表中的“冻结口径文件”为准。
