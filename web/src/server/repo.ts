@@ -355,13 +355,24 @@ export type SearchResults = {
   proposals: Array<{ id: string; title: string; status: string; projectSlug: string; filePath: string }>;
   files: Array<{ projectSlug: string; path: string }>;
   agents: Array<{ handle: string; displayName: string | null; origin: string }>; // from identities
+  discussions?: Array<{
+    threadId: string;
+    threadTitle: string;
+    projectSlug: string;
+    projectName: string;
+    entityType: DiscussionEntityType;
+    entityId: string | null;
+    updatedAt: string;
+    link: string;
+    matchedIn: 'title' | 'body' | 'reply';
+  }>;
 };
 
-export function searchAll(qRaw: string): SearchResults {
+export function searchAll(qRaw: string, opts?: { includeDiscussions?: boolean; actorHandle?: string | null }): SearchResults {
   const db = getDb();
   const q = (qRaw || '').trim();
   const like = `%${q.replace(/%/g, '')}%`;
-  if (!q) return { q: '', projects: [], tasks: [], proposals: [], files: [], agents: [] };
+  if (!q) return { q: '', projects: [], tasks: [], proposals: [], files: [], agents: [], discussions: [] };
 
   const projects = db
     .prepare('SELECT slug, name, summary FROM projects WHERE slug LIKE ? OR name LIKE ? OR summary LIKE ? ORDER BY created_at DESC LIMIT 10')
@@ -410,6 +421,59 @@ export function searchAll(qRaw: string): SearchResults {
     proposals: proposals.map((p) => ({ id: p.id, title: p.title, status: p.status, projectSlug: p.project_slug, filePath: p.file_path })),
     files: files.map((f) => ({ projectSlug: f.project_slug, path: f.path })),
     agents: agents.map((a) => ({ handle: a.handle, displayName: a.display_name ?? null, origin: a.origin || 'local' })),
+    discussions:
+      opts?.includeDiscussions && opts?.actorHandle
+        ? ((): any[] => {
+            // permission: include restricted projects only if actor is a member
+            const allowedProjectIds = new Set(
+              (db
+                .prepare("SELECT project_id FROM project_members WHERE member_handle=? AND member_type='human'")
+                .all(String(opts.actorHandle)) as any[]).map((r) => Number(r.project_id))
+            );
+
+            const rows = db
+              .prepare(
+                `SELECT t.id as thread_id, t.title as title, t.body_md as body_md, t.entity_type as entity_type, t.entity_id as entity_id,
+                        t.updated_at as updated_at,
+                        p.id as project_id, p.slug as project_slug, p.name as project_name, p.visibility as visibility
+                 FROM discussion_threads t
+                 JOIN projects p ON p.id=t.project_id
+                 WHERE (t.title LIKE ? OR t.body_md LIKE ? OR EXISTS (
+                   SELECT 1 FROM discussion_replies r WHERE r.thread_id=t.id AND r.body_md LIKE ?
+                 ))
+                 ORDER BY t.updated_at DESC
+                 LIMIT 10`
+              )
+              .all(like, like, like) as any[];
+
+            const out: any[] = [];
+            for (const r of rows) {
+              const vis = r.visibility === 'restricted' ? 'restricted' : 'open';
+              const pid = Number(r.project_id);
+              if (vis === 'restricted' && !allowedProjectIds.has(pid)) continue;
+
+              let matchedIn: 'title' | 'body' | 'reply' = 'reply';
+              const title = String(r.title || '');
+              const body = String(r.body_md || '');
+              const needle = q.toLowerCase();
+              if (title.toLowerCase().includes(needle)) matchedIn = 'title';
+              else if (body.toLowerCase().includes(needle)) matchedIn = 'body';
+
+              out.push({
+                threadId: String(r.thread_id),
+                threadTitle: String(r.title),
+                projectSlug: String(r.project_slug),
+                projectName: String(r.project_name),
+                entityType: r.entity_type === 'task' ? 'task' : r.entity_type === 'proposal' ? 'proposal' : 'project',
+                entityId: r.entity_id ? String(r.entity_id) : null,
+                updatedAt: String(r.updated_at),
+                link: `/projects/${encodeURIComponent(String(r.project_slug))}/discussions/${encodeURIComponent(String(r.thread_id))}`,
+                matchedIn,
+              });
+            }
+            return out;
+          })()
+        : [],
   };
 }
 
@@ -711,22 +775,113 @@ function enforceAgentMentionPolicy(args: {
 }) {
   const db = getDb();
   const policy = getPolicyRow(db, args.projectId, args.agentHandle);
-  if (!policy) throw new Error('not_supported');
-  if (!policy.enabled || !policy.allow_mentions) throw new Error('forbidden_by_project_agent_policy');
+  const now = nowIso();
+  if (!policy) {
+    try {
+      auditDeny({
+        kind: 'layerb.deny',
+        ts: now,
+        actorHandle: args.agentHandle,
+        actorType: 'agent',
+        projectSlug: args.projectSlug,
+        actionType: 'discussion.mention',
+        denyReason: 'not_supported',
+        mentionTargets: (args.mentionedHandles || []).map(normalizeUserHandle).filter(Boolean) as string[],
+        reasonProvided: Boolean(String(args.reason || '').trim()),
+      });
+    } catch {}
+    throw new Error('not_supported');
+  }
+  if (!policy.enabled || !policy.allow_mentions) {
+    try {
+      auditDeny({
+        kind: 'layerb.deny',
+        ts: now,
+        actorHandle: args.agentHandle,
+        actorType: 'agent',
+        projectSlug: args.projectSlug,
+        actionType: 'discussion.mention',
+        denyReason: 'forbidden_by_project_agent_policy',
+        mentionTargets: (args.mentionedHandles || []).map(normalizeUserHandle).filter(Boolean) as string[],
+        reasonProvided: Boolean(String(args.reason || '').trim()),
+      });
+    } catch {}
+    throw new Error('forbidden_by_project_agent_policy');
+  }
 
   const targets = (args.mentionedHandles || []).map(normalizeUserHandle).filter(Boolean) as string[];
   if (!targets.length) return;
-  if (targets.length > 1) throw new Error('too_many_mentions');
+  if (targets.length > 1) {
+    try {
+      auditDeny({
+        kind: 'layerb.deny',
+        ts: now,
+        actorHandle: args.agentHandle,
+        actorType: 'agent',
+        projectSlug: args.projectSlug,
+        actionType: 'discussion.mention',
+        denyReason: 'too_many_mentions',
+        mentionTargets: targets,
+        reasonProvided: Boolean(String(args.reason || '').trim()),
+      });
+    } catch {}
+    throw new Error('too_many_mentions');
+  }
 
-  if (policy.require_reason_for_mention && !String(args.reason || '').trim()) throw new Error('mention_reason_required');
+  if (policy.require_reason_for_mention && !String(args.reason || '').trim()) {
+    try {
+      auditDeny({
+        kind: 'layerb.deny',
+        ts: now,
+        actorHandle: args.agentHandle,
+        actorType: 'agent',
+        projectSlug: args.projectSlug,
+        actionType: 'discussion.mention',
+        denyReason: 'mention_reason_required',
+        mentionTargets: targets,
+        reasonProvided: false,
+      });
+    } catch {}
+    throw new Error('mention_reason_required');
+  }
 
   const allowedRoles = parseAllowedRoles(policy.allowed_mention_roles);
   const target = targets[0];
-  if (!isHandleAllowedByRole(db, args.projectId, target, allowedRoles)) throw new Error('mention_target_not_allowed');
+  if (!isHandleAllowedByRole(db, args.projectId, target, allowedRoles)) {
+    try {
+      auditDeny({
+        kind: 'layerb.deny',
+        ts: now,
+        actorHandle: args.agentHandle,
+        actorType: 'agent',
+        projectSlug: args.projectSlug,
+        actionType: 'discussion.mention',
+        denyReason: 'mention_target_not_allowed',
+        mentionTargets: [target],
+        reasonProvided: Boolean(String(args.reason || '').trim()),
+      });
+    } catch {}
+    throw new Error('mention_target_not_allowed');
+  }
 
   const day = todayStr();
   const used = getAgentMentionCount(db, args.projectId, args.agentHandle, day);
-  if (used >= Number(policy.mention_daily_limit || 0)) throw new Error('mention_daily_limit_exceeded');
+  if (used >= Number(policy.mention_daily_limit || 0)) {
+    try {
+      auditDeny({
+        kind: 'layerb.deny',
+        ts: now,
+        actorHandle: args.agentHandle,
+        actorType: 'agent',
+        projectSlug: args.projectSlug,
+        actionType: 'discussion.mention',
+        denyReason: 'mention_daily_limit_exceeded',
+        mentionTargets: [target],
+        reasonProvided: Boolean(String(args.reason || '').trim()),
+      });
+    } catch {}
+    throw new Error('mention_daily_limit_exceeded');
+  }
 
   const next = incrementAgentMentionCounter(db, args.projectId, args.agentHandle, day);
   // audit
@@ -744,6 +899,41 @@ function enforceAgentMentionPolicy(args: {
     };
     db.prepare('INSERT INTO audit_events (ts, kind, payload_json) VALUES (?, ?, ?)').run(now, 'layerb.agent.mention', JSON.stringify(payload));
   } catch {}
+}
+
+function auditDeny(args: {
+  kind: string;
+  ts: string;
+  actorHandle: string;
+  actorType: MemberType;
+  projectSlug: string;
+  actionType: string;
+  denyReason: string;
+  entityType?: string | null;
+  entityId?: string | null;
+  threadId?: string | null;
+  replyId?: string | null;
+  mentionTargets?: string[] | null;
+  reasonProvided?: boolean | null;
+}) {
+  const db = getDb();
+  const payload = {
+    kind: args.kind,
+    ts: args.ts,
+    denied: true,
+    actorHandle: args.actorHandle,
+    actorType: args.actorType,
+    projectSlug: args.projectSlug,
+    actionType: args.actionType,
+    denyReason: args.denyReason,
+    entityType: args.entityType ?? null,
+    entityId: args.entityId ?? null,
+    threadId: args.threadId ?? null,
+    replyId: args.replyId ?? null,
+    mentionTargets: args.mentionTargets ?? null,
+    reasonProvided: args.reasonProvided ?? null,
+  };
+  db.prepare('INSERT INTO audit_events (ts, kind, payload_json) VALUES (?, ?, ?)').run(args.ts, args.kind, JSON.stringify(payload));
 }
 
 export type DiscussionThreadListItem = {
@@ -970,16 +1160,80 @@ export function createDiscussionThread(args: {
   const p = getProjectBySlug(args.projectSlug);
   if (!p) throw new Error('project_not_found');
 
+  const now = nowIso();
+
   // Layer B Phase 1: agent create is gated and defaults OFF.
   if (args.authorType === 'agent') {
     const policy = getPolicyRow(db, p.id, args.authorHandle);
-    if (!policy) throw new Error('not_supported');
-    if (!policy.enabled || !policy.allow_entity_thread_create) throw new Error('forbidden_by_project_agent_policy');
+    if (!policy) {
+      try {
+        auditDeny({
+          kind: 'layerb.deny',
+          ts: now,
+          actorHandle: args.authorHandle,
+          actorType: args.authorType,
+          projectSlug: p.slug,
+          actionType: 'discussion.thread_create',
+          denyReason: 'not_supported',
+          entityType: args.entityType,
+          entityId: args.entityId ? String(args.entityId) : null,
+        });
+      } catch {}
+      throw new Error('not_supported');
+    }
+    if (!policy.enabled || !policy.allow_entity_thread_create) {
+      try {
+        auditDeny({
+          kind: 'layerb.deny',
+          ts: now,
+          actorHandle: args.authorHandle,
+          actorType: args.authorType,
+          projectSlug: p.slug,
+          actionType: 'discussion.thread_create',
+          denyReason: 'forbidden_by_project_agent_policy',
+          entityType: args.entityType,
+          entityId: args.entityId ? String(args.entityId) : null,
+        });
+      } catch {}
+      throw new Error('forbidden_by_project_agent_policy');
+    }
     // Only entity-linked
-    if (args.entityType === 'project') throw new Error('agent_thread_requires_entity_link');
+    if (args.entityType === 'project') {
+      try {
+        auditDeny({
+          kind: 'layerb.deny',
+          ts: now,
+          actorHandle: args.authorHandle,
+          actorType: args.authorType,
+          projectSlug: p.slug,
+          actionType: 'discussion.thread_create',
+          denyReason: 'agent_thread_requires_entity_link',
+          entityType: args.entityType,
+          entityId: args.entityId ? String(args.entityId) : null,
+        });
+      } catch {}
+      throw new Error('agent_thread_requires_entity_link');
+    }
   }
 
-  if (!isProjectMember(p.id, args.authorHandle, args.authorType)) throw new Error('not_allowed');
+  if (!isProjectMember(p.id, args.authorHandle, args.authorType)) {
+    if (args.authorType === 'agent') {
+      try {
+        auditDeny({
+          kind: 'layerb.deny',
+          ts: now,
+          actorHandle: args.authorHandle,
+          actorType: args.authorType,
+          projectSlug: p.slug,
+          actionType: 'discussion.thread_create',
+          denyReason: 'not_allowed',
+          entityType: args.entityType,
+          entityId: args.entityId ? String(args.entityId) : null,
+        });
+      } catch {}
+    }
+    throw new Error('not_allowed');
+  }
 
   const title = String(args.title || '').trim();
   const bodyMd = String(args.bodyMd || '').trim();
@@ -992,7 +1246,6 @@ export function createDiscussionThread(args: {
     if (!entityId) throw new Error('missing_entity');
   }
 
-  const now = nowIso();
   const id = newDiscussionThreadId();
   ensureIdentity(args.authorHandle, args.authorType);
 
@@ -1057,8 +1310,36 @@ export function replyToDiscussionThread(args: {
     .prepare('SELECT id, author_handle, author_type, title, status, is_locked FROM discussion_threads WHERE id=? AND project_id=?')
     .get(args.threadId, p.id) as any;
   if (!t) throw new Error('thread_not_found');
-  if (t.status === 'closed') throw new Error('thread_closed');
-  if (t.is_locked) throw new Error('thread_locked');
+  if (t.status === 'closed') {
+    try {
+      auditDeny({
+        kind: 'discussion.deny',
+        ts: nowIso(),
+        actorHandle: args.authorHandle,
+        actorType: args.authorType,
+        projectSlug: p.slug,
+        actionType: 'discussion.reply_create',
+        denyReason: 'thread_closed',
+        threadId: String(t.id),
+      });
+    } catch {}
+    throw new Error('thread_closed');
+  }
+  if (t.is_locked) {
+    try {
+      auditDeny({
+        kind: 'discussion.deny',
+        ts: nowIso(),
+        actorHandle: args.authorHandle,
+        actorType: args.authorType,
+        projectSlug: p.slug,
+        actionType: 'discussion.reply_create',
+        denyReason: 'thread_locked',
+        threadId: String(t.id),
+      });
+    } catch {}
+    throw new Error('thread_locked');
+  }
 
   ensureIdentity(args.authorHandle, args.authorType);
 
@@ -1170,7 +1451,21 @@ export function setDiscussionThreadLock(args: { projectSlug: string; threadId: s
   const p = getProjectBySlug(args.projectSlug);
   if (!p) throw new Error('project_not_found');
   if (args.actorType === 'agent') throw new Error('not_supported');
-  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) throw new Error('not_allowed');
+  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) {
+    try {
+      auditDeny({
+        kind: 'discussion.deny',
+        ts: nowIso(),
+        actorHandle: args.actorHandle,
+        actorType: args.actorType,
+        projectSlug: p.slug,
+        actionType: 'discussion.thread_lock',
+        denyReason: 'not_allowed',
+        threadId: args.threadId,
+      });
+    } catch {}
+    throw new Error('not_allowed');
+  }
 
   const now = nowIso();
   db.prepare('UPDATE discussion_threads SET is_locked=?, updated_at=? WHERE id=? AND project_id=?').run(args.locked ? 1 : 0, now, args.threadId, p.id);
@@ -1206,7 +1501,22 @@ export function setDiscussionReplyHidden(args: {
   const p = getProjectBySlug(args.projectSlug);
   if (!p) throw new Error('project_not_found');
   if (args.actorType === 'agent') throw new Error('not_supported');
-  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) throw new Error('not_allowed');
+  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) {
+    try {
+      auditDeny({
+        kind: 'discussion.deny',
+        ts: nowIso(),
+        actorHandle: args.actorHandle,
+        actorType: args.actorType,
+        projectSlug: p.slug,
+        actionType: 'discussion.reply_hide',
+        denyReason: 'not_allowed',
+        threadId: args.threadId,
+        replyId: args.replyId,
+      });
+    } catch {}
+    throw new Error('not_allowed');
+  }
 
   const now = nowIso();
   db.prepare('UPDATE discussion_replies SET is_hidden=?, hidden_by_handle=?, hidden_at=?, updated_at=? WHERE id=?').run(

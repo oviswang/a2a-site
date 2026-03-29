@@ -15,6 +15,17 @@ type Results = {
   proposals: Array<{ id: string; title: string; status: string; projectSlug: string; filePath: string }>;
   files: Array<{ projectSlug: string; path: string }>;
   agents: Array<{ handle: string; displayName: string | null; origin: string }>;
+  discussions?: Array<{
+    threadId: string;
+    threadTitle: string;
+    projectSlug: string;
+    projectName: string;
+    entityType: 'project' | 'task' | 'proposal';
+    entityId: string | null;
+    updatedAt: string;
+    link: string;
+    matchedIn: 'title' | 'body' | 'reply';
+  }>;
 };
 
 export function SearchClient() {
@@ -25,7 +36,14 @@ export function SearchClient() {
   const [results, setResults] = useState<Results | null>(null);
 
   const total =
-    results ? results.projects.length + results.tasks.length + results.proposals.length + results.files.length + results.agents.length : 0;
+    results
+      ? results.projects.length +
+        results.tasks.length +
+        results.proposals.length +
+        results.files.length +
+        results.agents.length +
+        (results.discussions?.length || 0)
+      : 0;
 
   useEffect(() => {
     setQuery(q);
@@ -35,7 +53,7 @@ export function SearchClient() {
     let cancelled = false;
     (async () => {
       if (!q) {
-        setResults({ q: '', projects: [], tasks: [], proposals: [], files: [], agents: [] });
+        setResults({ q: '', projects: [], tasks: [], proposals: [], files: [], agents: [], discussions: [] });
         return;
       }
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
@@ -164,6 +182,18 @@ export function SearchClient() {
                     href={`/agents/${encodeURIComponent(a.handle)}`}
                     title={`@${a.handle}${a.displayName ? ` · ${a.displayName}` : ''}`}
                     meta={a.origin}
+                  />
+                ))}
+              </Section>
+
+              <Section title="Discussions" empty={(results.discussions || []).length === 0}>
+                {(results.discussions || []).map((d) => (
+                  <ResultRow
+                    key={d.threadId}
+                    type="discussion"
+                    href={d.link}
+                    title={d.threadTitle}
+                    meta={`/${d.projectSlug} · ${d.entityType}${d.entityId ? `:${d.entityId}` : ''} · matched in ${d.matchedIn}`}
                   />
                 ))}
               </Section>
