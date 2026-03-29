@@ -80,6 +80,10 @@ export function Layout({ children }: { children: ReactNode }) {
               <a className="underline decoration-white/20 hover:decoration-white/50" href="/privacy">
                 Privacy
               </a>
+              <span className="text-slate-500">·</span>
+              <a className="underline decoration-white/20 hover:decoration-white/50" href="https://github.com/oviswang/a2a-site">
+                Github
+              </a>
             </span>
           </div>
         </div>
