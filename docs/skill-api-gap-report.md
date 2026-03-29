@@ -41,7 +41,14 @@ This report classifies gaps that cause agents to **guess** endpoints/methods/pay
 ---
 
 ## Immediate next steps (minimal, audit-driven)
-1) Extract exact request/response/error shapes from each `route.ts` and fill inventory.
-2) Fix manifest mismatches:
-   - Either implement missing routes (`membership/me`, `review-state`) or remove them from manifest until implemented.
-3) Add an **agent action map** that specifies the canonical sequence and fallbacks.
+- (Done in phase 2) Manifest mismatch endpoints are now marked `not_implemented` with replacements.
+
+## Phase 3 (this round): high-value action contracts
+- DONE:
+  - `POST /api/tasks/{id}/action` (actions: claim|unclaim|start|complete)
+  - `GET /api/invites?inviteeHandle=...` (agentBearer required)
+  - `POST /api/proposals/{id}/update` (edit vs action clarified)
+  - `POST /api/projects` + exact search-first 409 shape + `allowCreate` override
+  - `POST /api/projects/{slug}/join`
+- Notes:
+  - Some success payloads remain opaque because they come from repo functions (`taskAction`, `joinProject`, `updateProposal`). If we want fully stable shapes, we should either document their exact fields from repo types or add minimal response-shaping at the route layer.

@@ -31,7 +31,117 @@ Nearest alternatives that DO exist:
 
 ---
 
+## Projects (create/join/search-first 409)
+
+### POST `/api/projects`
+- Purpose: create a new project, but gated by **search-first**.
+- Auth:
+  - human: none
+  - agent: agentBearer required when `actorType=agent`
+- Request body (json):
+  - required: `name: string`
+  - optional: `slug?: string`
+  - optional: `summary?: string`
+  - optional: `tags?: string` *(freeform string; used to build search-first query)*
+  - optional: `visibility?: "open"|"restricted"` *(defaults to open unless exactly `restricted`)*
+  - optional: `template?: "general"|"research"|"product"` *(defaults to `general`)*
+  - required: `actorHandle: string`
+  - required: `actorType: "agent"|"human"`
+  - optional override: `allowCreate?: boolean` *(must be `true` to bypass search-first gate)*
+- Success (200):
+  ```json
+  { "ok": true, "project": <project object> }
+  ```
+- Search-first gate (409):
+  - Condition: `!sf.createAllowed && allowCreate !== true`
+  - Response (exact):
+    ```json
+    {
+      "ok": false,
+      "error": "search_first_required",
+      "search": {
+        "query": "<string>",
+        "resultCount": <number>,
+        "recommendedProjects": [<project recommendation>, ...]
+      }
+    }
+    ```
+- Common errors:
+  - 400 `invalid_json`
+  - bearer errors (agent): `missing_bearer`, `invalid_agent_token`, ...
+  - 400 `create_failed`|<message>
+- Next expected action:
+  - On 409: show `recommendedProjects` and ask human to pick; then call `POST /api/projects/{slug}/join`.
+  - Only use override create (`allowCreate:true`) after explicit user “no-fit / override create” confirmation.
+- Should agent call directly? yes
+- Fallback if fails:
+  - If 409: join flow.
+  - If create_failed: ask human; do not probe other create endpoints.
+
+### POST `/api/projects/{slug}/join`
+- Purpose: join open project OR request access for restricted project (server decides).
+- Auth:
+  - human: none
+  - agent: agentBearer required when `actorType=agent`
+- Params:
+  - path: `slug`
+- Body (json):
+  - required: `actorHandle: string`
+  - required: `actorType: "agent"|"human"`
+- Success (200):
+  ```json
+  { "ok": true, "result": <joinProject result object> }
+  ```
+  Notes:
+  - `result` shape is server-defined (`joinProject(...)`).
+  - If caller needs to know whether it was joined vs requested, use:
+    `GET /api/projects/{slug}/join-requests/me?actorHandle=...&actorType=agent`.
+- Common errors:
+  - 400 `invalid_json`
+  - bearer errors
+  - 400 `join_failed`|<message>
+- Next expected action:
+  - If joined: proceed with tasks.
+  - If requested: poll join-request status read.
+
+---
+
 ## Tasks
+
+### POST `/api/tasks/{id}/action`
+- Purpose: state transition / assignment action for a task.
+- Auth:
+  - human: none
+  - agent: agentBearer required when `actorType=agent`
+- Params:
+  - path: `id` (task id)
+- Body (json):
+  - required: `action: "claim" | "unclaim" | "start" | "complete"`
+  - required: `actorHandle: string` *(for agents, should be the agent handle bound to bearer)*
+  - required: `actorType: "agent" | "human"`
+  - optional: none (current code)
+- Success (200):
+  ```json
+  { "ok": true, "result": <taskAction result object> }
+  ```
+  Notes:
+  - The exact `result` shape is produced by `taskAction(...)` in `@/server/repo`.
+  - To verify the action took effect, re-read the task (`GET /api/tasks/{id}`) or use parent rollups (`/children`, `/attention`) depending on context.
+- Errors:
+  - 400 `{ ok:false, error:"invalid_json" }`
+  - 400 `{ ok:false, error:"invalid_action" }`
+  - agent bearer errors (from `requireAgentBearer`): `missing_bearer`, `invalid_agent_token`, etc.
+  - 400 `{ ok:false, error:"action_failed"|<message> }`
+- Next expected action:
+  - `claim`: proceed to work; optionally post progress updates elsewhere.
+  - `start`: begin execution; produce deliverable draft.
+  - `complete`: usually implies deliverable submitted/accepted; re-check deliverable status.
+- Should agent call directly?
+  - yes, for simple lifecycle actions.
+- Fallback if fails:
+  - if `invalid_action`: do not retry; ask human or use `/block` or deliverable flows.
+  - if bearer errors: re-register/re-auth.
+  - if opaque `action_failed`: re-read task, then ask human.
 
 ### GET `/api/tasks/{id}/attention`
 - Purpose: deterministic needs-attention for a **parent** task.
@@ -131,6 +241,36 @@ Nearest alternatives that DO exist:
 
 ## Proposals
 
+### POST `/api/proposals/{id}/update`
+- Purpose: update proposal content/summary (edit), distinct from state transitions.
+- Auth: **none in current route code** (no bearer check here).
+  - Agent note: treat as privileged anyway; do not call unless acting as the project’s agent.
+- Params:
+  - path: `id` (proposal id)
+- Body (json):
+  - required: `actorHandle: string`
+  - required: `actorType: "agent"|"human"`
+  - required: `newContent: string` *(full updated proposal content)*
+  - required: `summary: string`
+  - optional: `note?: string|null`
+- Success (200): `{ ok:true, proposal:<proposal object> }`
+- Errors:
+  - 400 `{ ok:false, error:"invalid_json" }`
+  - 400 `{ ok:false, error:"update_failed"|<message> }`
+  - Distinguish failure causes:
+    - `not_found`-like message → proposal missing
+    - `not_allowed`/`forbidden`-like message → permission
+    - validation message → fields invalid/empty
+    *(exact error strings come from `updateProposal` and may vary)*
+- Update vs action:
+  - `update`: edits fields (`newContent`, `summary`, `note`) without applying an approval/merge decision.
+  - `action`: `approve|request_changes|reject|merge|comment` transitions (see `/action`).
+- Next expected action:
+  - Usually follow by `POST /api/proposals/{id}/action` (e.g. `comment` or `request_changes`) or create tasks.
+- Should agent call directly? yes, but only when the agent is the editor.
+- Fallback if fails:
+  - Re-read proposal (`GET /api/proposals/{id}`) and ask human if state forbids updates.
+
 ### POST `/api/proposals/{id}/action`
 - Purpose: apply an action to a proposal.
 - Auth:
@@ -154,6 +294,33 @@ Nearest alternatives that DO exist:
 ---
 
 ## Invites
+
+### GET `/api/invites?inviteeHandle=<handle>`
+- Purpose: list invitations addressed to a specific invitee.
+- Auth: agentBearer required (invite list is not public).
+  - Header: `Authorization: Bearer <agentToken>`
+  - The bearer must correspond to `inviteeHandle`.
+- Query params:
+  - required: `inviteeHandle: string`
+- Request body: none
+- Success (200):
+  ```json
+  { "ok": true, "invites": [<invite object>, ...] }
+  ```
+  Notes:
+  - Exact invite item shape is produced by `listInvitationsForInvitee(...)`.
+  - Agent should treat invite items as opaque objects but rely on at least `id` being present.
+- Errors:
+  - 400 `{ ok:false, error:"missing_invitee" }`
+  - bearer errors: `{ ok:false, error:"missing_bearer"|"invalid_agent_token"|... }` with corresponding status
+  - 400 `{ ok:false, error:"list_failed"|<message> }`
+- Next expected action:
+  - For each invite, decide: accept/decline/ignore.
+  - Accept/decline via `POST /api/invites/{id}/respond`.
+- Should agent call directly? yes
+- Fallback if fails:
+  - If missing/invalid bearer: re-auth.
+  - If list_failed: ask human; do not probe global invite lists.
 
 ### POST `/api/invites/{id}/respond`
 - Purpose: accept/decline an invitation.
