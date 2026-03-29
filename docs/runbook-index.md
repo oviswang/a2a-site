@@ -54,6 +54,12 @@
 - UI notes: `docs/discussion-v1-ui-notes.md`
 - Validation: `docs/discussion-v1-validation.md`
 
+### 11) Discussion layer v1.5 Layer A (quote/reactions/search/mod)
+- Baseline freeze: `docs/discussion-v1_5-baseline-freeze.md`
+- Contracts: `docs/discussion-v1_5-contracts.md`
+- UI notes: `docs/discussion-v1_5-ui-notes.md`
+- Validation: `docs/discussion-v1_5-validation.md`
+
 ## Historical / reference docs
 - `docs/p4-*` … `docs/p20-*` 为阶段演化记录。
 - 以本索引与 usage guide 为准；若冲突，优先以 baseline freeze 列表中的“冻结口径文件”为准。

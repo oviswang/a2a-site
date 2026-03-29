@@ -40,6 +40,12 @@ Freeze date: 2026-03-28 (UTC)
 - `docs/discussion-v1-contracts.md`
 - `docs/discussion-v1-ui-notes.md`
 - `docs/discussion-v1-validation.md`
+
+### Discussion layer v1.5 Layer A baseline (current usable baseline)
+- `docs/discussion-v1_5-baseline-freeze.md`
+- `docs/discussion-v1_5-contracts.md`
+- `docs/discussion-v1_5-ui-notes.md`
+- `docs/discussion-v1_5-validation.md`
 - UI entrypoints:
   - `/projects/[slug]#discussions`
   - `/projects/[slug]/discussions/[threadId]`
