@@ -41,11 +41,27 @@ export default function ProjectDetailPage() {
   // Search-first creation audit (human oversight surface)
   const [createAudit, setCreateAudit] = useState<any | null>(null);
 
+  // Discussions (v1)
+  const [discThreads, setDiscThreads] = useState<any[]>([]);
+  const [discTitle, setDiscTitle] = useState('');
+  const [discBody, setDiscBody] = useState('');
+  const [discEntityType, setDiscEntityType] = useState<'project' | 'task' | 'proposal'>('project');
+  const [discEntityId, setDiscEntityId] = useState('');
+  const [discMsg, setDiscMsg] = useState<string | null>(null);
+
   useEffect(() => {
     if (!slug) return;
     fetch(`/api/projects/${encodeURIComponent(slug)}/create-search-audit`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => setCreateAudit(j?.audit || null))
+      .catch(() => void 0);
+  }, [slug]);
+
+  useEffect(() => {
+    if (!slug) return;
+    fetch(`/api/projects/${encodeURIComponent(slug)}/discussions?limit=20`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setDiscThreads(Array.isArray(j?.threads) ? j.threads : []))
       .catch(() => void 0);
   }, [slug]);
 
@@ -405,6 +421,110 @@ export default function ProjectDetailPage() {
                     </div>
                   </div>
                 )}
+              </Card>
+            </section>
+
+            {/* Discussions (v1) */}
+            <section id="discussions" className="scroll-mt-24">
+              <Card title="Discussions">
+                <div className="text-xs text-slate-200/70">Project board + entity-linked threads (task/proposal). Not a group chat.</div>
+
+                <div className="mt-3 grid gap-2">
+                  {discThreads.slice(0, 8).map((t) => (
+                    <a
+                      key={t.id}
+                      href={`/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(String(t.id))}`}
+                      className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-50">{String(t.title || t.id)}</div>
+                          <div className="mt-1 text-xs text-slate-200/60">
+                            {(t.entityType ? `${t.entityType}${t.entityId ? `:${t.entityId}` : ''}` : 'project')} · {String(t.status || 'open')} · replies {Number(t.replyCount || 0)}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-slate-200/40">→</div>
+                      </div>
+                    </a>
+                  ))}
+                  {discThreads.length === 0 ? <div className="text-xs text-slate-200/60">No discussions yet.</div> : null}
+                </div>
+
+                {/* Create thread (human only; agent not supported in v1) */}
+                <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                  <div className="text-xs font-semibold text-slate-200/70">Start a thread</div>
+                  <div className="mt-2 grid gap-2">
+                    <input
+                      className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                      value={discTitle}
+                      onChange={(e) => setDiscTitle(e.target.value)}
+                      placeholder="Title"
+                    />
+                    <textarea
+                      className="min-h-[120px] rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100"
+                      value={discBody}
+                      onChange={(e) => setDiscBody(e.target.value)}
+                      placeholder="Body (Markdown). @handle mentions supported."
+                    />
+                    <div className="flex flex-wrap items-end gap-2">
+                      <label className="grid gap-1">
+                        <span className="text-[11px] text-slate-200/60">Link to</span>
+                        <select
+                          className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                          value={discEntityType}
+                          onChange={(e) => setDiscEntityType(e.target.value === 'task' ? 'task' : e.target.value === 'proposal' ? 'proposal' : 'project')}
+                        >
+                          <option value="project">project</option>
+                          <option value="task">task</option>
+                          <option value="proposal">proposal</option>
+                        </select>
+                      </label>
+                      <label className="grid flex-1 gap-1">
+                        <span className="text-[11px] text-slate-200/60">Entity id (required for task/proposal)</span>
+                        <input
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                          value={discEntityId}
+                          onChange={(e) => setDiscEntityId(e.target.value)}
+                          placeholder={discEntityType === 'task' ? 't-…' : discEntityType === 'proposal' ? 'p-…' : '(none)'}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="rounded-xl bg-sky-400/20 px-3 py-2 text-xs font-semibold text-sky-100 hover:bg-sky-400/25"
+                        onClick={async () => {
+                          setDiscMsg(null);
+                          const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions`, {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({
+                              title: discTitle,
+                              body: discBody,
+                              authorHandle: actor.handle,
+                              authorType: actor.actorType,
+                              entityType: discEntityType,
+                              entityId: discEntityType === 'project' ? null : discEntityId,
+                            }),
+                          });
+                          const j = await res.json().catch(() => null);
+                          if (!res.ok || !j?.ok) {
+                            setDiscMsg(j?.error || 'create_failed');
+                            return;
+                          }
+                          setDiscTitle('');
+                          setDiscBody('');
+                          setDiscEntityId('');
+                          const rr = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions?limit=20`, { cache: 'no-store' });
+                          const jj = await rr.json().catch(() => null);
+                          setDiscThreads(Array.isArray(jj?.threads) ? jj.threads : []);
+                          setDiscMsg('Thread created.');
+                        }}
+                      >
+                        Create
+                      </button>
+                    </div>
+                    {discMsg ? <div className="text-xs text-slate-200/70">{discMsg}</div> : null}
+                  </div>
+                </div>
               </Card>
             </section>
 

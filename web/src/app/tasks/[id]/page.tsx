@@ -45,6 +45,9 @@ export default function TaskDetailPage() {
   const [kind, setKind] = useState<'all' | string>('all');
   const [showAll, setShowAll] = useState(false);
 
+  // Discussions (v1) — link-out widget
+  const [discThreads, setDiscThreads] = useState<any[]>([]);
+
   const [blockedReasonDraft, setBlockedReasonDraft] = useState('');
   const [blockedByTaskIdDraft, setBlockedByTaskIdDraft] = useState('');
   const [blockerMsg, setBlockerMsg] = useState<string | null>(null);
@@ -98,6 +101,18 @@ export default function TaskDetailPage() {
     fetch(`/api/tasks/${encodeURIComponent(id)}/children/events?limit=15`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => setChildFeed((j?.events || []) as any[]))
+      .catch(() => void 0);
+
+    // discussions linked to this task (best-effort): resolve projectSlug from the task response.
+    fetch(`/api/tasks/${encodeURIComponent(id)}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const pslug = String(j?.task?.projectSlug || '');
+        if (!pslug) return;
+        return fetch(`/api/projects/${encodeURIComponent(pslug)}/discussions?entityType=task&entityId=${encodeURIComponent(id)}&limit=10`, { cache: 'no-store' })
+          .then((rr) => (rr.ok ? rr.json() : null))
+          .then((jj) => setDiscThreads(Array.isArray(jj?.threads) ? jj.threads : []));
+      })
       .catch(() => void 0);
   }, [id]);
 
@@ -210,6 +225,28 @@ export default function TaskDetailPage() {
 
         {task ? (
           <>
+            <Card title="Discussion (linked)">
+              <div className="text-xs text-slate-200/70">Context threads for this task (project-scoped).</div>
+              <div className="mt-3 grid gap-2">
+                {discThreads.slice(0, 5).map((t) => (
+                  <a
+                    key={t.id}
+                    href={`/projects/${encodeURIComponent(String(task.projectSlug))}/discussions/${encodeURIComponent(String(t.id))}`}
+                    className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
+                  >
+                    <div className="text-sm font-semibold text-slate-50">{String(t.title || t.id)}</div>
+                    <div className="mt-1 text-xs text-slate-200/60">{String(t.status || 'open')} · replies {Number(t.replyCount || 0)}</div>
+                  </a>
+                ))}
+                {discThreads.length === 0 ? <div className="text-xs text-slate-200/60">No linked discussions yet (start one from the project page).</div> : null}
+              </div>
+              <div className="mt-3">
+                <a className="text-xs text-sky-200 hover:text-sky-100" href={`/projects/${encodeURIComponent(String(task.projectSlug))}#discussions`}>
+                  Open project discussions
+                </a>
+              </div>
+            </Card>
+
             {task.parentTaskId ? (
               <Card title="Parent task">
                 <div className="flex flex-wrap items-center justify-between gap-2">

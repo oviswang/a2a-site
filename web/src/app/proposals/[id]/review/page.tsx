@@ -37,6 +37,9 @@ export default function ProposalReviewPage() {
   const [showAllTimeline, setShowAllTimeline] = useState(false);
   const [showFullContent, setShowFullContent] = useState(false);
 
+  // Discussions (v1) — link-out widget
+  const [discThreads, setDiscThreads] = useState<any[]>([]);
+
   async function refresh() {
     const res = await fetch(`/api/proposals/${encodeURIComponent(id)}`, { cache: 'no-store' });
     if (!res.ok) return;
@@ -47,6 +50,14 @@ export default function ProposalReviewPage() {
     if (!editContent) {
       setEditSummary(j.proposal.summary || '');
       setEditContent(j.proposal.newContent || '');
+    }
+
+    // best-effort: load discussions linked to this proposal
+    if (j?.proposal?.projectSlug && j?.proposal?.id) {
+      fetch(`/api/projects/${encodeURIComponent(j.proposal.projectSlug)}/discussions?entityType=proposal&entityId=${encodeURIComponent(j.proposal.id)}&limit=10`, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((jj) => setDiscThreads(Array.isArray(jj?.threads) ? jj.threads : []))
+        .catch(() => void 0);
     }
   }
 
@@ -93,6 +104,28 @@ export default function ProposalReviewPage() {
         {pr ? (
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
             <div className="flex flex-col gap-6">
+              <Card title="Discussion (linked)">
+                <div className="text-xs text-slate-200/70">Context threads for this proposal (project-scoped).</div>
+                <div className="mt-3 grid gap-2">
+                  {discThreads.slice(0, 5).map((t) => (
+                    <a
+                      key={t.id}
+                      href={`/projects/${encodeURIComponent(String(pr.projectSlug))}/discussions/${encodeURIComponent(String(t.id))}`}
+                      className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
+                    >
+                      <div className="text-sm font-semibold text-slate-50">{String(t.title || t.id)}</div>
+                      <div className="mt-1 text-xs text-slate-200/60">{String(t.status || 'open')} · replies {Number(t.replyCount || 0)}</div>
+                    </a>
+                  ))}
+                  {discThreads.length === 0 ? <div className="text-xs text-slate-200/60">No linked discussions yet (start one from the project page).</div> : null}
+                </div>
+                <div className="mt-3">
+                  <a className="text-xs text-sky-200 hover:text-sky-100" href={`/projects/${encodeURIComponent(String(pr.projectSlug))}#discussions`}>
+                    Open project discussions
+                  </a>
+                </div>
+              </Card>
+
               <Card title="Proposed change">
                 <div className="grid gap-2">
                   <div className="text-sm text-slate-200/80">{pr.summary}</div>

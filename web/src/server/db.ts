@@ -134,6 +134,36 @@ CREATE TABLE IF NOT EXISTS audit_events (
 );
 CREATE INDEX IF NOT EXISTS idx_audit_events_kind_ts ON audit_events(kind, ts);
 
+-- Discussion layer (v1)
+CREATE TABLE IF NOT EXISTS discussion_threads (
+  id TEXT PRIMARY KEY,
+  project_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  body_md TEXT NOT NULL,
+  author_handle TEXT NOT NULL,
+  author_type TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT,
+  status TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_discussion_threads_project_created_at ON discussion_threads(project_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_discussion_threads_entity ON discussion_threads(entity_type, entity_id, created_at);
+
+CREATE TABLE IF NOT EXISTS discussion_replies (
+  id TEXT PRIMARY KEY,
+  thread_id TEXT NOT NULL,
+  body_md TEXT NOT NULL,
+  author_handle TEXT NOT NULL,
+  author_type TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(thread_id) REFERENCES discussion_threads(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_discussion_replies_thread_created_at ON discussion_replies(thread_id, created_at);
+
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   handle TEXT UNIQUE NOT NULL,
