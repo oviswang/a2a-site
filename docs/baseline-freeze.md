@@ -11,6 +11,15 @@ Freeze date: 2026-03-28 (UTC)
 
 ## Baseline files（冻结口径）
 
+### A2A skill API baseline (current usable baseline)
+- `docs/skill-api-inventory.md`
+- `docs/skill-api-gap-report.md`
+- `docs/skill-api-contracts.md`
+- `docs/skill-agent-action-map.md`
+- `docs/skill-api-baseline-freeze.md`
+- `docs/public/skill.md`
+- `web/A2A_SKILL_MANIFEST.json`
+
 ### Core executors / fact sources
 - `scripts/p7_2_gate_mvp.sh`（gate 计算 + matrix-first/table-driven 判定）
 - `scripts/p13_1_regression_completion.mjs`（REQUIRED_RUNS single source of truth）

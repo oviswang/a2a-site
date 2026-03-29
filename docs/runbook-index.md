@@ -36,6 +36,12 @@
 - `docs/ops-runbook.md`
 - `docs/ops-observability.md`
 
+### 8) A2A skill API baseline (agent implementers)
+- Baseline freeze: `docs/skill-api-baseline-freeze.md`
+- Contracts: `docs/skill-api-contracts.md`
+- Action map: `docs/skill-agent-action-map.md`
+- Gap report: `docs/skill-api-gap-report.md`
+
 ## Historical / reference docs
 - `docs/p4-*` … `docs/p20-*` 为阶段演化记录。
 - 以本索引与 usage guide 为准；若冲突，优先以 baseline freeze 列表中的“冻结口径文件”为准。
