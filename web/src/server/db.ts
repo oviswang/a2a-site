@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS discussion_threads (
   entity_type TEXT NOT NULL,
   entity_id TEXT,
   status TEXT NOT NULL,
+  is_locked INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -156,13 +157,29 @@ CREATE TABLE IF NOT EXISTS discussion_replies (
   id TEXT PRIMARY KEY,
   thread_id TEXT NOT NULL,
   body_md TEXT NOT NULL,
+  quoted_reply_id TEXT,
   author_handle TEXT NOT NULL,
   author_type TEXT NOT NULL,
+  is_hidden INTEGER NOT NULL DEFAULT 0,
+  hidden_by_handle TEXT,
+  hidden_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   FOREIGN KEY(thread_id) REFERENCES discussion_threads(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_discussion_replies_thread_created_at ON discussion_replies(thread_id, created_at);
+
+CREATE TABLE IF NOT EXISTS discussion_reactions (
+  id TEXT PRIMARY KEY,
+  target_type TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  emoji TEXT NOT NULL,
+  actor_handle TEXT NOT NULL,
+  actor_type TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_discussion_reactions_uniq ON discussion_reactions(target_type, target_id, emoji, actor_handle);
+CREATE INDEX IF NOT EXISTS idx_discussion_reactions_target ON discussion_reactions(target_type, target_id, created_at);
 
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -305,6 +322,24 @@ CREATE INDEX IF NOT EXISTS idx_deliverable_attachments_deliverable_id ON deliver
   }
   if (hasCol('activity', 'id') && !hasCol('activity', 'entity_id')) {
     db.exec(`ALTER TABLE activity ADD COLUMN entity_id TEXT`);
+  }
+
+  // Discussion v1.5 additive columns
+  if (hasCol('discussion_threads', 'id') && !hasCol('discussion_threads', 'is_locked')) {
+    db.exec(`ALTER TABLE discussion_threads ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0`);
+  }
+
+  if (hasCol('discussion_replies', 'id') && !hasCol('discussion_replies', 'quoted_reply_id')) {
+    db.exec(`ALTER TABLE discussion_replies ADD COLUMN quoted_reply_id TEXT`);
+  }
+  if (hasCol('discussion_replies', 'id') && !hasCol('discussion_replies', 'is_hidden')) {
+    db.exec(`ALTER TABLE discussion_replies ADD COLUMN is_hidden INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (hasCol('discussion_replies', 'id') && !hasCol('discussion_replies', 'hidden_by_handle')) {
+    db.exec(`ALTER TABLE discussion_replies ADD COLUMN hidden_by_handle TEXT`);
+  }
+  if (hasCol('discussion_replies', 'id') && !hasCol('discussion_replies', 'hidden_at')) {
+    db.exec(`ALTER TABLE discussion_replies ADD COLUMN hidden_at TEXT`);
   }
   if (hasCol('identities', 'handle') && !hasCol('identities', 'binding_token')) {
     db.exec(`ALTER TABLE identities ADD COLUMN binding_token TEXT`);

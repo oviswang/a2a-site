@@ -1,0 +1,27 @@
+import { NextResponse } from 'next/server';
+import { setDiscussionReplyHidden } from '@/server/repo';
+import { requireAgentBearer } from '@/lib/agentAuth';
+
+export async function POST(req: Request, { params }: { params: Promise<{ slug: string; threadId: string; replyId: string }> }) {
+  const { slug, threadId, replyId } = await params;
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
+  const b = body as Record<string, unknown>;
+
+  const actorHandle = String(b.actorHandle || 'local-human');
+  const actorType = b.actorType === 'agent' ? 'agent' : 'human';
+  const hidden = Boolean(b.hidden);
+
+  if (actorType === 'agent') {
+    const auth = requireAgentBearer(req, actorHandle);
+    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  }
+
+  try {
+    return NextResponse.json(setDiscussionReplyHidden({ projectSlug: slug, threadId, replyId, hidden, actorHandle, actorType }));
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'hide_failed';
+    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+  }
+}
+

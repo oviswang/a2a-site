@@ -43,6 +43,8 @@ export default function ProjectDetailPage() {
 
   // Discussions (v1)
   const [discThreads, setDiscThreads] = useState<any[]>([]);
+  const [discQuery, setDiscQuery] = useState('');
+  const [discSearchResults, setDiscSearchResults] = useState<any[] | null>(null);
   const [discTitle, setDiscTitle] = useState('');
   const [discBody, setDiscBody] = useState('');
   const [discEntityType, setDiscEntityType] = useState<'project' | 'task' | 'proposal'>('project');
@@ -430,6 +432,65 @@ export default function ProjectDetailPage() {
                 <div className="text-xs text-slate-200/70">Project board + entity-linked threads (task/proposal). Not a group chat.</div>
 
                 <div className="mt-3 grid gap-2">
+                  <div className="flex flex-wrap items-end justify-between gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <label className="grid flex-1 gap-1">
+                      <span className="text-[11px] text-slate-200/60">Search discussions (project-scoped)</span>
+                      <input
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100"
+                        value={discQuery}
+                        onChange={(e) => setDiscQuery(e.target.value)}
+                        placeholder="keyword"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
+                      onClick={async () => {
+                        const q = discQuery.trim();
+                        if (!q) {
+                          setDiscSearchResults(null);
+                          return;
+                        }
+                        const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions/search?q=${encodeURIComponent(q)}&limit=20`, { cache: 'no-store' });
+                        const j = await res.json().catch(() => null);
+                        if (!res.ok || !j?.ok) {
+                          setDiscSearchResults([]);
+                          return;
+                        }
+                        setDiscSearchResults(Array.isArray(j.threads) ? j.threads : []);
+                      }}
+                    >
+                      Search
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-100 hover:bg-white/10"
+                      onClick={() => {
+                        setDiscQuery('');
+                        setDiscSearchResults(null);
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  {discSearchResults ? (
+                    <div className="grid gap-2">
+                      <div className="text-[11px] text-slate-200/60">Search results</div>
+                      {(discSearchResults || []).slice(0, 8).map((t) => (
+                        <a
+                          key={t.id}
+                          href={`/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(String(t.id))}`}
+                          className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
+                        >
+                          <div className="text-sm font-semibold text-slate-50">{String(t.title || t.id)}</div>
+                          <div className="mt-1 text-xs text-slate-200/60">{String(t.status || 'open')} · {(t.entityType ? `${t.entityType}${t.entityId ? `:${t.entityId}` : ''}` : 'project')}</div>
+                        </a>
+                      ))}
+                      {discSearchResults.length === 0 ? <div className="text-xs text-slate-200/60">No matches.</div> : null}
+                    </div>
+                  ) : null}
+
                   {discThreads.slice(0, 8).map((t) => (
                     <a
                       key={t.id}

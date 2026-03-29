@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { replyToDiscussionThread } from '@/server/repo';
+import { setDiscussionThreadLock } from '@/server/repo';
 import { requireAgentBearer } from '@/lib/agentAuth';
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string; threadId: string }> }) {
@@ -8,21 +8,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (!body) return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
   const b = body as Record<string, unknown>;
 
-  const authorHandle = String(b.authorHandle || 'local-human');
-  const authorType = b.authorType === 'agent' ? 'agent' : 'human';
-  const bodyMd = String(b.body || '').trim();
-  const quotedReplyId = b.quotedReplyId ? String(b.quotedReplyId) : null;
+  const actorHandle = String(b.actorHandle || 'local-human');
+  const actorType = b.actorType === 'agent' ? 'agent' : 'human';
+  const locked = Boolean(b.locked);
 
-  if (authorType === 'agent') {
-    const auth = requireAgentBearer(req, authorHandle);
+  // v1.5: agent lock not supported; still require bearer if attempted.
+  if (actorType === 'agent') {
+    const auth = requireAgentBearer(req, actorHandle);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
   try {
-    const reply = replyToDiscussionThread({ projectSlug: slug, threadId, bodyMd, quotedReplyId, authorHandle, authorType });
-    return NextResponse.json({ ok: true, reply });
+    return NextResponse.json(setDiscussionThreadLock({ projectSlug: slug, threadId, locked, actorHandle, actorType }));
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'reply_failed';
+    const msg = e instanceof Error ? e.message : 'lock_failed';
     return NextResponse.json({ ok: false, error: msg }, { status: 400 });
   }
 }
+

@@ -14,6 +14,7 @@ type Thread = {
   title: string;
   bodyMd: string;
   status: 'open' | 'closed';
+  isLocked?: boolean;
   entityType: 'project' | 'task' | 'proposal';
   entityId: string | null;
   authorHandle: string;
@@ -26,10 +27,14 @@ type Reply = {
   id: string;
   threadId: string;
   bodyMd: string;
+  quotedReplyId?: string | null;
+  isHidden?: boolean;
   authorHandle: string;
   authorType: 'human' | 'agent';
   createdAt: string;
 };
+
+type ReactionCounts = Record<string, number>;
 
 export default function DiscussionThreadPage() {
   const params = useParams<{ slug: string; threadId: string }>();
@@ -39,8 +44,12 @@ export default function DiscussionThreadPage() {
 
   const [thread, setThread] = useState<Thread | null>(null);
   const [replies, setReplies] = useState<Reply[]>([]);
+  const [reactions, setReactions] = useState<{ thread: ReactionCounts; replies: Record<string, ReactionCounts> } | null>(null);
   const [body, setBody] = useState('');
+  const [quotedReplyId, setQuotedReplyId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+
+  const isHuman = state.actor.actorType === 'human';
 
   async function refresh() {
     const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}`, { cache: 'no-store' });
@@ -48,6 +57,26 @@ export default function DiscussionThreadPage() {
     if (!res.ok || !j?.ok) return;
     setThread(j.thread || null);
     setReplies(Array.isArray(j.replies) ? j.replies : []);
+    setReactions(j.reactions || null);
+  }
+
+  async function reactTo(target: 'thread' | 'reply', targetId: string, emoji: string) {
+    setMsg(null);
+    const url =
+      target === 'thread'
+        ? `/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}/reactions`
+        : `/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(targetId)}/reactions`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ emoji, action: 'add', actorHandle: state.actor.handle, actorType: state.actor.actorType }),
+    });
+    const j = await res.json().catch(() => null);
+    if (!res.ok || !j?.ok) {
+      setMsg(j?.error || 'reaction_failed');
+      return;
+    }
+    await refresh();
   }
 
   useEffect(() => {
@@ -87,6 +116,7 @@ export default function DiscussionThreadPage() {
           <Card title="Thread">
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-200/60">
               <Tag>{thread.status}</Tag>
+              {thread.isLocked ? <Tag>locked</Tag> : null}
               <span>
                 by <span className="font-mono text-slate-50">@{thread.authorHandle}</span> ({thread.authorType})
               </span>
@@ -94,8 +124,64 @@ export default function DiscussionThreadPage() {
             </div>
             <pre className="mt-3 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-slate-100">{thread.bodyMd}</pre>
 
-            {thread.status === 'open' ? (
+            {/* Reactions (minimal) */}
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-slate-200/60">react:</span>
+              {['👍', '👀', '❤️'].map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-slate-100 hover:bg-white/10"
+                  onClick={() => reactTo('thread', threadId, e).catch(() => void 0)}
+                >
+                  {e} {reactions?.thread?.[e] ? String(reactions.thread[e]) : ''}
+                </button>
+              ))}
+            </div>
+
+            {/* Moderation (minimal) */}
+            {isHuman ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <button
+                  type="button"
+                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-slate-100 hover:bg-white/10"
+                  onClick={async () => {
+                    setMsg(null);
+                    const res = await fetch(
+                      `/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}/lock`,
+                      {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ locked: !thread.isLocked, actorHandle: state.actor.handle, actorType: state.actor.actorType }),
+                      }
+                    );
+                    const j = await res.json().catch(() => null);
+                    if (!res.ok || !j?.ok) {
+                      setMsg(j?.error || 'lock_failed');
+                      return;
+                    }
+                    await refresh();
+                  }}
+                >
+                  {thread.isLocked ? 'Unlock thread' : 'Lock thread'}
+                </button>
+              </div>
+            ) : null}
+
+            {thread.status === 'open' && !thread.isLocked ? (
               <div className="mt-4 grid gap-2">
+                {quotedReplyId ? (
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/70">
+                    Quoting reply <span className="font-mono">{quotedReplyId}</span>{' '}
+                    <button
+                      type="button"
+                      className="ml-2 rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-slate-100 hover:bg-white/10"
+                      onClick={() => setQuotedReplyId(null)}
+                    >
+                      clear
+                    </button>
+                  </div>
+                ) : null}
                 <textarea
                   className="min-h-[120px] w-full rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-slate-100 outline-none focus:border-white/20"
                   value={body}
@@ -112,7 +198,7 @@ export default function DiscussionThreadPage() {
                     const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}/replies`, {
                       method: 'POST',
                       headers: { 'content-type': 'application/json' },
-                      body: JSON.stringify({ body: v, authorHandle: state.actor.handle, authorType: state.actor.actorType }),
+                      body: JSON.stringify({ body: v, quotedReplyId, authorHandle: state.actor.handle, authorType: state.actor.actorType }),
                     });
                     const j = await res.json().catch(() => null);
                     if (!res.ok || !j?.ok) {
@@ -120,6 +206,7 @@ export default function DiscussionThreadPage() {
                       return;
                     }
                     setBody('');
+                    setQuotedReplyId(null);
                     await refresh();
                   }}
                 >
@@ -128,7 +215,9 @@ export default function DiscussionThreadPage() {
                 {msg ? <div className="text-xs text-rose-200">{msg}</div> : null}
               </div>
             ) : (
-              <div className="mt-4 text-xs text-slate-200/60">Thread is closed. Replies disabled.</div>
+              <div className="mt-4 text-xs text-slate-200/60">
+                {thread.status === 'closed' ? 'Thread is closed. Replies disabled.' : thread.isLocked ? 'Thread is locked. Replies disabled.' : 'Replies disabled.'}
+              </div>
             )}
           </Card>
         ) : (
@@ -145,7 +234,68 @@ export default function DiscussionThreadPage() {
                   </span>
                   <span>{String(r.createdAt).slice(0, 16).replace('T', ' ')}</span>
                 </div>
-                <pre className="mt-2 whitespace-pre-wrap text-sm text-slate-100">{r.bodyMd}</pre>
+                {r.isHidden ? (
+                  <div className="mt-2 text-xs text-slate-200/60">(hidden by maintainer)</div>
+                ) : (
+                  <>
+                    {r.quotedReplyId ? (
+                      <a
+                        className="mt-2 block rounded-2xl border border-white/10 bg-black/20 p-2 text-[11px] text-slate-200/70 hover:bg-black/30"
+                        href={`#reply-${encodeURIComponent(String(r.quotedReplyId))}`}
+                      >
+                        quoted: <span className="font-mono">{String(r.quotedReplyId)}</span> (jump)
+                      </a>
+                    ) : null}
+                    <pre id={`reply-${r.id}`} className="mt-2 whitespace-pre-wrap text-sm text-slate-100">{r.bodyMd}</pre>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                      <button
+                        type="button"
+                        className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-slate-100 hover:bg-white/10"
+                        onClick={() => setQuotedReplyId(String(r.id))}
+                      >
+                        Quote
+                      </button>
+
+                      {isHuman ? (
+                        <button
+                          type="button"
+                          className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-slate-100 hover:bg-white/10"
+                          onClick={async () => {
+                            setMsg(null);
+                            const res = await fetch(
+                              `/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(String(r.id))}/hide`,
+                              {
+                                method: 'POST',
+                                headers: { 'content-type': 'application/json' },
+                                body: JSON.stringify({ hidden: true, actorHandle: state.actor.handle, actorType: state.actor.actorType }),
+                              }
+                            );
+                            const j = await res.json().catch(() => null);
+                            if (!res.ok || !j?.ok) {
+                              setMsg(j?.error || 'hide_failed');
+                              return;
+                            }
+                            await refresh();
+                          }}
+                        >
+                          Hide
+                        </button>
+                      ) : null}
+
+                      {['👍', '👀', '❤️'].map((e) => (
+                        <button
+                          key={e}
+                          type="button"
+                          className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-slate-100 hover:bg-white/10"
+                          onClick={() => reactTo('reply', String(r.id), e).catch(() => void 0)}
+                        >
+                          {e} {reactions?.replies?.[r.id]?.[e] ? String(reactions.replies[r.id][e]) : ''}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             ))}
             {replies.length === 0 ? <div className="text-sm text-slate-200/60">No replies yet.</div> : null}
@@ -155,4 +305,3 @@ export default function DiscussionThreadPage() {
     </Layout>
   );
 }
-

@@ -511,8 +511,12 @@ export type DiscussionReply = {
   id: string;
   threadId: string;
   bodyMd: string;
+  quotedReplyId: string | null;
   authorHandle: string;
   authorType: MemberType;
+  isHidden: boolean;
+  hiddenByHandle: string | null;
+  hiddenAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -523,6 +527,7 @@ export type DiscussionThread = {
   title: string;
   bodyMd: string;
   status: DiscussionThreadStatus;
+  isLocked: boolean;
   entityType: DiscussionEntityType;
   entityId: string | null;
   authorHandle: string;
@@ -530,6 +535,31 @@ export type DiscussionThread = {
   createdAt: string;
   updatedAt: string;
 };
+
+type ReactionTargetType = 'thread' | 'reply';
+type ReactionEmoji = '👍' | '👀' | '❤️';
+
+function newReactionId() {
+  return `rx-${Math.random().toString(16).slice(2, 6)}${Date.now().toString(16).slice(-4)}`;
+}
+
+function isAllowedReactionEmoji(e: string): e is ReactionEmoji {
+  return e === '👍' || e === '👀' || e === '❤️';
+}
+
+function listReactionCounts(db: any, targetType: ReactionTargetType, targetId: string) {
+  const rows = db
+    .prepare(
+      `SELECT emoji, COUNT(1) as c
+       FROM discussion_reactions
+       WHERE target_type=? AND target_id=?
+       GROUP BY emoji`
+    )
+    .all(targetType, targetId) as Array<{ emoji: string; c: number }>;
+  const out: Record<string, number> = {};
+  for (const r of rows) out[String(r.emoji)] = Number(r.c || 0);
+  return out;
+}
 
 function isProjectMember(projectId: number, handle: string, actorType: MemberType) {
   const db = getDb();
@@ -621,7 +651,7 @@ export function getDiscussionThread(args: { projectSlug: string; threadId: strin
 
   const t = db
     .prepare(
-      `SELECT id, title, body_md, status, entity_type, entity_id, author_handle, author_type, created_at, updated_at
+      `SELECT id, title, body_md, status, is_locked, entity_type, entity_id, author_handle, author_type, created_at, updated_at
        FROM discussion_threads
        WHERE id=? AND project_id=?`
     )
@@ -630,7 +660,7 @@ export function getDiscussionThread(args: { projectSlug: string; threadId: strin
 
   const replies = (db
     .prepare(
-      `SELECT id, thread_id, body_md, author_handle, author_type, created_at, updated_at
+      `SELECT id, thread_id, body_md, quoted_reply_id, author_handle, author_type, is_hidden, hidden_by_handle, hidden_at, created_at, updated_at
        FROM discussion_replies
        WHERE thread_id=?
        ORDER BY created_at ASC
@@ -640,8 +670,12 @@ export function getDiscussionThread(args: { projectSlug: string; threadId: strin
     id: String(r.id),
     threadId: String(r.thread_id),
     bodyMd: String(r.body_md),
+    quotedReplyId: r.quoted_reply_id ? String(r.quoted_reply_id) : null,
     authorHandle: String(r.author_handle),
     authorType: r.author_type === 'agent' ? 'agent' : 'human',
+    isHidden: Boolean(r.is_hidden),
+    hiddenByHandle: r.hidden_by_handle ? String(r.hidden_by_handle) : null,
+    hiddenAt: r.hidden_at ? String(r.hidden_at) : null,
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
   })) as DiscussionReply[];
@@ -652,6 +686,7 @@ export function getDiscussionThread(args: { projectSlug: string; threadId: strin
     title: String(t.title),
     bodyMd: String(t.body_md),
     status: t.status === 'closed' ? 'closed' : 'open',
+    isLocked: Boolean(t.is_locked),
     entityType: t.entity_type === 'task' ? 'task' : t.entity_type === 'proposal' ? 'proposal' : 'project',
     entityId: t.entity_id ? String(t.entity_id) : null,
     authorHandle: String(t.author_handle),
@@ -660,7 +695,11 @@ export function getDiscussionThread(args: { projectSlug: string; threadId: strin
     updatedAt: String(t.updated_at),
   };
 
-  return { thread, replies };
+  const threadReactions = listReactionCounts(db, 'thread', String(t.id));
+  const replyReactions: Record<string, Record<string, number>> = {};
+  for (const r of replies) replyReactions[r.id] = listReactionCounts(db, 'reply', r.id);
+
+  return { thread, replies, reactions: { thread: threadReactions, replies: replyReactions } };
 }
 
 export function createDiscussionThread(args: {
@@ -725,6 +764,7 @@ export function replyToDiscussionThread(args: {
   projectSlug: string;
   threadId: string;
   bodyMd: string;
+  quotedReplyId?: string | null;
   authorHandle: string;
   authorType: MemberType;
 }) {
@@ -738,19 +778,20 @@ export function replyToDiscussionThread(args: {
   if (!bodyMd) throw new Error('missing_body');
 
   const t = db
-    .prepare('SELECT id, author_handle, author_type, title, status FROM discussion_threads WHERE id=? AND project_id=?')
+    .prepare('SELECT id, author_handle, author_type, title, status, is_locked FROM discussion_threads WHERE id=? AND project_id=?')
     .get(args.threadId, p.id) as any;
   if (!t) throw new Error('thread_not_found');
   if (t.status === 'closed') throw new Error('thread_closed');
+  if (t.is_locked) throw new Error('thread_locked');
 
   ensureIdentity(args.authorHandle, args.authorType);
 
   const now = nowIso();
   const id = newDiscussionReplyId();
   db.prepare(
-    `INSERT INTO discussion_replies (id, thread_id, body_md, author_handle, author_type, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, args.threadId, bodyMd, args.authorHandle, args.authorType, now, now);
+    `INSERT INTO discussion_replies (id, thread_id, body_md, quoted_reply_id, author_handle, author_type, is_hidden, hidden_by_handle, hidden_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?)`
+  ).run(id, args.threadId, bodyMd, args.quotedReplyId ? String(args.quotedReplyId) : null, args.authorHandle, args.authorType, now, now);
 
   db.prepare('UPDATE discussion_threads SET updated_at=? WHERE id=?').run(now, args.threadId);
 
@@ -773,11 +814,148 @@ export function replyToDiscussionThread(args: {
     id,
     threadId: args.threadId,
     bodyMd,
+    quotedReplyId: args.quotedReplyId ? String(args.quotedReplyId) : null,
     authorHandle: args.authorHandle,
     authorType: args.authorType,
+    isHidden: false,
+    hiddenByHandle: null,
+    hiddenAt: null,
     createdAt: now,
     updatedAt: now,
   } as DiscussionReply;
+}
+
+export function discussionReaction(args: {
+  projectSlug: string;
+  targetType: ReactionTargetType;
+  targetId: string;
+  emoji: string;
+  action: 'add' | 'remove';
+  actorHandle: string;
+  actorType: MemberType;
+}) {
+  const db = getDb();
+  const p = getProjectBySlug(args.projectSlug);
+  if (!p) throw new Error('project_not_found');
+
+  // v1.5 boundary: agent reactions not supported
+  if (args.actorType === 'agent') throw new Error('not_supported');
+
+  if (!isProjectMember(p.id, args.actorHandle, args.actorType)) throw new Error('not_allowed');
+
+  const emoji = String(args.emoji || '').trim();
+  if (!isAllowedReactionEmoji(emoji)) throw new Error('invalid_emoji');
+
+  const now = nowIso();
+  if (args.action === 'remove') {
+    db.prepare('DELETE FROM discussion_reactions WHERE target_type=? AND target_id=? AND emoji=? AND actor_handle=?').run(
+      args.targetType,
+      args.targetId,
+      emoji,
+      args.actorHandle
+    );
+    return { ok: true };
+  }
+
+  db.prepare(
+    'INSERT OR IGNORE INTO discussion_reactions (id, target_type, target_id, emoji, actor_handle, actor_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(newReactionId(), args.targetType, args.targetId, emoji, args.actorHandle, args.actorType, now);
+
+  return { ok: true };
+}
+
+export function setDiscussionThreadLock(args: { projectSlug: string; threadId: string; locked: boolean; actorHandle: string; actorType: MemberType }) {
+  const db = getDb();
+  const p = getProjectBySlug(args.projectSlug);
+  if (!p) throw new Error('project_not_found');
+  if (args.actorType === 'agent') throw new Error('not_supported');
+  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) throw new Error('not_allowed');
+
+  const now = nowIso();
+  db.prepare('UPDATE discussion_threads SET is_locked=?, updated_at=? WHERE id=? AND project_id=?').run(args.locked ? 1 : 0, now, args.threadId, p.id);
+  // audit record
+  try {
+    const payload = { kind: 'discussion.thread_lock', ts: now, actorHandle: args.actorHandle, locked: args.locked, threadId: args.threadId, projectSlug: args.projectSlug };
+    db.prepare('INSERT INTO audit_events (ts, kind, payload_json) VALUES (?, ?, ?)').run(now, 'discussion.thread_lock', JSON.stringify(payload));
+  } catch {}
+  // optional low-noise timeline: include thread lock/unlock
+  addActivity({
+    projectId: p.id,
+    ts: now,
+    kind: args.locked ? 'discussion.thread_locked' : 'discussion.thread_unlocked',
+    entityType: 'unknown',
+    entityId: args.threadId,
+    text: `${args.locked ? 'Discussion thread locked' : 'Discussion thread unlocked'}: ${args.threadId} by @${args.actorHandle}`,
+  });
+  return { ok: true };
+}
+
+export function setDiscussionReplyHidden(args: {
+  projectSlug: string;
+  threadId: string;
+  replyId: string;
+  hidden: boolean;
+  actorHandle: string;
+  actorType: MemberType;
+}) {
+  const db = getDb();
+  const p = getProjectBySlug(args.projectSlug);
+  if (!p) throw new Error('project_not_found');
+  if (args.actorType === 'agent') throw new Error('not_supported');
+  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) throw new Error('not_allowed');
+
+  const now = nowIso();
+  db.prepare('UPDATE discussion_replies SET is_hidden=?, hidden_by_handle=?, hidden_at=?, updated_at=? WHERE id=?').run(
+    args.hidden ? 1 : 0,
+    args.hidden ? args.actorHandle : null,
+    args.hidden ? now : null,
+    now,
+    args.replyId
+  );
+
+  try {
+    const payload = { kind: 'discussion.reply_hide', ts: now, actorHandle: args.actorHandle, hidden: args.hidden, replyId: args.replyId, threadId: args.threadId, projectSlug: args.projectSlug };
+    db.prepare('INSERT INTO audit_events (ts, kind, payload_json) VALUES (?, ?, ?)').run(now, 'discussion.reply_hide', JSON.stringify(payload));
+  } catch {}
+
+  return { ok: true };
+}
+
+export function searchDiscussionsForProject(args: { projectSlug: string; q: string; limit?: number }) {
+  const db = getDb();
+  const p = getProjectBySlug(args.projectSlug);
+  if (!p) throw new Error('project_not_found');
+
+  const q = String(args.q || '').trim();
+  if (!q) return [];
+  const like = `%${q.replace(/%/g, '')}%`;
+  const limit = Math.max(1, Math.min(50, args.limit || 20));
+
+  // thread-level results; match title/body or any reply body.
+  const rows = db
+    .prepare(
+      `SELECT t.id as id, t.title as title, t.status as status, t.entity_type as entity_type, t.entity_id as entity_id,
+              t.created_at as created_at, t.updated_at as updated_at
+       FROM discussion_threads t
+       WHERE t.project_id=?
+         AND (t.title LIKE ? OR t.body_md LIKE ? OR EXISTS (
+           SELECT 1 FROM discussion_replies r
+            WHERE r.thread_id=t.id AND r.body_md LIKE ?
+         ))
+       ORDER BY t.updated_at DESC
+       LIMIT ?`
+    )
+    .all(p.id, like, like, like, limit) as any[];
+
+  return rows.map((r) => ({
+    id: String(r.id),
+    title: String(r.title),
+    status: r.status === 'closed' ? 'closed' : 'open',
+    entityType: r.entity_type === 'task' ? 'task' : r.entity_type === 'proposal' ? 'proposal' : 'project',
+    entityId: r.entity_id ? String(r.entity_id) : null,
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
+  }));
 }
 
 export function closeDiscussionThread(args: { projectSlug: string; threadId: string; actorHandle: string; actorType: MemberType }) {
