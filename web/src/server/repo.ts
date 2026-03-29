@@ -947,6 +947,7 @@ export type DiscussionThreadListItem = {
   authorType: MemberType;
   createdAt: string;
   updatedAt: string;
+  isLocked: boolean;
   replyCount: number;
   lastReplyAt: string | null;
 };
@@ -1046,7 +1047,7 @@ export function listDiscussionThreadsForProject(args: { projectSlug: string; ent
   if (entityType) {
     rows = db
       .prepare(
-        `SELECT id, title, status, entity_type, entity_id, author_handle, author_type, created_at, updated_at
+        `SELECT id, title, status, is_locked, entity_type, entity_id, author_handle, author_type, created_at, updated_at
          FROM discussion_threads
          WHERE project_id=? AND entity_type=? AND (entity_id IS ? OR entity_id=?)
          ORDER BY updated_at DESC
@@ -1056,7 +1057,7 @@ export function listDiscussionThreadsForProject(args: { projectSlug: string; ent
   } else {
     rows = db
       .prepare(
-        `SELECT id, title, status, entity_type, entity_id, author_handle, author_type, created_at, updated_at
+        `SELECT id, title, status, is_locked, entity_type, entity_id, author_handle, author_type, created_at, updated_at
          FROM discussion_threads
          WHERE project_id=?
          ORDER BY updated_at DESC
@@ -1082,6 +1083,7 @@ export function listDiscussionThreadsForProject(args: { projectSlug: string; ent
       authorType: r.author_type === 'agent' ? 'agent' : 'human',
       createdAt: String(r.created_at),
       updatedAt: String(r.updated_at),
+      isLocked: Boolean(r.is_locked),
       replyCount: c?.c || 0,
       lastReplyAt: lr?.created_at || null,
     } as DiscussionThreadListItem;

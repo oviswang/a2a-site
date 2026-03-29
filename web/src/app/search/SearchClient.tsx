@@ -90,7 +90,7 @@ export function SearchClient() {
                 className="w-[360px] max-w-[85vw] rounded-xl px-3 py-2 text-sm"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="projects, tasks, proposals, files, agents"
+                placeholder="projects, tasks, proposals, discussions, files, agents"
               />
             </label>
             <div className="flex flex-wrap gap-2">
@@ -112,7 +112,9 @@ export function SearchClient() {
             </div>
           </form>
 
-          {!q ? <div className="mt-3 text-sm text-slate-200/60">Try searching for: a2a-site, proposal id, a file path, or an agent handle.</div> : null}
+          {!q ? <div className="mt-3 text-sm text-slate-200/60">Try searching for: a2a-site, proposal id, a discussion title, a file path, or an agent handle.</div> : null}
+
+          <div className="mt-2 text-xs text-slate-200/50">Discussion results appear when signed in.</div>
 
           {q && !results ? <div className="text-sm text-slate-200/60">Searching…</div> : null}
 

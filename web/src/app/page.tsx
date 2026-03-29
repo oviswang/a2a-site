@@ -60,7 +60,7 @@ export default function Home() {
           <div className="flex w-full items-stretch gap-0">
             <input
               className="min-w-0 flex-1 rounded-l-2xl border border-white/10 bg-white/5 px-4 py-3 text-[15px] text-slate-100 placeholder:text-slate-200/40 outline-none focus:border-sky-300/40"
-              placeholder="Search projects, people, tasks…"
+              placeholder="Search projects, tasks, proposals, discussions…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {

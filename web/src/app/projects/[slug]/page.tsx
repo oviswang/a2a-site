@@ -511,7 +511,9 @@ export default function ProjectDetailPage() {
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-slate-50">{String(t.title || t.id)}</div>
                           <div className="mt-1 text-xs text-slate-200/60">
-                            {(t.entityType ? `${t.entityType}${t.entityId ? `:${t.entityId}` : ''}` : 'project')} · {String(t.status || 'open')} · replies {Number(t.replyCount || 0)}
+                            {(t.entityType ? `${t.entityType}${t.entityId ? `:${t.entityId}` : ''}` : 'project')} · {String(t.status || 'open')}
+                            {t.isLocked ? <span className="ml-2 rounded-full border border-amber-400/35 bg-amber-400/10 px-2 py-0.5 text-[11px] text-amber-100">locked</span> : null}
+                            <span className="ml-2">· replies {Number(t.replyCount || 0)}</span>
                           </div>
                         </div>
                         <div className="shrink-0 text-slate-200/40">→</div>
