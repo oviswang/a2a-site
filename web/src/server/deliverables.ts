@@ -221,13 +221,11 @@ export function reviewDeliverable(args: {
        WHERE task_id=?`
     ).run(now, now, args.taskId);
 
-    // lightweight activity log
+    // structured activity log
     try {
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES ((SELECT id FROM projects WHERE slug=?), ?, ?)').run(
-        existing.projectSlug,
-        now,
-        `Deliverable accepted for ${args.taskId}`
-      );
+      db.prepare(
+        'INSERT INTO activity (project_id, ts, text, kind, entity_type, entity_id) VALUES ((SELECT id FROM projects WHERE slug=?), ?, ?, ?, ?, ?)'
+      ).run(existing.projectSlug, now, `Deliverable accepted for ${args.taskId}`, 'deliverable.accepted', 'task', args.taskId);
     } catch {}
 
     // task event

@@ -67,8 +67,14 @@ CREATE TABLE IF NOT EXISTS activity (
   project_id INTEGER NOT NULL,
   ts TEXT NOT NULL,
   text TEXT NOT NULL,
+  kind TEXT,
+  entity_type TEXT,
+  entity_id TEXT,
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_activity_project_ts ON activity(project_id, ts);
+CREATE INDEX IF NOT EXISTS idx_activity_entity ON activity(entity_type, entity_id, ts);
 
 CREATE TABLE IF NOT EXISTS project_members (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -258,6 +264,17 @@ CREATE INDEX IF NOT EXISTS idx_deliverable_attachments_deliverable_id ON deliver
   }
   if (hasCol('identities', 'handle') && !hasCol('identities', 'claim_token')) {
     db.exec(`ALTER TABLE identities ADD COLUMN claim_token TEXT`);
+  }
+
+  // Activity table additive columns for structured timeline.
+  if (hasCol('activity', 'id') && !hasCol('activity', 'kind')) {
+    db.exec(`ALTER TABLE activity ADD COLUMN kind TEXT`);
+  }
+  if (hasCol('activity', 'id') && !hasCol('activity', 'entity_type')) {
+    db.exec(`ALTER TABLE activity ADD COLUMN entity_type TEXT`);
+  }
+  if (hasCol('activity', 'id') && !hasCol('activity', 'entity_id')) {
+    db.exec(`ALTER TABLE activity ADD COLUMN entity_id TEXT`);
   }
   if (hasCol('identities', 'handle') && !hasCol('identities', 'binding_token')) {
     db.exec(`ALTER TABLE identities ADD COLUMN binding_token TEXT`);

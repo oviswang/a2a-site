@@ -193,7 +193,18 @@ export default function ProjectDetailPage() {
   };
 
   const activity = project?.activity || [];
-  const kindOf = (text: string) => {
+  const kindOf = (a: any) => {
+    // Prefer structured kind/entityType; fallback to legacy text heuristics.
+    if (a?.entityType) return String(a.entityType);
+    if (a?.kind && a.kind !== 'event') {
+      const k = String(a.kind);
+      if (k.startsWith('invite.')) return 'invite';
+      if (k.startsWith('join_request.')) return 'access';
+      if (k.startsWith('proposal.')) return 'proposal';
+      if (k.startsWith('task.')) return 'task';
+      if (k.startsWith('deliverable.')) return 'review';
+    }
+    const text = String(a?.text || '');
     if (text.startsWith('Invited')) return 'invite';
     if (text.startsWith('Invite revoked')) return 'invite';
     if (text.includes('joined')) return 'member';
@@ -214,7 +225,7 @@ export default function ProjectDetailPage() {
       acc[day].push(a);
       return acc;
     },
-    {} as Record<string, Array<{ ts: string; text: string }>>
+    {} as Record<string, Array<any>>
   );
 
   // Summary-first: compute top-level "attention now" counts once.
@@ -1931,7 +1942,7 @@ export default function ProjectDetailPage() {
                         <div className="mt-2 grid gap-2">
                           {activityByDay[day]
                             .filter((a) => {
-                              const k = kindOf(a.text) as any;
+                              const k = kindOf(a) as any;
                               if (timelineKindFilter !== 'all' && k !== timelineKindFilter) return false;
                               const q = timelineQuery.trim().toLowerCase();
                               if (!q) return true;
@@ -1939,15 +1950,38 @@ export default function ProjectDetailPage() {
                             })
                             .slice(0, 12)
                             .map((a, idx) => {
-                              const k = kindOf(a.text);
+                              const k = kindOf(a);
+                              const entityType = a?.entityType ? String(a.entityType) : null;
+                              const entityId = a?.entityId ? String(a.entityId) : null;
+                              const link =
+                                entityType === 'task' && entityId
+                                  ? `/tasks/${encodeURIComponent(entityId)}`
+                                  : entityType === 'proposal' && entityId
+                                    ? `/proposals/${encodeURIComponent(entityId)}/review`
+                                    : entityType === 'invite' && entityId
+                                      ? `/projects/${slug}#people`
+                                      : entityType === 'join_request' && entityId
+                                        ? `/projects/${slug}#people`
+                                        : null;
                               return (
                                 <div key={idx} className="flex flex-wrap items-start justify-between gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
-                                <div className="min-w-0">
-                                  <div className="text-xs text-slate-200/50">{a.ts.slice(11, 19)}</div>
-                                  <div className="mt-1 text-sm text-slate-50">{a.text}</div>
+                                  <div className="min-w-0">
+                                    <div className="text-xs text-slate-200/50">{a.ts.slice(11, 19)}</div>
+                                    <div className="mt-1 text-sm text-slate-50">{a.text}</div>
+                                    {link ? (
+                                      <div className="mt-2">
+                                        <a className="text-[11px] text-sky-200 hover:text-sky-100" href={link}>
+                                          open {entityType}
+                                        </a>
+                                      </div>
+                                    ) : entityType && entityId ? (
+                                      <div className="mt-2 text-[11px] text-slate-200/60">
+                                        ref: {entityType}:{entityId}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                  <div className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">{k}</div>
                                 </div>
-                                <div className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-100">{k}</div>
-                              </div>
                             );
                           })}
                         </div>

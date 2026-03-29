@@ -456,7 +456,36 @@ type ProposalRow = {
   task_id?: string | null;
 };
 
-type ActivityRow = { ts: string; text: string };
+type ActivityRow = { ts: string; text: string; kind?: string | null; entity_type?: string | null; entity_id?: string | null };
+
+export type ActivityEntityType = 'task' | 'proposal' | 'invite' | 'join_request' | 'deliverable' | 'project' | 'member' | 'file' | 'unknown';
+
+export type ActivityEvent = {
+  ts: string;
+  text: string;
+  kind: string;
+  entityType: ActivityEntityType;
+  entityId: string | null;
+};
+
+function addActivity(args: {
+  projectId: number;
+  ts: string;
+  text: string;
+  kind?: string;
+  entityType?: ActivityEntityType;
+  entityId?: string | null;
+}) {
+  const db = getDb();
+  db.prepare('INSERT INTO activity (project_id, ts, text, kind, entity_type, entity_id) VALUES (?, ?, ?, ?, ?, ?)').run(
+    args.projectId,
+    args.ts,
+    args.text,
+    args.kind || null,
+    args.entityType || null,
+    args.entityId || null
+  );
+}
 
 type TaskRow = {
   id: string;
@@ -653,8 +682,15 @@ export function getProject(slug: string) {
   });
 
   const activity = (db
-    .prepare('SELECT ts, text FROM activity WHERE project_id=? ORDER BY ts DESC LIMIT 50')
-    .all(p.id) as ActivityRow[]).map((a) => ({ ts: a.ts, text: a.text }));
+    .prepare('SELECT ts, text, kind, entity_type, entity_id FROM activity WHERE project_id=? ORDER BY ts DESC LIMIT 50')
+    .all(p.id) as ActivityRow[])
+    .map((a) => ({
+      ts: a.ts,
+      text: a.text,
+      kind: a.kind || 'event',
+      entityType: (a.entity_type as any) || 'unknown',
+      entityId: a.entity_id || null,
+    }));
 
   const members = (db
     .prepare('SELECT member_handle, member_type, role, joined_at FROM project_members WHERE project_id=? ORDER BY role ASC, member_handle ASC')
@@ -838,11 +874,14 @@ export function createProject(args: {
       now
     );
 
-    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
+    addActivity({
       projectId,
-      now,
-      `Project created (${args.visibility}) by @${args.actorHandle}`
-    );
+      ts: now,
+      kind: 'project.created',
+      entityType: 'project',
+      entityId: slug,
+      text: `Project created (${args.visibility}) by @${args.actorHandle}`,
+    });
   });
 
   tx();
@@ -966,11 +1005,14 @@ export function createTask(args: {
     null
   );
 
-  db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
-    p.id,
-    now,
-    `Task created: ${id} by @${args.actorHandle} (${args.actorType})`
-  );
+  addActivity({
+    projectId: p.id,
+    ts: now,
+    kind: 'task.created',
+    entityType: 'task',
+    entityId: id,
+    text: `Task created: ${id} by @${args.actorHandle} (${args.actorType})`,
+  });
 
   return {
     id,
@@ -1043,11 +1085,14 @@ export function taskAction(args: {
       null
     );
 
-    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
-      t.project_id,
-      now,
-      `Task ${args.action}: ${args.taskId} by @${args.actorHandle} (${args.actorType})`
-    );
+    addActivity({
+      projectId: t.project_id,
+      ts: now,
+      kind: `task.${args.action}`,
+      entityType: 'task',
+      entityId: args.taskId,
+      text: `Task ${args.action}: ${args.taskId} by @${args.actorHandle} (${args.actorType})`,
+    });
   });
 
   tx();
@@ -1215,7 +1260,14 @@ export function createProposal(args: {
     args.taskId || null
   );
 
-  db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, nowIso(), `Proposal opened: ${id} (${args.filePath})`);
+  addActivity({
+    projectId: p.id,
+    ts: nowIso(),
+    kind: 'proposal.opened',
+    entityType: 'proposal',
+    entityId: id,
+    text: `Proposal opened: ${id} (${args.filePath})`,
+  });
 
   // Notify project maintainers/owners (human only) that a proposal needs review.
   const approvers = db
@@ -1311,11 +1363,14 @@ export function updateProposal(args: {
     now
   );
 
-  db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
-    pr.project_id,
-    now,
-    `Proposal updated: ${args.id} by @${args.actorHandle} (${args.actorType})`
-  );
+  addActivity({
+    projectId: pr.project_id,
+    ts: now,
+    kind: 'proposal.updated',
+    entityType: 'proposal',
+    entityId: args.id,
+    text: `Proposal updated: ${args.id} by @${args.actorHandle} (${args.actorType})`,
+  });
 
   return getProposal(args.id);
 }
@@ -1358,11 +1413,14 @@ export function proposalAction(args: {
         args.note || null,
         now
       );
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
-        prRow.project_id,
-        now,
-        `Proposal comment: ${args.id} by @${actorHandle} (${actorType})`
-      );
+      addActivity({
+        projectId: prRow.project_id,
+        ts: now,
+        kind: 'proposal.comment',
+        entityType: 'proposal',
+        entityId: args.id,
+        text: `Proposal comment: ${args.id} by @${actorHandle} (${actorType})`,
+      });
       return;
     }
 
@@ -1376,11 +1434,14 @@ export function proposalAction(args: {
         args.note || null,
         now
       );
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
-        prRow.project_id,
-        now,
-        `Proposal approved: ${args.id} by @${actorHandle} (${actorType})`
-      );
+      addActivity({
+        projectId: prRow.project_id,
+        ts: now,
+        kind: 'proposal.approved',
+        entityType: 'proposal',
+        entityId: args.id,
+        text: `Proposal approved: ${args.id} by @${actorHandle} (${actorType})`,
+      });
       const link = `/proposals/${args.id}/review`;
       if (prRow.author_type === 'human') notifyHuman(prRow.author_handle, 'proposal.approved', `Your proposal ${args.id} was approved`, link);
       else {
@@ -1399,11 +1460,14 @@ export function proposalAction(args: {
         args.note || null,
         now
       );
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
-        prRow.project_id,
-        now,
-        `Changes requested: ${args.id} by @${actorHandle} (${actorType})`
-      );
+      addActivity({
+        projectId: prRow.project_id,
+        ts: now,
+        kind: 'proposal.changes_requested',
+        entityType: 'proposal',
+        entityId: args.id,
+        text: `Changes requested: ${args.id} by @${actorHandle} (${actorType})`,
+      });
       const link = `/proposals/${args.id}/review`;
       if (prRow.author_type === 'human') notifyHuman(prRow.author_handle, 'proposal.changes_requested', `Changes requested on your proposal ${args.id}`, link);
       else {
@@ -1422,11 +1486,14 @@ export function proposalAction(args: {
         args.note || null,
         now
       );
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
-        prRow.project_id,
-        now,
-        `Proposal rejected: ${args.id} by @${actorHandle} (${actorType})`
-      );
+      addActivity({
+        projectId: prRow.project_id,
+        ts: now,
+        kind: 'proposal.rejected',
+        entityType: 'proposal',
+        entityId: args.id,
+        text: `Proposal rejected: ${args.id} by @${actorHandle} (${actorType})`,
+      });
     }
 
     if (args.action === 'merge') {
@@ -1447,11 +1514,14 @@ export function proposalAction(args: {
         args.note || null,
         now
       );
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
-        prRow.project_id,
-        now,
-        `Merged ${args.id} into ${prRow.file_path} by @${actorHandle} (${actorType})`
-      );
+      addActivity({
+        projectId: prRow.project_id,
+        ts: now,
+        kind: 'proposal.merged',
+        entityType: 'proposal',
+        entityId: args.id,
+        text: `Merged ${args.id} into ${prRow.file_path} by @${actorHandle} (${actorType})`,
+      });
       const link = `/proposals/${args.id}/review`;
       if (prRow.author_type === 'human') notifyHuman(prRow.author_handle, 'proposal.merged', `Your proposal ${args.id} was merged`, link);
       else {
@@ -1498,7 +1568,7 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
   const inv = db
     .prepare('SELECT id, role, created_by_handle, created_by_type FROM invitations WHERE project_id=? AND invitee_handle=? AND invitee_type=? AND status=?')
     .get(p.id, args.actorHandle, args.actorType, 'pending') as { id: string; role: string; created_by_handle: string; created_by_type: string } | undefined;
-  if (inv) {
+	  if (inv) {
     const role = (inv.role === 'owner' ? 'owner' : inv.role === 'maintainer' ? 'maintainer' : 'contributor') as MemberRole;
     const tx = db.transaction(() => {
       db.prepare('UPDATE invitations SET status=?, accepted_at=? WHERE id=?').run('accepted', now, inv.id);
@@ -1509,8 +1579,15 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
         role,
         now
       );
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `@${args.actorHandle} joined (invite)`);
-    });
+	      addActivity({
+	        projectId: p.id,
+	        ts: now,
+	        kind: 'membership.joined',
+	        entityType: 'member',
+	        entityId: args.actorHandle,
+	        text: `@${args.actorHandle} joined (invite)`,
+	      });
+	    });
     if (inv.created_by_type === 'human') {
       notifyHuman(inv.created_by_handle, 'invite.accepted', `@${args.actorHandle} accepted an invite to /${p.slug}`, `/projects/${p.slug}#people`);
     }
@@ -1518,7 +1595,7 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
     return { mode: 'joined' as const, role };
   }
 
-  if ((p.visibility === 'restricted' ? 'restricted' : 'open') === 'open') {
+	  if ((p.visibility === 'restricted' ? 'restricted' : 'open') === 'open') {
     db.prepare('INSERT INTO project_members (project_id, member_handle, member_type, role, joined_at) VALUES (?, ?, ?, ?, ?)').run(
       p.id,
       args.actorHandle,
@@ -1526,9 +1603,16 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
       'contributor',
       now
     );
-    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `@${args.actorHandle} joined (open)`);
-    return { mode: 'joined' as const, role: 'contributor' as const };
-  }
+	    addActivity({
+	      projectId: p.id,
+	      ts: now,
+	      kind: 'membership.joined',
+	      entityType: 'member',
+	      entityId: args.actorHandle,
+	      text: `@${args.actorHandle} joined (open)`,
+	    });
+	    return { mode: 'joined' as const, role: 'contributor' as const };
+	  }
 
   // If a prior request exists for this member+project (unique constraint), reopen it if it was rejected.
   const existingReq = db
@@ -1545,7 +1629,14 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
       now,
       existingReq.id
     );
-    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `@${args.actorHandle} re-requested access`);
+	    addActivity({
+	      projectId: p.id,
+	      ts: now,
+	      kind: 'join_request.requested',
+	      entityType: 'join_request',
+	      entityId: existingReq.id,
+	      text: `@${args.actorHandle} re-requested access`,
+	    });
 
     // Notify approvers again.
     const approvers = db
@@ -1562,7 +1653,14 @@ export function joinProject(args: { projectSlug: string; actorHandle: string; ac
   db.prepare(
     'INSERT INTO join_requests (id, project_id, member_handle, member_type, requested_at, status, reviewed_by, reviewed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(id, p.id, args.actorHandle, args.actorType, now, 'pending', null, null);
-  db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(p.id, now, `@${args.actorHandle} requested access`);
+	  addActivity({
+	    projectId: p.id,
+	    ts: now,
+	    kind: 'join_request.requested',
+	    entityType: 'join_request',
+	    entityId: id,
+	    text: `@${args.actorHandle} requested access`,
+	  });
 
   // task event (best-effort): link project-level join_request into a parent task stream
   try {
@@ -1666,7 +1764,14 @@ export function reviewJoinRequest(args: {
         args.role || 'contributor',
         now
       );
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(r.project_id, now, `Access approved for @${r.member_handle}`);
+      addActivity({
+        projectId: r.project_id,
+        ts: now,
+        kind: 'join_request.approved',
+        entityType: 'join_request',
+        entityId: r.id,
+        text: `Access approved for @${r.member_handle}`,
+      });
 
       // best-effort task event
       try {
@@ -1700,7 +1805,14 @@ export function reviewJoinRequest(args: {
 
     if (args.action === 'reject') {
       db.prepare('UPDATE join_requests SET status=?, reviewed_by=?, reviewed_at=? WHERE id=?').run('rejected', args.actorHandle, now, r.id);
-      db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(r.project_id, now, `Access rejected for @${r.member_handle}`);
+      addActivity({
+        projectId: r.project_id,
+        ts: now,
+        kind: 'join_request.rejected',
+        entityType: 'join_request',
+        entityId: r.id,
+        text: `Access rejected for @${r.member_handle}`,
+      });
 
       // best-effort task event
       try {
@@ -1785,11 +1897,14 @@ export function createInvitation(args: {
      ON CONFLICT(project_id, invitee_handle, invitee_type) DO UPDATE SET role=excluded.role, status='pending', created_by_handle=excluded.created_by_handle, created_by_type=excluded.created_by_type, created_at=excluded.created_at, accepted_at=NULL`
   ).run(id, p.id, args.inviteeHandle, args.inviteeType, args.role, 'pending', args.actorHandle, args.actorType, now, null);
 
-  db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(
-    p.id,
-    now,
-    `Invited @${args.inviteeHandle} (${args.inviteeType}) as ${args.role}`
-  );
+  addActivity({
+    projectId: p.id,
+    ts: now,
+    kind: 'invite.created',
+    entityType: 'invite',
+    entityId: id,
+    text: `Invited @${args.inviteeHandle} (${args.inviteeType}) as ${args.role}`,
+  });
 
   // best-effort task event
   try {
@@ -1827,7 +1942,14 @@ export function invitationAction(args: { id: string; action: 'revoke'; actorHand
 
   const now = nowIso();
   db.prepare('UPDATE invitations SET status=? WHERE id=?').run('revoked', inv.id);
-  db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(inv.project_id, now, `Invite revoked for @${inv.invitee_handle}`);
+  addActivity({
+    projectId: inv.project_id,
+    ts: now,
+    kind: 'invite.revoked',
+    entityType: 'invite',
+    entityId: inv.id,
+    text: `Invite revoked for @${inv.invitee_handle}`,
+  });
 
   // Notify invitee (human only) that the invite was revoked.
   if (inv.invitee_type === 'human') {
@@ -1907,7 +2029,14 @@ export function respondToInvitation(args: { id: string; action: 'accept' | 'decl
 
   if (args.action === 'decline') {
     db.prepare('UPDATE invitations SET status=?, accepted_at=NULL WHERE id=?').run('declined', inv.id);
-    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(inv.project_id, now, `Invite declined by @${inv.invitee_handle}`);
+    addActivity({
+      projectId: inv.project_id,
+      ts: now,
+      kind: 'invite.declined',
+      entityType: 'invite',
+      entityId: inv.id,
+      text: `Invite declined by @${inv.invitee_handle}`,
+    });
 
     // best-effort task event
     try {
@@ -1941,7 +2070,14 @@ export function respondToInvitation(args: { id: string; action: 'accept' | 'decl
       role,
       now
     );
-    db.prepare('INSERT INTO activity (project_id, ts, text) VALUES (?, ?, ?)').run(inv.project_id, now, `@${inv.invitee_handle} joined (invite)`);
+    addActivity({
+      projectId: inv.project_id,
+      ts: now,
+      kind: 'invite.accepted',
+      entityType: 'invite',
+      entityId: inv.id,
+      text: `@${inv.invitee_handle} joined (invite)`,
+    });
 
     // best-effort task events
     try {
