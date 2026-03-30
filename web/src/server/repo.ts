@@ -3683,8 +3683,21 @@ export function externalAgentIntake(args: {
     upsertAgentRuntime({ agentHandle: handle, runtime: args.runtime });
   }
 
-  const joinResult = joinProject({ projectSlug: args.projectSlug, actorHandle: handle, actorType: 'agent' });
-  return { identity: getIdentity(handle), joinResult, bindingToken };
+  // Default-flow hardening (market-safe): do not auto-join on intake.
+  // Bind identity + return a recommended next step; join requires explicit follow-up.
+  const projectSlug = String(args.projectSlug || '').trim();
+  return {
+    identity: getIdentity(handle),
+    bindingToken,
+    nextSuggestedAction: 'join_project',
+    recommendedJoin: projectSlug ? {
+      projectSlug,
+      endpoint: `/api/projects/${projectSlug}/join`,
+      method: 'POST',
+      auth: 'agentBearer',
+      body: { actorHandle: handle, actorType: 'agent' },
+    } : null,
+  };
 }
 
 function ensureDogfoodA2aSiteProject() {
