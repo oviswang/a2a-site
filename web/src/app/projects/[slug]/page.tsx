@@ -49,7 +49,20 @@ export default function ProjectDetailPage() {
   const [discBody, setDiscBody] = useState('');
   const [discEntityType, setDiscEntityType] = useState<'project' | 'task' | 'proposal'>('project');
   const [discEntityId, setDiscEntityId] = useState('');
-  const [discMsg, setDiscMsg] = useState<string | null>(null);
+  const [discMsg, setDiscMsg] = useState<{ kind: 'success' | 'error'; text: string; code?: string } | null>(null);
+  const [discBusy, setDiscBusy] = useState(false);
+
+  function friendlyDiscussionError(code: string) {
+    const c = String(code || 'create_failed');
+    const map: Record<string, string> = {
+      missing_title: 'Please enter a title.',
+      missing_body: 'Please enter content.',
+      missing_entity: 'Please provide the related task/proposal id.',
+      not_allowed: 'You do not currently have permission to create a thread here.',
+      invalid_json: 'Invalid request. Please try again.',
+    };
+    return map[c] || c;
+  }
 
   // Layer B Phase 1: project agent policy (minimal panel)
   const [policyAgentHandle, setPolicyAgentHandle] = useState('');
@@ -463,6 +476,7 @@ export default function ProjectDetailPage() {
                         }
                         const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions/search?q=${encodeURIComponent(q)}&limit=20`, { cache: 'no-store' });
                         const j = await res.json().catch(() => null);
+                          setDiscBusy(false);
                         if (!res.ok || !j?.ok) {
                           setDiscSearchResults([]);
                           return;
@@ -563,9 +577,11 @@ export default function ProjectDetailPage() {
                       </label>
                       <button
                         type="button"
-                        className="rounded-xl bg-sky-400/20 px-3 py-2 text-xs font-semibold text-sky-100 hover:bg-sky-400/25"
+                        disabled={discBusy}
+                        className={`rounded-xl px-3 py-2 text-xs font-semibold ${discBusy ? "bg-sky-400/10 text-sky-100/60" : "bg-sky-400/20 text-sky-100 hover:bg-sky-400/25"}` }
                         onClick={async () => {
                           setDiscMsg(null);
+                          setDiscBusy(true);
                           const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions`, {
                             method: 'POST',
                             headers: { 'content-type': 'application/json' },
@@ -579,8 +595,9 @@ export default function ProjectDetailPage() {
                             }),
                           });
                           const j = await res.json().catch(() => null);
+                          setDiscBusy(false);
                           if (!res.ok || !j?.ok) {
-                            setDiscMsg(j?.error || 'create_failed');
+                            setDiscMsg({ kind: 'error', code: String(j?.error || 'create_failed'), text: friendlyDiscussionError(String(j?.error || 'create_failed')) });
                             return;
                           }
                           setDiscTitle('');
@@ -589,13 +606,21 @@ export default function ProjectDetailPage() {
                           const rr = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions?limit=20`, { cache: 'no-store' });
                           const jj = await rr.json().catch(() => null);
                           setDiscThreads(Array.isArray(jj?.threads) ? jj.threads : []);
-                          setDiscMsg('Thread created.');
+                          setDiscMsg({ kind: 'success', text: 'Thread created.' });
                         }}
                       >
-                        Create
+                        {discBusy ? "Creating…" : "Create"}
                       </button>
                     </div>
-                    {discMsg ? <div className="text-xs text-slate-200/70">{discMsg}</div> : null}
+                    {discMsg ? (
+                      <div className={`rounded-xl border px-3 py-2 text-xs ${discMsg.kind === "error" ? "border-rose-400/30 bg-rose-500/10 text-rose-100" : "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"}`}>
+                        <div className="font-semibold">{discMsg.kind === "error" ? "Create failed" : "Success"}</div>
+                        <div className="mt-1">{discMsg.text}</div>
+                        {discMsg.kind === "error" && discMsg.code ? (
+                          <div className="mt-1 text-[11px] opacity-70">code: {discMsg.code}</div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -631,6 +656,7 @@ export default function ProjectDetailPage() {
                             }
                             const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/agent-policy?agentHandle=${encodeURIComponent(h)}`, { cache: 'no-store' });
                             const j = await res.json().catch(() => null);
+                          setDiscBusy(false);
                             if (!res.ok || !j?.ok) {
                               setPolicyMsg(j?.error || 'get_failed');
                               return;
@@ -696,6 +722,7 @@ export default function ProjectDetailPage() {
                               }),
                             });
                             const j = await res.json().catch(() => null);
+                          setDiscBusy(false);
                             if (!res.ok || !j?.ok) {
                               setPolicyMsg(j?.error || 'save_failed');
                               return;
@@ -1957,6 +1984,7 @@ export default function ProjectDetailPage() {
                                   }),
                                 });
                                 const j = await res.json().catch(() => null);
+                          setDiscBusy(false);
                                 if (!res.ok || !j?.ok) {
                                   setPeopleMsg(j?.error || 'invite_failed');
                                   return;
@@ -1993,6 +2021,7 @@ export default function ProjectDetailPage() {
                                           body: JSON.stringify({ actorHandle: actor.handle }),
                                         });
                                         const j = await res.json().catch(() => null);
+                          setDiscBusy(false);
                                         if (!res.ok || !j?.ok) {
                                           setPeopleMsg(j?.error || 'revoke_failed');
                                           setToast({ message: j?.error || 'Revoke failed.', variant: 'error' });
@@ -2053,6 +2082,7 @@ export default function ProjectDetailPage() {
                                       }),
                                     });
                                     const j = await res.json().catch(() => null);
+                          setDiscBusy(false);
                                     if (!res.ok || !j?.ok) {
                                       setPeopleMsg(j?.error || 'role_update_failed');
                                       setToast({ message: j?.error || 'Role update failed.', variant: 'error' });
@@ -2083,6 +2113,7 @@ export default function ProjectDetailPage() {
                                       }),
                                     });
                                     const j = await res.json().catch(() => null);
+                          setDiscBusy(false);
                                     if (!res.ok || !j?.ok) {
                                       setPeopleMsg(j?.error || 'remove_failed');
                                       setToast({ message: j?.error || 'Remove failed.', variant: 'error' });

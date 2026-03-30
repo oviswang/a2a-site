@@ -47,13 +47,28 @@ export default function DiscussionThreadPage() {
   const [reactions, setReactions] = useState<{ thread: ReactionCounts; replies: Record<string, ReactionCounts> } | null>(null);
   const [body, setBody] = useState('');
   const [quotedReplyId, setQuotedReplyId] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ kind: 'success' | 'error'; text: string; code?: string } | null>(null);
+  const [replyBusy, setReplyBusy] = useState(false);
+
+  function friendlyReplyError(code: string) {
+    const c = String(code || 'reply_failed');
+    const map: Record<string, string> = {
+      missing_body: 'Please enter a reply.',
+      not_allowed: 'You do not currently have permission to reply here.',
+      thread_closed: 'Thread is closed. Replies are disabled.',
+      thread_locked: 'Thread is locked. Replies are disabled.',
+      invalid_json: 'Invalid request. Please try again.',
+    };
+    return map[c] || c;
+  }
 
   const isHuman = state.actor.actorType === 'human';
 
   async function refresh() {
-    const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}`, { cache: 'no-store' });
+    setReplyBusy(true);
+                    const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}`, { cache: 'no-store' });
     const j = await res.json().catch(() => null);
+                    setReplyBusy(false);
     if (!res.ok || !j?.ok) return;
     setThread(j.thread || null);
     setReplies(Array.isArray(j.replies) ? j.replies : []);
@@ -66,12 +81,14 @@ export default function DiscussionThreadPage() {
       target === 'thread'
         ? `/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}/reactions`
         : `/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(targetId)}/reactions`;
-    const res = await fetch(url, {
+    setReplyBusy(true);
+                    const res = await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ emoji, action: 'add', actorHandle: state.actor.handle, actorType: state.actor.actorType }),
     });
     const j = await res.json().catch(() => null);
+                    setReplyBusy(false);
     if (!res.ok || !j?.ok) {
       setMsg(j?.error || 'reaction_failed');
       return;
@@ -147,6 +164,7 @@ export default function DiscussionThreadPage() {
                   className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-slate-100 hover:bg-white/10"
                   onClick={async () => {
                     setMsg(null);
+                    setReplyBusy(true);
                     const res = await fetch(
                       `/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}/lock`,
                       {
@@ -156,6 +174,7 @@ export default function DiscussionThreadPage() {
                       }
                     );
                     const j = await res.json().catch(() => null);
+                    setReplyBusy(false);
                     if (!res.ok || !j?.ok) {
                       setMsg(j?.error || 'lock_failed');
                       return;
@@ -190,19 +209,23 @@ export default function DiscussionThreadPage() {
                 />
                 <button
                   type="button"
-                  className="w-fit rounded-2xl bg-emerald-700 px-3 py-2 text-sm text-white hover:bg-emerald-600"
+                  disabled={replyBusy}
+                  className={`w-fit rounded-2xl px-3 py-2 text-sm text-white ${replyBusy ? "bg-emerald-700/50" : "bg-emerald-700 hover:bg-emerald-600"}` }
                   onClick={async () => {
                     setMsg(null);
+                    if (replyBusy) return;
                     const v = body.trim();
-                    if (!v) return;
+                    if (!v) { setMsg({ kind: 'error', text: 'Please enter a reply.', code: 'missing_body' }); return; }
+                    setReplyBusy(true);
                     const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}/replies`, {
                       method: 'POST',
                       headers: { 'content-type': 'application/json' },
                       body: JSON.stringify({ body: v, quotedReplyId, authorHandle: state.actor.handle, authorType: state.actor.actorType }),
                     });
                     const j = await res.json().catch(() => null);
+                    setReplyBusy(false);
                     if (!res.ok || !j?.ok) {
-                      setMsg(j?.error || 'reply_failed');
+                      setMsg({ kind: 'error', code: String(j?.error || 'reply_failed'), text: friendlyReplyError(String(j?.error || 'reply_failed')) });
                       return;
                     }
                     setBody('');
@@ -210,9 +233,17 @@ export default function DiscussionThreadPage() {
                     await refresh();
                   }}
                 >
-                  Reply
+                  {replyBusy ? "Sending…" : "Reply"}
                 </button>
-                {msg ? <div className="text-xs text-rose-200">{msg}</div> : null}
+                {msg ? (
+                  <div className={`mt-2 rounded-xl border px-3 py-2 text-xs ${msg.kind === "error" ? "border-rose-400/30 bg-rose-500/10 text-rose-100" : "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"}`}>
+                    <div className="font-semibold">{msg.kind === "error" ? "Reply failed" : "Success"}</div>
+                    <div className="mt-1">{msg.text}</div>
+                    {msg.kind === "error" && msg.code ? (
+                      <div className="mt-1 text-[11px] opacity-70">code: {msg.code}</div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="mt-4 text-xs text-slate-200/60">
@@ -263,7 +294,8 @@ export default function DiscussionThreadPage() {
                           className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-slate-100 hover:bg-white/10"
                           onClick={async () => {
                             setMsg(null);
-                            const res = await fetch(
+                            setReplyBusy(true);
+                    const res = await fetch(
                               `/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(String(r.id))}/hide`,
                               {
                                 method: 'POST',
@@ -272,6 +304,7 @@ export default function DiscussionThreadPage() {
                               }
                             );
                             const j = await res.json().catch(() => null);
+                    setReplyBusy(false);
                             if (!res.ok || !j?.ok) {
                               setMsg(j?.error || 'hide_failed');
                               return;
