@@ -1187,6 +1187,28 @@ export function createDiscussionThread(args: {
     throw new Error('not_allowed');
   }
 
+  // Layer B gate: agent entity-linked thread create is default OFF unless explicitly allowed.
+  if (args.authorType === 'agent' && (args.entityType === 'task' || args.entityType === 'proposal')) {
+    const pol = getPolicyRow(db, p.id, args.authorHandle);
+    const allowed = !!(pol && pol.enabled && pol.allow_entity_thread_create);
+    if (!allowed) {
+      try {
+        auditDeny({
+          kind: 'layerb.deny',
+          ts: now,
+          actorHandle: args.authorHandle,
+          actorType: args.authorType,
+          projectSlug: p.slug,
+          actionType: 'discussion.thread_create',
+          denyReason: 'gated_default_off',
+          entityType: args.entityType,
+          entityId: args.entityId ? String(args.entityId) : null,
+        });
+      } catch {}
+      throw new Error('not_allowed');
+    }
+  }
+
   const title = String(args.title || '').trim();
   const bodyMd = String(args.bodyMd || '').trim();
   if (!title) throw new Error('missing_title');
