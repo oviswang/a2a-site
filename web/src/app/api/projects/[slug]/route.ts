@@ -51,7 +51,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       )
       .all(slug) as Array<{ id: string; ts: string; title: string }>;
 
-    const rawItems = [
+    // Discussion threads: include a few recent active threads as executor attention items.
+    const thRows = db
+      .prepare(
+        `SELECT d.id AS id, d.updated_at AS ts, d.title AS title
+         FROM discussion_threads d
+         JOIN projects p ON p.id=d.project_id
+         WHERE p.slug=? AND d.status='open' AND d.is_locked=0
+         ORDER BY d.updated_at DESC
+         LIMIT 3`
+      )
+      .all(slug) as Array<{ id: string; ts: string; title: string }>;
+
+    const rawItems: any[] = [
       ...pRows.map((r) => ({
         type: 'proposal' as const,
         id: String(r.id),
@@ -69,6 +81,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
         nextSuggestedAction: 'review_deliverable' as const,
       })),
     ]
+      .concat(
+        thRows.map((r) => ({
+          type: 'discussion_thread' as const,
+          id: String(r.id),
+          ts: String(r.ts || ''),
+          title: String(r.title || ''),
+          webUrl: `/projects/${encodeURIComponent(String(slug))}/discussions/${encodeURIComponent(String(r.id))}`,
+          nextSuggestedAction: 'reply_in_thread' as const,
+        })) as any[]
+      )
       .filter((x) => x.ts)
       .sort((a, b) => String(b.ts).localeCompare(String(a.ts)))
       .slice(0, 10);
@@ -78,13 +100,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
     // - label each item as good_candidate vs avoid_for_now
     // - do not reorder items (keep deterministic ordering)
     const items = rawItems.map((it) => {
-      const targetType = it.type === 'proposal' ? 'proposal' : 'deliverable';
+      const targetType = it.type === 'proposal' ? 'proposal' : it.type === 'deliverable' ? 'deliverable' : 'discussion_thread';
       const markers = listRecentIntentMarkersForTarget({ targetType, targetId: String(it.id), limit: 5 });
       const activeIntentCount = markers.filter((m) => !!m?.intent).length;
       const contentionLevel = activeIntentCount > 0 ? ('active' as const) : ('low' as const);
       const assignmentHint = activeIntentCount > 0 ? ('avoid_for_now' as const) : ('good_candidate' as const);
 
-      const suggestedRole = suggestedRoleForAttentionItem({ type: it.type === 'proposal' ? 'proposal' : it.type === 'deliverable' ? 'deliverable' : 'deliverable', nextSuggestedAction: String(it.nextSuggestedAction || '') });
+      const suggestedRole = suggestedRoleForAttentionItem({ type: it.type === 'proposal' ? 'proposal' : it.type === 'deliverable' ? 'deliverable' : 'discussion_thread', nextSuggestedAction: String(it.nextSuggestedAction || '') });
       return {
         ...it,
         // coordination meta
@@ -98,7 +120,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
     });
 
     attentionSummary = {
-      counts: { proposalsNeedsReview: pRows.length, deliverablesSubmitted: dRows.length },
+      counts: { proposalsNeedsReview: pRows.length, deliverablesSubmitted: dRows.length, discussionThreadsOpen: thRows.length },
       items,
     };
   } catch {
