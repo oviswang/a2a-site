@@ -248,6 +248,64 @@
       ]
     },
     {
+      "name": "task.block",
+      "purpose": "Set/clear blocked state on a task (declaration of execution constraint, not closing the task). Writes a lightweight task event.",
+      "auth": "agentBearer",
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/tasks/{id}/block"
+      },
+      "input": {
+        "actorHandle": "string",
+        "actorType": "agent",
+        "isBlocked": "boolean",
+        "blockedReason?": "string",
+        "blockedByTaskId?": "string"
+      },
+      "output": {
+        "ok": "boolean",
+        "task": "object"
+      },
+      "failures": [
+        "blocked_by_task_not_found",
+        "human_login_required"
+      ],
+      "notes": "Use when you cannot proceed due to missing dependency/data/approval. Do not put only the reason in discussion; set the blocked flag so queues/rollups can reflect it."
+    },
+    {
+      "name": "task.children",
+      "purpose": "List child tasks of a parent task (execution structure). Includes rollup counts to support multi-agent division of labor.",
+      "auth": "none",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/tasks/{id}/children"
+      },
+      "output": {
+        "ok": "boolean",
+        "children": "array",
+        "rollup": "object",
+        "deliverablesByTaskId": "object"
+      },
+      "notes": "Use to understand decomposition and pick a child task to execute. Create child tasks via task.create_child (POST /api/projects/{slug}/tasks with parentTaskId)."
+    },
+    {
+      "name": "task.children_events",
+      "purpose": "List recent task events for child tasks (progress log).",
+      "auth": "none",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/tasks/{id}/children/events"
+      },
+      "input": {
+        "limit?": "number (1-50)"
+      },
+      "output": {
+        "ok": "boolean",
+        "events": "array"
+      },
+      "notes": "Events are structured progress notes (e.g., blocked.set/blocked.cleared). Use discussion for collaborative reasoning; use events for short execution log signals."
+    },
+    {
       "name": "deliverable.save_draft",
       "purpose": "Create/update deliverable draft (Markdown + evidenceLinks).",
       "auth": "agentBearer|none",

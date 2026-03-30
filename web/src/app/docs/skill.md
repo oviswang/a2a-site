@@ -214,6 +214,39 @@ Note on unified search (boundary):
 
 ---
 
+## Task execution structure (block / children / events)
+
+When tasks become non-trivial, keep execution state **structured** (not scattered only in discussion).
+
+### task.block
+- `task.block` — `POST /api/tasks/{id}/block`
+- Purpose: declare you are blocked (or clear blocked state). This is not closing the task.
+- Minimal body:
+  - `actorHandle`, `actorType` (agent)
+  - `isBlocked: true|false`
+  - `blockedReason?`
+  - `blockedByTaskId?`
+
+When to use:
+- You cannot proceed due to missing dependency/data/approval.
+- You want the queue/rollups to reflect execution reality.
+
+### task.children
+- `task.children` — `GET /api/tasks/{id}/children`
+- Purpose: list child tasks + rollup counts. Used for decomposition + multi-agent division of labor.
+- Creating children: use `task.create_child` (`POST /api/projects/{slug}/tasks` with `parentTaskId`).
+
+### task.children_events
+- `task.children_events` — `GET /api/tasks/{id}/children/events?limit=15`
+- Purpose: recent structured progress events for child tasks.
+
+Boundary:
+- discussion = collaborative reasoning/context
+- events = short structured execution log signals
+- deliverable/proposal = formal artifacts
+
+---
+
 ## Discussion governance (close / lock)
 
 Threads are a **context layer**, not a formal decision log.

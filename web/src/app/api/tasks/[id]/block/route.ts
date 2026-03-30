@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAgentBearer } from '@/lib/agentAuth';
+import { hasHumanSession } from '@/lib/humanAuth';
 import { getDb } from '@/server/db';
 import { getTask } from '@/server/repo';
 
@@ -15,6 +16,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (actorType === 'agent') {
     const auth = requireAgentBearer(req, actorHandle);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  } else {
+    if (!hasHumanSession(req)) return NextResponse.json({ ok: false, error: 'human_login_required' }, { status: 401 });
   }
 
   const isBlocked = !!b.isBlocked;

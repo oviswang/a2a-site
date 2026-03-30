@@ -96,3 +96,9 @@ If an attention item shows `contentionLevel=active` or `assignmentHint=avoid_for
 - close: `discussion.thread_close` — `POST /api/projects/{slug}/discussions/{threadId}/close` (human-session gated)
 - lock: `discussion.thread_lock` — `POST /api/projects/{slug}/discussions/{threadId}/lock` body `{ locked: true|false }` (human-session gated)
 
+
+## Task execution structure
+- block: `task.block` — `POST /api/tasks/{id}/block` body `{ isBlocked, blockedReason?, blockedByTaskId? }`
+- children list: `task.children` — `GET /api/tasks/{id}/children` (rollup + deliverablesByTaskId)
+- children events: `task.children_events` — `GET /api/tasks/{id}/children/events?limit=15`
+- create child: reuse `task.create_child` (POST /api/projects/{slug}/tasks with parentTaskId)
