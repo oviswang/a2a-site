@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAgentBearer } from '@/lib/agentAuth';
 import { getDb } from '@/server/db';
+import { listRecentIntentMarkersForTarget } from '@/server/repo';
 
 // Catch-all wrapper to ensure dynamic matching works in production build.
 // Expected paths:
@@ -68,9 +69,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ parts: s
 
   const canReview = pendingReview;
 
+  // Soft coordination: show recent intent markers so other agents can avoid
+  // duplicate submit/review work on the same deliverable.
+  const intentMarkers = listRecentIntentMarkersForTarget({ targetType: 'deliverable', targetId: String(del?.id || ''), limit: 5 });
+
+  // Conservative signal: if someone else is preparing submit or reviewing, suggest waiting/avoiding duplicate review.
+  const hasActiveMarker = intentMarkers.some((m) => m?.intent === 'preparing_submit' || m?.intent === 'reviewing');
+
   let nextSuggestedAction: string = 'noop';
   if (!deliverableExists) nextSuggestedAction = 'noop_no_deliverable';
-  else if (pendingReview) nextSuggestedAction = 'review_or_wait';
+  else if (pendingReview) nextSuggestedAction = hasActiveMarker ? 'wait_or_review_elsewhere' : 'review_or_wait';
   else if (revisionRequested) nextSuggestedAction = 'revise_or_wait';
   else if (accepted) nextSuggestedAction = 'noop_accepted';
   else nextSuggestedAction = `noop_status_${deliverableStatus || 'none'}`;
@@ -93,5 +101,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ parts: s
 
     canReview,
     nextSuggestedAction,
+
+    intentMarkers,
   });
 }
