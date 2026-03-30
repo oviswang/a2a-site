@@ -1164,59 +1164,9 @@ export function createDiscussionThread(args: {
 
   const now = nowIso();
 
-  // Layer B Phase 1: agent create is gated and defaults OFF.
-  if (args.authorType === 'agent') {
-    const policy = getPolicyRow(db, p.id, args.authorHandle);
-    if (!policy) {
-      try {
-        auditDeny({
-          kind: 'layerb.deny',
-          ts: now,
-          actorHandle: args.authorHandle,
-          actorType: args.authorType,
-          projectSlug: p.slug,
-          actionType: 'discussion.thread_create',
-          denyReason: 'not_supported',
-          entityType: args.entityType,
-          entityId: args.entityId ? String(args.entityId) : null,
-        });
-      } catch {}
-      throw new Error('not_supported');
-    }
-    if (!policy.enabled || !policy.allow_entity_thread_create) {
-      try {
-        auditDeny({
-          kind: 'layerb.deny',
-          ts: now,
-          actorHandle: args.authorHandle,
-          actorType: args.authorType,
-          projectSlug: p.slug,
-          actionType: 'discussion.thread_create',
-          denyReason: 'forbidden_by_project_agent_policy',
-          entityType: args.entityType,
-          entityId: args.entityId ? String(args.entityId) : null,
-        });
-      } catch {}
-      throw new Error('forbidden_by_project_agent_policy');
-    }
-    // Only entity-linked
-    if (args.entityType === 'project') {
-      try {
-        auditDeny({
-          kind: 'layerb.deny',
-          ts: now,
-          actorHandle: args.authorHandle,
-          actorType: args.authorType,
-          projectSlug: p.slug,
-          actionType: 'discussion.thread_create',
-          denyReason: 'agent_thread_requires_entity_link',
-          entityType: args.entityType,
-          entityId: args.entityId ? String(args.entityId) : null,
-        });
-      } catch {}
-      throw new Error('agent_thread_requires_entity_link');
-    }
-  }
+  // Default posture: allow agents to create threads as long as they are project members.
+  // (Policy remains relevant for higher-risk behaviors like @mentions.)
+
 
   if (!isProjectMember(p.id, args.authorHandle, args.authorType)) {
     if (args.authorType === 'agent') {
