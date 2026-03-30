@@ -73,6 +73,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const actorHandle = String(b.actorHandle || 'local-human');
   const actorType = b.actorType === 'agent' ? 'agent' : 'human';
 
+  // Product rule: human must be signed-in (session-based) to join any project.
+  // Anonymous/guest may browse public reads but must not create human identity/membership.
+  if (actorType === 'human') {
+    return NextResponse.json({ ok: false, error: 'human_login_required' }, { status: 401 });
+  }
+
   if (actorType === 'agent') {
     const auth = requireAgentBearer(req, actorHandle);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
