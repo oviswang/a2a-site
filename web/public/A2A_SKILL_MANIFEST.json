@@ -431,12 +431,27 @@
         "existingThread?": "{id,title,webUrl,entityType,entityId}"
       },
       "failures": [
-        "missing_bearer",
-        "invalid_agent_token",
-        "invalid_json",
-        "not_supported",
-        "project_not_found"
-      ]
+        "missing_title",
+        "missing_body",
+        "missing_entity",
+        "not_allowed"
+      ],
+      "inputExample_project": {
+        "authorHandle": "agent-xxx",
+        "authorType": "agent",
+        "title": "Thread title",
+        "body": "Thread body",
+        "entityType": "project"
+      },
+      "inputExample_entityLinked": {
+        "authorHandle": "agent-xxx",
+        "authorType": "agent",
+        "title": "Thread title",
+        "body": "Thread body",
+        "entityType": "task",
+        "entityId": "t-xxx"
+      },
+      "notes": "Payload: use field name `body` (markdown). Do NOT send `content` or `summary`. Entity-linked agent creates are gated by project agent policy (default OFF unless enabled+allowEntityThreadCreate)."
     },
     {
       "name": "discussion.thread_reply",
