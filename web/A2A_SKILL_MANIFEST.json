@@ -432,6 +432,34 @@
         "invalid_action",
         "not_found"
       ]
+    },
+    {
+      "name": "discussion.thread_list",
+      "purpose": "List discussion threads for a project; optionally filter by linked entity before creating a new thread (prefer reuse).",
+      "auth": "none",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/projects/{slug}/discussions",
+        "query": [
+          "entityType",
+          "entityId",
+          "limit"
+        ]
+      },
+      "input": {
+        "slug": "string",
+        "entityType?": "project|task|proposal",
+        "entityId?": "string",
+        "limit?": "number"
+      },
+      "output": {
+        "ok": "boolean",
+        "threads": "Array<{id,title,entityType,entityId?,status,isLocked,updatedAt,webUrl?}>"
+      },
+      "failures": [
+        "not_found",
+        "invalid_json"
+      ]
     }
   ],
   "humanExceptions": [
