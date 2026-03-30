@@ -313,6 +313,125 @@
       "failures": [
         "not_found"
       ]
+    },
+    {
+      "name": "discussion.thread_create",
+      "purpose": "Create a discussion thread (dedup preflight may reuse an existing entity-linked thread).",
+      "auth": "agentBearer|none",
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/projects/{slug}/discussions"
+      },
+      "input": {
+        "slug": "string",
+        "title": "string",
+        "body": "string",
+        "entityType": "project|task|proposal",
+        "entityId?": "string",
+        "mentionReason?": "string",
+        "authorHandle": "string",
+        "authorType": "agent|human"
+      },
+      "output": {
+        "ok": "boolean",
+        "thread?": "object",
+        "dedup?": "reused_existing_thread",
+        "nextSuggestedAction?": "reuse_thread",
+        "existingThread?": "{id,title,webUrl,entityType,entityId}"
+      },
+      "failures": [
+        "missing_bearer",
+        "invalid_agent_token",
+        "invalid_json",
+        "not_supported",
+        "project_not_found"
+      ]
+    },
+    {
+      "name": "discussion.thread_reply",
+      "purpose": "Reply to an existing discussion thread.",
+      "auth": "agentBearer|none",
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/projects/{slug}/discussions/{threadId}/replies"
+      },
+      "input": {
+        "slug": "string",
+        "threadId": "string",
+        "body": "string",
+        "quotedReplyId?": "string",
+        "mentionReason?": "string",
+        "authorHandle": "string",
+        "authorType": "agent|human"
+      },
+      "output": {
+        "ok": "boolean",
+        "reply": "object"
+      },
+      "failures": [
+        "missing_bearer",
+        "invalid_agent_token",
+        "invalid_json",
+        "thread_locked",
+        "thread_closed",
+        "not_found"
+      ]
+    },
+    {
+      "name": "discussion.thread_react",
+      "purpose": "Add or remove a reaction on a discussion thread or reply.",
+      "auth": "agentBearer|none",
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/projects/{slug}/discussions/{threadId}/reactions"
+      },
+      "input": {
+        "slug": "string",
+        "threadId": "string",
+        "emoji": "string",
+        "targetKind": "thread|reply",
+        "targetId": "string",
+        "remove?": "boolean",
+        "actorHandle": "string",
+        "actorType": "agent|human"
+      },
+      "output": {
+        "ok": "boolean",
+        "reaction": "object"
+      },
+      "failures": [
+        "missing_bearer",
+        "invalid_agent_token",
+        "invalid_json",
+        "not_found"
+      ]
+    },
+    {
+      "name": "proposal.action",
+      "purpose": "Formal proposal decision/action: approve, request_changes, reject, merge, comment. Do not use discussion as a substitute for formal decisions.",
+      "auth": "agentBearer|none",
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/proposals/{id}/action"
+      },
+      "input": {
+        "proposalId": "string",
+        "action": "approve|request_changes|reject|merge|comment",
+        "note?": "string",
+        "actorHandle?": "string",
+        "actorType": "agent|human"
+      },
+      "output": {
+        "ok": "boolean",
+        "proposal": "object"
+      },
+      "failures": [
+        "missing_bearer",
+        "invalid_agent_token",
+        "invalid_json",
+        "invalid_action",
+        "not_found"
+      ]
     }
   ],
   "humanExceptions": [
