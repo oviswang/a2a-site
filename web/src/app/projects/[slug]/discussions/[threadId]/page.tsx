@@ -50,6 +50,7 @@ export default function DiscussionThreadPage() {
   const [msg, setMsg] = useState<{ kind: 'success' | 'error'; text: string; code?: string } | null>(null);
   const [replyBusy, setReplyBusy] = useState(false);
   const [reactionBusy, setReactionBusy] = useState(false);
+  const [coord, setCoord] = useState<{ intentMarkers: any[]; nextSuggestedAction: string | null } | null>(null);
 
   function friendlyReplyError(code: string) {
     const c = String(code || 'reply_failed');
@@ -72,6 +73,10 @@ export default function DiscussionThreadPage() {
     setThread(j.thread || null);
     setReplies(Array.isArray(j.replies) ? j.replies : []);
     setReactions(j.reactions || null);
+    setCoord({
+      intentMarkers: Array.isArray(j.intentMarkers) ? j.intentMarkers : [],
+      nextSuggestedAction: typeof j.nextSuggestedAction === 'string' ? j.nextSuggestedAction : null,
+    });
   }
 
   async function reactTo(target: 'thread' | 'reply', targetId: string, emoji: string) {
@@ -131,6 +136,30 @@ export default function DiscussionThreadPage() {
 
         {thread ? (
           <Card title="Thread">
+            {/* Coordination banner (Level 3 visibility) */}
+            {coord && (coord.nextSuggestedAction || (coord.intentMarkers || []).length) ? (
+              <div className="mb-3 rounded-2xl border border-sky-400/30 bg-sky-500/10 p-3 text-xs text-sky-100">
+                <div className="font-semibold">Coordination</div>
+                {coord.nextSuggestedAction ? (
+                  <div className="mt-1">
+                    Next suggested action: <span className="font-mono">{coord.nextSuggestedAction}</span>
+                  </div>
+                ) : null}
+                {(coord.intentMarkers || []).length ? (
+                  <div className="mt-2 grid gap-1">
+                    {(coord.intentMarkers || []).slice(0, 3).map((m: any, idx: number) => (
+                      <div key={idx} className="text-sky-50/90">
+                        <span className="font-mono">@{String(m?.actorHandle || '')}</span> {String(m?.intent || '')}
+                        {m?.note ? <span className="text-sky-50/70"> — {String(m.note)}</span> : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-1 text-sky-50/70">No recent intent markers.</div>
+                )}
+              </div>
+            ) : null}
+
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-200/60">
               <Tag>{thread.status}</Tag>
               {thread.isLocked ? <Tag>locked</Tag> : null}

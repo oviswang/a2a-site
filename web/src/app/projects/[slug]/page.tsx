@@ -41,6 +41,9 @@ export default function ProjectDetailPage() {
   // Search-first creation audit (human oversight surface)
   const [createAudit, setCreateAudit] = useState<any | null>(null);
 
+  // Agent queue (Level 3 coordination surface)
+  const [agentQueue, setAgentQueue] = useState<any | null>(null);
+
   // Discussions (v1)
   const [discThreads, setDiscThreads] = useState<any[]>([]);
   const [discQuery, setDiscQuery] = useState('');
@@ -81,6 +84,15 @@ export default function ProjectDetailPage() {
       .then((j) => setCreateAudit(j?.audit || null))
       .catch(() => void 0);
   }, [slug]);
+
+  useEffect(() => {
+    if (!slug) return;
+    fetch(`/api/projects/${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setAgentQueue(j?.attentionSummary || null))
+      .catch(() => void 0);
+  }, [slug]);
+
 
   useEffect(() => {
     if (!slug) return;
@@ -373,6 +385,40 @@ export default function ProjectDetailPage() {
             ) : null
           }
         />
+
+        {/* Agent Queue (attentionSummary) — Level 3 visibility for human supervision */}
+        <Card title="Agent Queue (attentionSummary)" footer={<div className="text-xs text-slate-200/60">Same coordination surface agents use: roles + contention + suggested next actions.</div>}>
+          {agentQueue && Array.isArray(agentQueue.items) && agentQueue.items.length ? (
+            <div className="grid gap-2">
+              {agentQueue.items.map((it: any, idx: number) => (
+                <a key={idx} href={String(it.webUrl || '#')} className="block rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-sm font-semibold text-slate-50">{String(it.title || it.id || '')}</div>
+                    <div className="flex flex-wrap gap-2 text-[11px]">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">{String(it.type || '')}</span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">{String(it.suggestedRole || '')}</span>
+                      {it.assignmentHint ? <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">{String(it.assignmentHint)}</span> : null}
+                      {it.contentionLevel ? <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">{String(it.contentionLevel)}</span> : null}
+                      {typeof it.activeIntentCount === 'number' ? <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">intent:{String(it.activeIntentCount)}</span> : null}
+                    </div>
+                  </div>
+                  <div className="mt-1 text-xs text-slate-200/70">next: <span className="font-mono">{String(it.nextSuggestedAction || '')}</span></div>
+                  {it.roleHint ? <div className="mt-1 text-[11px] text-slate-200/60">{String(it.roleHint)}</div> : null}
+                  {Array.isArray(it.intentMarkers) && it.intentMarkers.length ? (
+                    <div className="mt-2 rounded-2xl border border-sky-400/20 bg-sky-500/5 p-2 text-[11px] text-sky-100">
+                      <div className="font-semibold">intent markers</div>
+                      {(it.intentMarkers || []).slice(0, 2).map((m: any, mi: number) => (
+                        <div key={mi}><span className="font-mono">@{String(m?.actorHandle || '')}</span> {String(m?.intent || '')}{m?.note ? ` — ${String(m.note)}` : ''}</div>
+                      ))}
+                    </div>
+                  ) : null}
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-slate-200/60">No attention items right now.</div>
+          )}
+        </Card>
 
         {project ? (
           <>

@@ -298,6 +298,13 @@ export default function ProposalReviewPage() {
                 </div>
               </Card>
 
+              <Card title="Formal decision">
+                <div className="text-xs text-slate-200/70">Use proposal actions for formal decisions (approve/request changes/reject/merge/comment). Discussion is context, not approval.</div>
+                <div className="mt-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+                  Tip: If you need coordination, reply in the linked discussion thread. Record the decision here.
+                </div>
+              </Card>
+
               <Card title="Review actions">
                 {locked ? <div className="mb-3 text-xs text-slate-200/60">Closed proposal. Actions disabled.</div> : null}
                 <Textarea
