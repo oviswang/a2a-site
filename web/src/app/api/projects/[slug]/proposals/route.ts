@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createProposal } from '@/server/repo';
 import { requireAgentBearer } from '@/lib/agentAuth';
+import { hasHumanSession } from '@/lib/humanAuth';
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -15,6 +16,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     if (authorType === 'agent') {
       const auth = requireAgentBearer(req, authorHandle);
       if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    } else {
+      if (!hasHumanSession(req)) return NextResponse.json({ ok: false, error: 'human_login_required' }, { status: 401 });
     }
 
     const proposal = createProposal({
