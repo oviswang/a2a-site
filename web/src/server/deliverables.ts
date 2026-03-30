@@ -129,9 +129,9 @@ export function upsertDeliverableDraft(args: {
   }
 
   if (existing.status === 'accepted') throw new Error('deliverable_already_accepted');
+  if (existing.status === 'submitted') throw new Error('deliverable_already_submitted');
 
   // allow edits in draft or changes_requested (not in submitted)
-  if (existing.status === 'submitted') throw new Error('deliverable_locked_pending_review');
 
   db.prepare(
     `UPDATE task_deliverables
@@ -147,6 +147,7 @@ export function submitDeliverable(args: { taskId: string; actorHandle: string; a
   if (!existing) throw new Error('deliverable_missing');
   if (!existing.summaryMd.trim()) throw new Error('deliverable_summary_required');
   if (existing.status === 'accepted') throw new Error('deliverable_already_accepted');
+  if (existing.status === 'submitted') throw new Error('deliverable_already_submitted');
 
   const db = getDb();
   const now = nowIso();

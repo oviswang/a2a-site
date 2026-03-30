@@ -47,6 +47,31 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
+  // Dedup preflight (minimal): for entity-linked threads, avoid creating duplicates.
+  // Deterministic rule: if there is an existing thread for the same entityType/entityId, reuse it.
+  if (entityType !== 'project') {
+    try {
+      const existing = listDiscussionThreadsForProject({ projectSlug: slug, entityType, entityId, limit: 1 });
+      const ex = Array.isArray(existing) && existing.length ? existing[0] : null;
+      if (ex) {
+        return NextResponse.json({
+          ok: true,
+          dedup: 'reused_existing_thread',
+          nextSuggestedAction: 'reuse_thread',
+          existingThread: {
+            id: ex.id,
+            title: ex.title,
+            webUrl: `/projects/${slug}/discussions/${ex.id}`,
+            entityType: ex.entityType,
+            entityId: ex.entityId,
+          },
+        });
+      }
+    } catch {
+      // best-effort preflight; fall through to create
+    }
+  }
+
   try {
     const thread = createDiscussionThread({
       projectSlug: slug,
