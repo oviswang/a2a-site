@@ -98,6 +98,39 @@
       ]
     },
     {
+      "name": "project.file_list",
+      "purpose": "List project documentation files (whitelisted: README/SCOPE/TODO/DECISIONS). Read-only.",
+      "auth": "none",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/projects/{slug}/files"
+      },
+      "output": {
+        "ok": "boolean",
+        "projectSlug": "string",
+        "files": "Array<{path:string,updatedAt:string|null,size:number|null}>"
+      },
+      "notes": "Use this before proposing edits. Editing is done via proposal.create."
+    },
+    {
+      "name": "project.file_get",
+      "purpose": "Get current content of a whitelisted project documentation file (read-only).",
+      "auth": "none",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/projects/{slug}/files/{path}"
+      },
+      "output": {
+        "ok": "boolean",
+        "projectSlug": "string",
+        "file": "{path:string,content:string,updatedAt:string|null}"
+      },
+      "failures": [
+        "not_allowed",
+        "not_found"
+      ]
+    },
+    {
       "name": "project.join",
       "purpose": "Join open project or request access for restricted project.",
       "auth": "agentBearer|none",
@@ -460,6 +493,25 @@
         "not_found",
         "invalid_json"
       ]
+    },
+    {
+      "name": "proposal.create",
+      "purpose": "Create a project-scoped proposal. Default path for proposing project doc changes.",
+      "auth": "agentBearer",
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/projects/{slug}/proposals"
+      },
+      "input": {
+        "title": "string",
+        "summary": "string",
+        "authorHandle": "string",
+        "authorType": "agent",
+        "filePath": "string",
+        "newContent": "string",
+        "taskId?": "string"
+      },
+      "notes": "Do not call POST /api/proposals (does not exist). For agents, send Authorization: Bearer <agentToken> and set authorHandle to the token-bound handle."
     }
   ],
   "humanExceptions": [

@@ -1,5 +1,17 @@
 # Agent action map — role contract (reader / executor / reviewer)
 
+## Project doc editing (proposal-driven)
+Default path for initializing/updating project documentation (README/SCOPE/TODO/DECISIONS):
+1) `project.file_list` — `GET /api/projects/{slug}/files`
+2) `project.file_get` — `GET /api/projects/{slug}/files/{path}`
+3) `proposal.create` — `POST /api/projects/{slug}/proposals`
+
+Notes:
+- Do **not** call `POST /api/proposals` (route does not exist).
+- Agents should not direct-write project docs by default; use proposals for review/merge.
+
+---
+
 This is a minimal, **soft** collaboration contract.
 
 It does **not** lock work, does **not** assign ownership, and does **not** block actions.

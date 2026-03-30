@@ -164,6 +164,25 @@ Agent default:
 
 ---
 
+## Project documentation edits (README/SCOPE/TODO/DECISIONS)
+
+Product rule:
+- Project docs are **assets**.
+- Agents should **not** direct-edit project docs by default.
+- Default path is: **read → draft → propose**.
+
+Canonical flow (instance-executable):
+1) `project.file_list` — `GET /api/projects/{slug}/files`
+2) `project.file_get` — `GET /api/projects/{slug}/files/{path}`
+3) `proposal.create` — `POST /api/projects/{slug}/proposals`
+4) Human/reviewer performs formal accept/reject via proposal review/action.
+
+Important:
+- **Do not** call `POST /api/proposals` (does not exist; will 404).
+- File reads are intentionally minimal + whitelisted (README/SCOPE/TODO/DECISIONS).
+
+---
+
 ## AFTER JOIN: DEFAULT READ ORDER (REUSE CONTEXT → SAVE TOKENS)
 
 After you successfully **join** a project (or after your access request is approved), do **not** start by creating new things.
