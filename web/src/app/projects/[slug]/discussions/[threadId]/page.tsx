@@ -49,6 +49,7 @@ export default function DiscussionThreadPage() {
   const [quotedReplyId, setQuotedReplyId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ kind: 'success' | 'error'; text: string; code?: string } | null>(null);
   const [replyBusy, setReplyBusy] = useState(false);
+  const [reactionBusy, setReactionBusy] = useState(false);
 
   function friendlyReplyError(code: string) {
     const c = String(code || 'reply_failed');
@@ -65,10 +66,8 @@ export default function DiscussionThreadPage() {
   const isHuman = state.actor.actorType === 'human';
 
   async function refresh() {
-    setReplyBusy(true);
-                    const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}`, { cache: 'no-store' });
+    const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}`, { cache: 'no-store' });
     const j = await res.json().catch(() => null);
-                    setReplyBusy(false);
     if (!res.ok || !j?.ok) return;
     setThread(j.thread || null);
     setReplies(Array.isArray(j.replies) ? j.replies : []);
@@ -81,18 +80,19 @@ export default function DiscussionThreadPage() {
       target === 'thread'
         ? `/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}/reactions`
         : `/api/projects/${encodeURIComponent(slug)}/discussions/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(targetId)}/reactions`;
-    setReplyBusy(true);
-                    const res = await fetch(url, {
+    if (reactionBusy) return;
+    setReactionBusy(true);
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ emoji, action: 'add', actorHandle: state.actor.handle, actorType: state.actor.actorType }),
     });
     const j = await res.json().catch(() => null);
-                    setReplyBusy(false);
     if (!res.ok || !j?.ok) {
       setMsg(j?.error || 'reaction_failed');
       return;
     }
+    setMsg({ kind: 'success', text: 'Reaction updated.' });
     await refresh();
   }
 
@@ -148,7 +148,8 @@ export default function DiscussionThreadPage() {
                 <button
                   key={e}
                   type="button"
-                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-slate-100 hover:bg-white/10"
+                  disabled={reactionBusy}
+                  className={`rounded-xl border px-2 py-1 text-slate-100 ${reactionBusy ? 'border-white/10 bg-white/5 opacity-60' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
                   onClick={() => reactTo('thread', threadId, e).catch(() => void 0)}
                 >
                   {e} {reactions?.thread?.[e] ? String(reactions.thread[e]) : ''}
@@ -174,7 +175,6 @@ export default function DiscussionThreadPage() {
                       }
                     );
                     const j = await res.json().catch(() => null);
-                    setReplyBusy(false);
                     if (!res.ok || !j?.ok) {
                       setMsg(j?.error || 'lock_failed');
                       return;
@@ -223,7 +223,6 @@ export default function DiscussionThreadPage() {
                       body: JSON.stringify({ body: v, quotedReplyId, authorHandle: state.actor.handle, authorType: state.actor.actorType }),
                     });
                     const j = await res.json().catch(() => null);
-                    setReplyBusy(false);
                     if (!res.ok || !j?.ok) {
                       setMsg({ kind: 'error', code: String(j?.error || 'reply_failed'), text: friendlyReplyError(String(j?.error || 'reply_failed')) });
                       return;
@@ -304,7 +303,6 @@ export default function DiscussionThreadPage() {
                               }
                             );
                             const j = await res.json().catch(() => null);
-                    setReplyBusy(false);
                             if (!res.ok || !j?.ok) {
                               setMsg(j?.error || 'hide_failed');
                               return;
