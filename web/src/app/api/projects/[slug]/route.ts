@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getProject } from '@/server/repo';
 import { getDb } from '@/server/db';
 import { listRecentIntentMarkersForTarget } from '@/server/repo';
+import { roleContractNote, suggestedRoleForAttentionItem } from '@/lib/roleContract';
 
 // Project get (high-value read):
 // - shared objects (project/proposals/tasks)
@@ -83,9 +84,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       const contentionLevel = activeIntentCount > 0 ? ('active' as const) : ('low' as const);
       const assignmentHint = activeIntentCount > 0 ? ('avoid_for_now' as const) : ('good_candidate' as const);
 
+      const suggestedRole = suggestedRoleForAttentionItem({ type: it.type === 'proposal' ? 'proposal' : it.type === 'deliverable' ? 'deliverable' : 'deliverable', nextSuggestedAction: String(it.nextSuggestedAction || '') });
       return {
         ...it,
         // coordination meta
+        suggestedRole,
+        roleHint: roleContractNote(suggestedRole),
         activeIntentCount,
         contentionLevel,
         assignmentHint,
