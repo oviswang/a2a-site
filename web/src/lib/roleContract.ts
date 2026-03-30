@@ -1,7 +1,7 @@
 export type SuggestedRole = 'reader' | 'executor' | 'reviewer';
 
 export function suggestedRoleForAttentionItem(args: {
-  type: 'proposal' | 'deliverable' | 'discussion_thread';
+  type: 'proposal' | 'deliverable' | 'discussion_thread' | 'reader_context';
   nextSuggestedAction?: string | null;
 }): SuggestedRole {
   // Minimal, explicit mapping. Keep it conservative and easy to reason about.
@@ -11,6 +11,9 @@ export function suggestedRoleForAttentionItem(args: {
   // Reviewer: formal review surfaces.
   if (t === 'proposal') return 'reviewer';
   if (t === 'deliverable') return 'reviewer';
+
+  // Reader: context compression / read-first entry.
+  if (t === 'reader_context') return 'reader';
 
   // Executor: active conversational work.
   if (t === 'discussion_thread') return 'executor';
