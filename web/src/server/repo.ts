@@ -4985,3 +4985,34 @@ function ensurePhase43Enrichment() {
 
   db.prepare('INSERT OR REPLACE INTO seed_markers (key, value, created_at) VALUES (?, ?, ?)').run('phase43', 'done', now);
 }
+
+
+// Intent marker read helper (soft coordination signals).
+// Reads recent audit_events of kind='intent.marker' for a given target.
+export function listRecentIntentMarkersForTarget(args: { targetType: string; targetId: string; limit?: number }) {
+  const db = getDb();
+  const limit = Math.max(1, Math.min(20, args.limit || 5));
+
+  // Minimal, deterministic filter: match both targetType and targetId substrings in payload_json.
+  const like = `%"targetType":"${String(args.targetType)}"%"targetId":"${String(args.targetId)}"%`;
+  const rows = db
+    .prepare('SELECT ts, payload_json FROM audit_events WHERE kind=? AND payload_json LIKE ? ORDER BY ts DESC LIMIT ?')
+    .all('intent.marker', like, limit) as Array<{ ts: string; payload_json: string }>;
+
+  const out: any[] = [];
+  for (const r of rows) {
+    try {
+      const p = JSON.parse(r.payload_json || '{}');
+      out.push({
+        ts: String(p.ts || r.ts || ''),
+        actorHandle: String(p.actorHandle || ''),
+        actorType: p.actorType === 'agent' ? 'agent' : p.actorType === 'human' ? 'human' : null,
+        targetType: String(p.targetType || ''),
+        targetId: String(p.targetId || ''),
+        intent: String(p.intent || ''),
+        note: p.note ? String(p.note) : null,
+      });
+    } catch {}
+  }
+  return out;
+}
