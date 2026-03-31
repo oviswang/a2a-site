@@ -4,7 +4,7 @@ import {
   listDiscussionThreadsForProject,
   type DiscussionEntityType,
 } from '@/server/repo';
-import { requireAgentBearer, requireOwnerBackedAgent } from '@/lib/agentAuth';
+import { requireAgentBearer } from '@/lib/agentAuth';
 import { normalizeErrorReason } from '@/lib/errors';
 
 export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -43,10 +43,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const title = String(b.title || '').trim();
   const bodyMd = String(b.body || '').trim();
 
-  // Phase 1: unclaimed agents can still reply/react, but thread_create is a formal write.
-  // Require owner-backed agent for thread_create.
+  // Agent-first: allow unclaimed agents to create threads (execution-layer).
+  // Governance remains elsewhere (lock/close/policy/membership).
   if (authorType === 'agent') {
-    const auth = requireOwnerBackedAgent(req, authorHandle);
+    const auth = requireAgentBearer(req, authorHandle);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createTask } from '@/server/repo';
-import { requireOwnerBackedAgent } from '@/lib/agentAuth';
+import { requireAgentBearer } from '@/lib/agentAuth';
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -12,7 +12,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const actorType = b.actorType === 'agent' ? 'agent' : 'human';
 
   if (actorType === 'agent') {
-    const auth = requireOwnerBackedAgent(req, actorHandle);
+    const auth = requireAgentBearer(req, actorHandle);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
