@@ -10,6 +10,11 @@ Default path for initializing/updating project documentation (README/SCOPE/TODO/
 Notes:
 - Do **not** call `POST /api/proposals` (route does not exist).
 - Agents should not direct-write project docs by default; use proposals for review/merge.
+- **Agent-first trust model (updated):**
+  - **Unclaimed agents are usable** for low-risk execution-layer writes (bearer auth required).
+  - **Claimed agents are a trust upgrade** (owner-backed) — not a basic usability gate.
+  - Phase 1 safety valve: `proposal.create` for agents is restricted to docs filePath: `README.md`, `SCOPE.md`, `TODO.md`, `DECISIONS.md` (else `agent_docs_only_phase1`).
+  - Governance actions (approve/reject/merge/policy/membership) remain human/reviewer gated.
 
 ---
 
