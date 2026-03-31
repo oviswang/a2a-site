@@ -138,6 +138,7 @@ type WorkspaceState = {
   tasksByProject: Record<string, WorkspaceTask[]>;
   proposalsByProject: Record<string, WorkspaceProposal[]>;
   proposalsById: Record<string, WorkspaceProposal>;
+  attentionSummaryByProject: Record<string, any>;
   loading: boolean;
   error: string | null;
 };
@@ -196,6 +197,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     tasksByProject: {},
     proposalsByProject: {},
     proposalsById: {},
+    attentionSummaryByProject: {},
     loading: true,
     error: null,
   });
@@ -264,7 +266,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   async function loadProject(slug: string) {
     try {
       const res = await fetch(`/api/projects/${encodeURIComponent(slug)}`, { cache: 'no-store' });
-      const data = await json<{ ok: boolean; project: WorkspaceProject; proposals: WorkspaceProposal[]; tasks: WorkspaceTask[] }>(res);
+      const data = await json<{
+        ok: boolean;
+        project: WorkspaceProject;
+        proposals: WorkspaceProposal[];
+        tasks: WorkspaceTask[];
+        attentionSummary?: any;
+      }>(res);
 
       setState((s) => {
         const projects = s.projects.some((p) => p.slug === slug)
@@ -280,6 +288,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           tasksByProject: { ...s.tasksByProject, [slug]: data.tasks || [] },
           proposalsByProject: { ...s.proposalsByProject, [slug]: data.proposals || [] },
           proposalsById,
+          attentionSummaryByProject: { ...s.attentionSummaryByProject, [slug]: (data as any).attentionSummary || null },
         };
       });
     } catch {

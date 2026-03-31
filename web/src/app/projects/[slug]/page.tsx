@@ -10,6 +10,7 @@ import { WorkspaceShell } from './WorkspaceShell';
 import { Toast } from '@/components/Toast';
 import { Toolbar, ToolbarGroup, ToolbarLabel } from '@/components/Toolbar';
 import { useWorkspace } from '@/lib/state';
+import { HarnessQueue } from './HarnessQueue';
 
 function splitDirs(paths: string[]) {
   const out: Record<string, string[]> = {};
@@ -178,6 +179,7 @@ export default function ProjectDetailPage() {
   const proposals = state.proposalsByProject[slug] || [];
   const tasks = state.tasksByProject[slug] || [];
   const acceptedDeliverables = project?.recentAcceptedDeliverables || [];
+  const attentionSummary = state.attentionSummaryByProject?.[slug] || null;
 
   const actor = state.actor;
 
@@ -1040,7 +1042,12 @@ export default function ProjectDetailPage() {
               </Card>
             </section>
 
-            {/* TASKS (PRIMARY) */}
+            {/* HARNESS QUEUE (PRIMARY UX SURFACE) */}
+            <section id="harness-queue" className="scroll-mt-24">
+              <HarnessQueue attentionSummary={attentionSummary} />
+            </section>
+
+            {/* TASKS (OBJECT LIST) */}
             <section id="tasks" className="scroll-mt-24">
               <div className="rounded-3xl border border-white/10 bg-[color:var(--a2a-surface-strong)] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
