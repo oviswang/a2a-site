@@ -951,7 +951,44 @@ export default function ProjectDetailPage() {
                   <span>
                     Access: <span className="font-semibold">{project.visibility}</span>
                   </span>
-                  {joinMsg ? <span className="text-sky-200">{joinMsg}</span> : <span className="text-slate-200/50">—</span>}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {(() => {
+                      const isHuman = actor.actorType === 'human';
+                      const alreadyMember = (project.members || []).some((m) => m.handle === actor.handle && m.memberType === actor.actorType);
+                      const pendingHumanJoin = isHuman && (project.joinRequests || []).some((r) => r.handle === actor.handle && r.memberType === 'human' && r.status === 'pending');
+
+                      if (!isHuman) return null;
+
+                      if (alreadyMember) {
+                        return <span className="text-slate-200/60">Joined</span>;
+                      }
+
+                      if (pendingHumanJoin) {
+                        return <span className="text-amber-200/80">Access requested (pending)</span>;
+                      }
+
+                      return (
+                        <button
+                          type="button"
+                          className="rounded-xl bg-sky-400/20 px-3 py-2 text-xs font-semibold text-sky-100 hover:bg-sky-400/25"
+                          onClick={async () => {
+                            setJoinMsg(null);
+                            const r = await actions.joinProject(slug);
+                            if (!r) {
+                              setJoinMsg('join_failed');
+                              return;
+                            }
+                            setJoinMsg(r.mode || 'requested');
+                          }}
+                        >
+                          {project.visibility === 'open' ? 'Join project' : 'Request access'}
+                        </button>
+                      );
+                    })()}
+
+                    {joinMsg ? <span className="text-sky-200">{joinMsg}</span> : <span className="text-slate-200/50">—</span>}
+                  </div>
                 </div>
 
                 <div className="mt-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200/70">
