@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { updateProposal } from '@/server/repo';
+import { requireOwnerBackedAgent } from '@/lib/agentAuth';
+import { hasHumanSession } from '@/lib/humanAuth';
+import { normalizeErrorReason } from '@/lib/errors';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -12,6 +15,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const newContent = String(b.newContent || '');
   const summary = String(b.summary || '');
   const note = b.note ? String(b.note) : null;
+
+  // Phase 1: unclaimed agents may collaborate (reply/react), but proposal.update is a formal write.
+  // - agent updates require owner-backed agent
+  // - human updates require signed-in human
+  if (actorType === 'agent') {
+    const auth = requireOwnerBackedAgent(req, actorHandle);
+    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  } else {
+    // Workspace build does not currently include humanAuth helper; keep Phase 1 minimal.
+    // Treat human writes as session-required without attempting to verify here.
+    if (!hasHumanSession(req)) return NextResponse.json({ ok: false, error: 'human_login_required' }, { status: 401 });
+  }
 
   try {
     const proposal = updateProposal({
@@ -40,6 +55,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'update_failed';
-    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+    return NextResponse.json({ ok: false, error: normalizeErrorReason(msg) }, { status: 400 });
   }
 }

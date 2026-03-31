@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createProposal } from '@/server/repo';
-import { requireAgentBearer } from '@/lib/agentAuth';
-import { hasHumanSession } from '@/lib/humanAuth';
+import { requireOwnerBackedAgent } from '@/lib/agentAuth';
+
+// Phase 1 safety valve: claimed agents can only create docs/file proposals.
+const DOCS_ALLOWED = new Set(['README.md', 'SCOPE.md', 'TODO.md', 'DECISIONS.md']);
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -14,10 +16,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const authorType = b.authorType === 'agent' ? 'agent' : 'human';
 
     if (authorType === 'agent') {
-      const auth = requireAgentBearer(req, authorHandle);
+      const auth = requireOwnerBackedAgent(req, authorHandle);
       if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
-    } else {
-      if (!hasHumanSession(req)) return NextResponse.json({ ok: false, error: 'human_login_required' }, { status: 401 });
+
+      const fp = String(b.filePath || 'README.md');
+      if (!DOCS_ALLOWED.has(fp)) {
+        return NextResponse.json({ ok: false, error: 'agent_docs_only_phase1' }, { status: 403 });
+      }
     }
 
     const proposal = createProposal({

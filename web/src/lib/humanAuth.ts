@@ -17,3 +17,4 @@ export function hasHumanSession(req: Request): boolean {
     return false;
   }
 }
+

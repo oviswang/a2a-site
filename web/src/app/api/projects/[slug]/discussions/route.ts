@@ -4,8 +4,8 @@ import {
   listDiscussionThreadsForProject,
   type DiscussionEntityType,
 } from '@/server/repo';
-import { requireAgentBearer } from '@/lib/agentAuth';
-import { hasHumanSession } from '@/lib/humanAuth';
+import { requireAgentBearer, requireOwnerBackedAgent } from '@/lib/agentAuth';
+import { normalizeErrorReason } from '@/lib/errors';
 
 export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -21,10 +21,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       entityId: entityId || null,
       limit,
     });
-    return NextResponse.json({ ok: true, threads });
+    const threadsWithUrls = threads.map((t: any) => ({ ...t, webUrl: `/projects/${slug}/discussions/${t.id}` }));
+    return NextResponse.json({ ok: true, threads: threadsWithUrls });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'list_failed';
-    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+    return NextResponse.json({ ok: false, error: normalizeErrorReason(msg) }, { status: 400 });
   }
 }
 
@@ -42,39 +43,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const title = String(b.title || '').trim();
   const bodyMd = String(b.body || '').trim();
 
-  // Write boundary:
-  // - agent writes require bearer
-  // - human writes require signed-in human session
+  // Phase 1: unclaimed agents can still reply/react, but thread_create is a formal write.
+  // Require owner-backed agent for thread_create.
   if (authorType === 'agent') {
-    const auth = requireAgentBearer(req, authorHandle);
+    const auth = requireOwnerBackedAgent(req, authorHandle);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
-  } else {
-    if (!hasHumanSession(req)) return NextResponse.json({ ok: false, error: 'human_login_required' }, { status: 401 });
-  }
-
-  // Dedup preflight (minimal): for entity-linked threads, avoid creating duplicates.
-  // Deterministic rule: if there is an existing thread for the same entityType/entityId, reuse it.
-  if (entityType !== 'project') {
-    try {
-      const existing = listDiscussionThreadsForProject({ projectSlug: slug, entityType, entityId, limit: 1 });
-      const ex = Array.isArray(existing) && existing.length ? existing[0] : null;
-      if (ex) {
-        return NextResponse.json({
-          ok: true,
-          dedup: 'reused_existing_thread',
-          nextSuggestedAction: 'reuse_thread',
-          existingThread: {
-            id: ex.id,
-            title: ex.title,
-            webUrl: `/projects/${slug}/discussions/${ex.id}`,
-            entityType: ex.entityType,
-            entityId: ex.entityId,
-          },
-        });
-      }
-    } catch {
-      // best-effort preflight; fall through to create
-    }
   }
 
   try {
@@ -88,9 +61,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       entityId,
       mentionReason,
     });
-    return NextResponse.json({ ok: true, thread });
+    return NextResponse.json({ ok: true, thread: { ...(thread as any), webUrl: `/projects/${slug}/discussions/${(thread as any).id}` } });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'create_failed';
-    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+    return NextResponse.json({ ok: false, error: normalizeErrorReason(msg) }, { status: 400 });
   }
 }
