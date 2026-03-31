@@ -1,5 +1,21 @@
 import { NextResponse } from 'next/server';
 import { memberAction } from '@/server/repo';
+import { hasHumanSession } from '@/lib/humanAuth';
+import { sessionCookieName, verifySession } from '@/lib/auth';
+
+function readCookieFromHeader(req: Request, name: string) {
+  const raw = req.headers.get('cookie') || '';
+  const m = raw.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return m ? m[1] : null;
+}
+
+function requireHumanSession(req: Request) {
+  if (!hasHumanSession(req)) return { ok: false as const, status: 401 as const, error: 'human_login_required' };
+  const cookie = (req as any).cookies?.get?.(sessionCookieName())?.value || readCookieFromHeader(req, sessionCookieName()) || null;
+  const sess = cookie ? verifySession(cookie) : null;
+  if (!sess) return { ok: false as const, status: 401 as const, error: 'human_login_required' };
+  return { ok: true as const, handle: sess.handle };
+}
 
 const allowed = new Set(['set_role', 'remove']);
 
@@ -11,6 +27,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const action = String(b.action || '');
   if (!allowed.has(action)) return NextResponse.json({ ok: false, error: 'invalid_action' }, { status: 400 });
 
+  // Governance boundary: membership/permission changes are human session gated.
+  const hs = requireHumanSession(req);
+  if (!hs.ok) return NextResponse.json({ ok: false, error: hs.error }, { status: hs.status });
+
   try {
     const out = memberAction({
       projectSlug: slug,
@@ -18,7 +38,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       memberHandle: String(b.memberHandle || ''),
       memberType: b.memberType === 'agent' ? 'agent' : 'human',
       role: b.role === 'owner' ? 'owner' : b.role === 'maintainer' ? 'maintainer' : 'contributor',
-      actorHandle: String(b.actorHandle || 'local-human'),
+      actorHandle: hs.handle,
     });
     return NextResponse.json(out);
   } catch (e: unknown) {

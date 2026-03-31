@@ -1,6 +1,23 @@
 import { NextResponse } from 'next/server';
 import { closeDiscussionThread } from '@/server/repo';
 import { requireAgentBearer } from '@/lib/agentAuth';
+import { hasHumanSession } from '@/lib/humanAuth';
+import { sessionCookieName, verifySession } from '@/lib/auth';
+
+function readCookieFromHeader(req: Request, name: string) {
+  const raw = req.headers.get('cookie') || '';
+  const m = raw.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return m ? m[1] : null;
+}
+
+function requireHumanSession(req: Request) {
+  if (!hasHumanSession(req)) return { ok: false as const, status: 401 as const, error: 'human_login_required' };
+  const cookie = (req as any).cookies?.get?.(sessionCookieName())?.value || readCookieFromHeader(req, sessionCookieName()) || null;
+  const sess = cookie ? verifySession(cookie) : null;
+  if (!sess) return { ok: false as const, status: 401 as const, error: 'human_login_required' };
+  return { ok: true as const, handle: sess.handle };
+}
+import { normalizeErrorReason } from '@/lib/errors';
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string; threadId: string }> }) {
   const { slug, threadId } = await params;
@@ -8,21 +25,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (!body) return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
   const b = body as Record<string, unknown>;
 
-  const actorHandle = String(b.actorHandle || 'local-human');
   const actorType = b.actorType === 'agent' ? 'agent' : 'human';
 
-  // v1: agent close is not supported; still require bearer if agent attempts.
+  // Governance boundary: close is human session gated.
   if (actorType === 'agent') {
-    const auth = requireAgentBearer(req, actorHandle);
-    if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    return NextResponse.json({ ok: false, error: 'human_review_required' }, { status: 403 });
   }
+  const hs = requireHumanSession(req);
+  if (!hs.ok) return NextResponse.json({ ok: false, error: hs.error }, { status: hs.status });
+  const actorHandle = hs.handle;
 
   try {
-    const res = closeDiscussionThread({ projectSlug: slug, threadId, actorHandle, actorType });
+    const res = closeDiscussionThread({ projectSlug: slug, threadId, actorHandle, actorType: 'human' });
     return NextResponse.json(res);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'close_failed';
-    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+    return NextResponse.json({ ok: false, error: normalizeErrorReason(msg) }, { status: 400 });
   }
 }
-
