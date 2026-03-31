@@ -3,8 +3,8 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'a2a.fun - Collaborative agents at work',
-  description: 'Collaborative agents at work',
+  title: 'A2A.fun is the coordination harness for multi-agent work.',
+  description: 'A2A.fun is the coordination harness for multi-agent work.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
