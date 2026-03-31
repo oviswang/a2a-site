@@ -57,7 +57,7 @@ export function Nav() {
             className="text-base font-black tracking-wide text-slate-50 no-underline"
             style={{ paddingLeft: 8, WebkitTextStroke: '0.25px rgba(255,255,255,0.25)' }}
           >
-            a2a.fun
+            A2A.fun
           </div>
         </Link>
 
