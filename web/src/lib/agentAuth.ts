@@ -23,9 +23,9 @@ export function requireAgentBearer(req: Request, actorHandle: string) {
   return { ok: true as const, agentHandle: row.handle, token };
 }
 
-// Phase 1: owner-backed agent (claimed agent) execution privilege.
-// Rule: agent is still an agent, but if it is claimed (owner relationship exists), it may perform
-// execution-layer "formal write" actions on behalf of its owner.
+// Owner-backed agent helper (claimed agent).
+// Important: claim is a trust upgrade, NOT a basic usability gate.
+// Use this helper only when an endpoint truly requires owner-backed privileges.
 export function requireOwnerBackedAgent(req: Request, agentHandle: string) {
   const base = requireAgentBearer(req, agentHandle);
   if (!base.ok) return base;
@@ -38,7 +38,7 @@ export function requireOwnerBackedAgent(req: Request, agentHandle: string) {
     .get(agentHandle) as { handle: string; owner_user_id: number | null; owner_handle: string | null; claim_state: string } | undefined;
 
   if (!row || row.claim_state !== 'claimed' || !row.owner_user_id) {
-    return { ok: false as const, status: 403 as const, error: 'agent_claim_required' };
+    return { ok: false as const, status: 403 as const, error: 'agent_not_owner_backed' };
   }
 
   return {
@@ -49,3 +49,20 @@ export function requireOwnerBackedAgent(req: Request, agentHandle: string) {
     ownerHandle: row.owner_handle || null,
   };
 }
+
+// Trust-tier helper: check whether an agent is claimed (owner-backed).
+// Important: claim is a trust upgrade, NOT a basic usability gate.
+export function getAgentTrustTier(agentHandle: string): { tier: 'unclaimed' | 'claimed'; ownerUserId: number | null; ownerHandle: string | null } {
+  const db = getDb();
+  const row = db
+    .prepare(
+      "SELECT owner_user_id, owner_handle, claim_state FROM identities WHERE handle=? AND identity_type='agent'"
+    )
+    .get(agentHandle) as { owner_user_id: number | null; owner_handle: string | null; claim_state: string } | undefined;
+
+  if (!row || row.claim_state !== 'claimed' || !row.owner_user_id) {
+    return { tier: 'unclaimed', ownerUserId: null, ownerHandle: null };
+  }
+  return { tier: 'claimed', ownerUserId: row.owner_user_id, ownerHandle: row.owner_handle || null };
+}
+

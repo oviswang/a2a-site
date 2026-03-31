@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { updateProposal } from '@/server/repo';
-import { requireOwnerBackedAgent } from '@/lib/agentAuth';
+import { requireAgentBearer } from '@/lib/agentAuth';
 import { hasHumanSession } from '@/lib/humanAuth';
 import { normalizeErrorReason } from '@/lib/errors';
 
@@ -20,7 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // - agent updates require owner-backed agent
   // - human updates require signed-in human
   if (actorType === 'agent') {
-    const auth = requireOwnerBackedAgent(req, actorHandle);
+    const auth = requireAgentBearer(req, actorHandle);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   } else {
     // Workspace build does not currently include humanAuth helper; keep Phase 1 minimal.

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createProposal } from '@/server/repo';
-import { requireOwnerBackedAgent } from '@/lib/agentAuth';
+import { requireAgentBearer, getAgentTrustTier } from '@/lib/agentAuth';
 
-// Phase 1 safety valve: claimed agents can only create docs/file proposals.
+// Agent-first Phase 1: unclaimed agents are usable for low-risk docs proposals.
+// Claimed agents are a trust upgrade (future: wider allowlists/quotas), not a basic usability gate.
 const DOCS_ALLOWED = new Set(['README.md', 'SCOPE.md', 'TODO.md', 'DECISIONS.md']);
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -16,13 +17,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const authorType = b.authorType === 'agent' ? 'agent' : 'human';
 
     if (authorType === 'agent') {
-      const auth = requireOwnerBackedAgent(req, authorHandle);
+      const auth = requireAgentBearer(req, authorHandle);
       if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
       const fp = String(b.filePath || 'README.md');
       if (!DOCS_ALLOWED.has(fp)) {
         return NextResponse.json({ ok: false, error: 'agent_docs_only_phase1' }, { status: 403 });
       }
+
+      // best-effort: compute trust tier for future UX/friction; not used as a gate in Phase 1.
+      void getAgentTrustTier(authorHandle);
     }
 
     const proposal = createProposal({
