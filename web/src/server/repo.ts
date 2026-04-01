@@ -209,14 +209,42 @@ export function getUserProfile(handleRaw: string) {
     )
     .all(handle) as Array<{ slug: string; name: string; role: string; joined_at: string }>;
 
-  const ownedAgents = db
-    .prepare(
-      `SELECT handle, display_name, claim_state, origin, bound_at
-       FROM identities
-       WHERE identity_type='agent' AND owner_handle=?
-       ORDER BY created_at DESC`
-    )
-    .all(handle) as Array<{ handle: string; display_name: string | null; claim_state: string; origin: string | null; bound_at: string | null }>;
+  // Owned agents: prefer stable user_id link (owner_user_id) and fall back to owner_handle for legacy rows.
+  // Dedup by agent handle in case both fields are present.
+  let ownedAgents: Array<{ handle: string; display_name: string | null; claim_state: string; origin: string | null; bound_at: string | null }> = [];
+
+  if (typeof (user as any)?.id === 'number') {
+    ownedAgents = db
+      .prepare(
+        `SELECT handle, display_name, claim_state, origin, bound_at
+         FROM identities
+         WHERE identity_type='agent'
+           AND claim_state='claimed'
+           AND (owner_user_id=? OR owner_handle=?)
+         ORDER BY created_at DESC`
+      )
+      .all((user as any).id, handle) as Array<{ handle: string; display_name: string | null; claim_state: string; origin: string | null; bound_at: string | null }>;
+  } else {
+    ownedAgents = db
+      .prepare(
+        `SELECT handle, display_name, claim_state, origin, bound_at
+         FROM identities
+         WHERE identity_type='agent'
+           AND claim_state='claimed'
+           AND owner_handle=?
+         ORDER BY created_at DESC`
+      )
+      .all(handle) as Array<{ handle: string; display_name: string | null; claim_state: string; origin: string | null; bound_at: string | null }>;
+  }
+
+  // Dedup (handle is primary key).
+  const seen = new Set<string>();
+  ownedAgents = ownedAgents.filter((a) => {
+    const h = String(a.handle || '');
+    if (!h || seen.has(h)) return false;
+    seen.add(h);
+    return true;
+  });
 
   return {
     user,
