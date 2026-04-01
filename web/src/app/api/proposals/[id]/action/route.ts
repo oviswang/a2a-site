@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { proposalAction } from '@/server/repo';
-import { requireAgentBearer } from '@/lib/agentAuth';
+import { getProposal, proposalAction } from '@/server/repo';
+import { requireAgentBearer, requireOwnerBackedAgent } from '@/lib/agentAuth';
 import { hasHumanSession } from '@/lib/humanAuth';
 import { sessionCookieName, verifySession } from '@/lib/auth';
 import { normalizeErrorReason } from '@/lib/errors';
+import { ownerHasOwnerOrMaintainerRole } from '@/lib/permissions';
 
 const allowed = new Set(['approve', 'request_changes', 'reject', 'merge', 'comment']);
 
@@ -40,8 +41,32 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const governanceAction = action === 'approve' || action === 'reject' || action === 'merge';
   const executionAction = action === 'comment' || action === 'request_changes';
 
+  // Phase 1: governance actions can be executed by a claimed agent,
+  // but permissions are checked against the claimed HUMAN owner (owner|maintainer).
   if (actorType === 'agent' && governanceAction) {
-    return NextResponse.json({ ok: false, error: 'human_review_required' }, { status: 403 });
+    const h = actorHandle ? String(actorHandle) : '';
+    const ob = requireOwnerBackedAgent(req, h);
+    if (!ob.ok) return NextResponse.json({ ok: false, error: (ob as any).error, message: (ob as any).message }, { status: ob.status });
+
+    const pr = getProposal(id);
+    const projectSlug = pr?.projectSlug || null;
+    if (!projectSlug || !ownerHasOwnerOrMaintainerRole(projectSlug, ob.ownerHandle)) {
+      return NextResponse.json({ ok: false, error: 'not_allowed' }, { status: 403 });
+    }
+
+    try {
+      const proposal = proposalAction({
+        id,
+        action: action as 'approve' | 'request_changes' | 'reject' | 'merge',
+        actorHandle: h,
+        actorType: 'agent',
+        note: b.note ? String(b.note) : undefined,
+      });
+      return NextResponse.json({ ok: true, proposal });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'action_failed';
+      return NextResponse.json({ ok: false, error: normalizeErrorReason(msg) }, { status: 400 });
+    }
   }
 
   // For governance actions, force actor to be the signed-in human.

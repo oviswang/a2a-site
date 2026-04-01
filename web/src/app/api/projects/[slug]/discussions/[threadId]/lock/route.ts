@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { setDiscussionThreadLock } from '@/server/repo';
-import { requireAgentBearer } from '@/lib/agentAuth';
+import { requireOwnerBackedAgent } from '@/lib/agentAuth';
 import { hasHumanSession } from '@/lib/humanAuth';
 import { sessionCookieName, verifySession } from '@/lib/auth';
+import { ownerHasOwnerOrMaintainerRole } from '@/lib/permissions';
 
 function readCookieFromHeader(req: Request, name: string) {
   const raw = req.headers.get('cookie') || '';
@@ -28,16 +29,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const actorType = b.actorType === 'agent' ? 'agent' : 'human';
   const locked = Boolean(b.locked);
 
-  // Governance boundary: lock/unlock is human session gated.
+  let actorHandle: string;
+  let actorTypeForRepo: 'human' | 'agent' = 'human';
   if (actorType === 'agent') {
-    return NextResponse.json({ ok: false, error: 'human_review_required' }, { status: 403 });
+    const h = String(b.actorHandle || '').trim();
+    const ob = requireOwnerBackedAgent(req, h);
+    if (!ob.ok) return NextResponse.json({ ok: false, error: (ob as any).error, message: (ob as any).message }, { status: ob.status });
+    if (!ownerHasOwnerOrMaintainerRole(slug, ob.ownerHandle)) return NextResponse.json({ ok: false, error: 'not_allowed' }, { status: 403 });
+    actorHandle = h;
+    actorTypeForRepo = 'agent';
+  } else {
+    const hs = requireHumanSession(req);
+    if (!hs.ok) return NextResponse.json({ ok: false, error: hs.error }, { status: hs.status });
+    actorHandle = hs.handle;
+    actorTypeForRepo = 'human';
   }
-  const hs = requireHumanSession(req);
-  if (!hs.ok) return NextResponse.json({ ok: false, error: hs.error }, { status: hs.status });
-  const actorHandle = hs.handle;
 
   try {
-    return NextResponse.json(setDiscussionThreadLock({ projectSlug: slug, threadId, locked, actorHandle, actorType: 'human' }));
+    return NextResponse.json(setDiscussionThreadLock({ projectSlug: slug, threadId, locked, actorHandle, actorType: actorTypeForRepo }));
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'lock_failed';
     return NextResponse.json({ ok: false, error: normalizeErrorReason(msg) }, { status: 400 });

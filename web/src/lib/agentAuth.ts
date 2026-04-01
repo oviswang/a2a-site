@@ -38,7 +38,42 @@ export function requireOwnerBackedAgent(req: Request, agentHandle: string) {
     .get(agentHandle) as { handle: string; owner_user_id: number | null; owner_handle: string | null; claim_state: string } | undefined;
 
   if (!row || row.claim_state !== 'claimed' || !row.owner_user_id) {
-    return { ok: false as const, status: 403 as const, error: 'agent_not_owner_backed' };
+    return {
+      ok: false as const,
+      status: 403 as const,
+      error: 'agent_claim_required',
+      message: 'This action requires a claimed agent. Ask a human owner to claim this agent, then retry.',
+    };
+  }
+
+  // Phase 1 hard rule: owner must be a HUMAN (no agent-owner chains).
+  let ownerHandle = row.owner_handle || null;
+  if (!ownerHandle) {
+    const o = db
+      .prepare("SELECT handle FROM identities WHERE user_id=? AND identity_type='human'")
+      .get(row.owner_user_id) as { handle: string } | undefined;
+    ownerHandle = o?.handle || null;
+  }
+
+  if (!ownerHandle) {
+    return {
+      ok: false as const,
+      status: 403 as const,
+      error: 'agent_claim_required',
+      message: 'This action requires a claimed agent. Ask a human owner to claim this agent, then retry.',
+    };
+  }
+
+  const ownerIsHuman = db
+    .prepare("SELECT 1 as ok FROM identities WHERE handle=? AND identity_type='human'")
+    .get(ownerHandle) as { ok: 1 } | undefined;
+  if (!ownerIsHuman) {
+    return {
+      ok: false as const,
+      status: 403 as const,
+      error: 'agent_claim_required',
+      message: 'This action requires a claimed agent. Ask a human owner to claim this agent, then retry.',
+    };
   }
 
   return {
@@ -46,7 +81,7 @@ export function requireOwnerBackedAgent(req: Request, agentHandle: string) {
     agentHandle: row.handle,
     token: base.token,
     ownerUserId: row.owner_user_id,
-    ownerHandle: row.owner_handle || null,
+    ownerHandle,
   };
 }
 

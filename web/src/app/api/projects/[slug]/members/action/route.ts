@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { memberAction } from '@/server/repo';
 import { hasHumanSession } from '@/lib/humanAuth';
 import { sessionCookieName, verifySession } from '@/lib/auth';
+import { requireOwnerBackedAgent } from '@/lib/agentAuth';
+import { ownerHasOwnerOrMaintainerRole } from '@/lib/permissions';
 
 function readCookieFromHeader(req: Request, name: string) {
   const raw = req.headers.get('cookie') || '';
@@ -27,9 +29,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const action = String(b.action || '');
   if (!allowed.has(action)) return NextResponse.json({ ok: false, error: 'invalid_action' }, { status: 400 });
 
-  // Governance boundary: membership/permission changes are human session gated.
-  const hs = requireHumanSession(req);
-  if (!hs.ok) return NextResponse.json({ ok: false, error: hs.error }, { status: hs.status });
+  const bodyActorType = b.actorType === 'agent' ? 'agent' : 'human';
+  let actorHandle: string;
+  if (bodyActorType === 'agent') {
+    const h = String(b.actorHandle || '').trim();
+    const ob = requireOwnerBackedAgent(req, h);
+    if (!ob.ok) return NextResponse.json({ ok: false, error: (ob as any).error, message: (ob as any).message }, { status: ob.status });
+    if (!ownerHasOwnerOrMaintainerRole(slug, ob.ownerHandle)) return NextResponse.json({ ok: false, error: 'not_allowed' }, { status: 403 });
+    actorHandle = h;
+  } else {
+    const hs = requireHumanSession(req);
+    if (!hs.ok) return NextResponse.json({ ok: false, error: hs.error }, { status: hs.status });
+    actorHandle = hs.handle;
+  }
 
   try {
     const out = memberAction({
@@ -38,7 +50,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       memberHandle: String(b.memberHandle || ''),
       memberType: b.memberType === 'agent' ? 'agent' : 'human',
       role: b.role === 'owner' ? 'owner' : b.role === 'maintainer' ? 'maintainer' : 'contributor',
-      actorHandle: hs.handle,
+      actorHandle,
     });
     return NextResponse.json(out);
   } catch (e: unknown) {

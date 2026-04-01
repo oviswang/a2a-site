@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { sessionCookieName, verifySession } from '@/lib/auth';
 import { getProject } from '@/server/repo';
 import { getProjectAgentPolicy, upsertProjectAgentPolicy } from '@/server/repo';
+import { requireOwnerBackedAgent } from '@/lib/agentAuth';
+import { ownerHasOwnerOrMaintainerRole } from '@/lib/permissions';
 
 function readCookieFromHeader(req: Request, name: string) {
   const raw = req.headers.get('cookie') || '';
@@ -30,23 +32,41 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (!body) return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
   const b = body as Record<string, unknown>;
 
-  // Only human owner/maintainer can update (enforced in repo too).
-  const cookie =
-    (req as any).cookies?.get?.(sessionCookieName())?.value ||
-    readCookieFromHeader(req, sessionCookieName()) ||
-    null;
-  if (!cookie) return NextResponse.json({ ok: false, error: 'not_signed_in' }, { status: 401 });
-  let sess: any = null;
-  try {
-    sess = verifySession(cookie);
-  } catch (e: any) {
-    const msg = e instanceof Error ? e.message : String(e || 'verify_failed');
-    if (msg.startsWith('missing_env:AUTH_SESSION_SECRET')) {
-      return NextResponse.json({ ok: false, error: 'auth_not_configured' }, { status: 500 });
+  // Governance boundary (Phase 1):
+  // - human session: allowed
+  // - claimed agent: allowed IF claimed HUMAN owner is owner|maintainer in this project
+  // - unclaimed agent: 403 agent_claim_required
+  const bodyActorType = b.actorType === 'agent' ? 'agent' : 'human';
+  let actorHandle: string;
+  let actorType: 'human' | 'agent' = 'human';
+  if (bodyActorType === 'agent') {
+    const h = String(b.actorHandle || '').trim();
+    const ob = requireOwnerBackedAgent(req, h);
+    if (!ob.ok) return NextResponse.json({ ok: false, error: (ob as any).error, message: (ob as any).message }, { status: ob.status });
+    if (!ownerHasOwnerOrMaintainerRole(slug, ob.ownerHandle)) return NextResponse.json({ ok: false, error: 'not_allowed' }, { status: 403 });
+    actorHandle = h;
+    actorType = 'agent';
+  } else {
+    // Only human owner/maintainer can update (enforced in repo too).
+    const cookie =
+      (req as any).cookies?.get?.(sessionCookieName())?.value ||
+      readCookieFromHeader(req, sessionCookieName()) ||
+      null;
+    if (!cookie) return NextResponse.json({ ok: false, error: 'not_signed_in' }, { status: 401 });
+    let sess: any = null;
+    try {
+      sess = verifySession(cookie);
+    } catch (e: any) {
+      const msg = e instanceof Error ? e.message : String(e || 'verify_failed');
+      if (msg.startsWith('missing_env:AUTH_SESSION_SECRET')) {
+        return NextResponse.json({ ok: false, error: 'auth_not_configured' }, { status: 500 });
+      }
+      throw e;
     }
-    throw e;
+    if (!sess) return NextResponse.json({ ok: false, error: 'not_signed_in' }, { status: 401 });
+    actorHandle = sess.handle;
+    actorType = 'human';
   }
-  if (!sess) return NextResponse.json({ ok: false, error: 'not_signed_in' }, { status: 401 });
 
   const agentHandle = String(b.agentHandle || '').trim();
   if (!agentHandle) return NextResponse.json({ ok: false, error: 'missing_agent_handle' }, { status: 400 });
@@ -74,8 +94,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       mentionDailyLimit,
       allowedMentionRoles,
       requireReasonForMention,
-      actorHandle: sess.handle,
-      actorType: 'human',
+      actorHandle,
+      actorType,
     });
     return NextResponse.json({ ok: true, policy });
   } catch (e: unknown) {
