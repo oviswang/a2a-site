@@ -681,13 +681,14 @@ export function upsertProjectAgentPolicy(args: {
   requireReasonForMention: boolean;
   actorHandle: string;
   actorType: MemberType;
+  permissionHandle?: string;
 }) {
   const db = getDb();
   const p = getProjectBySlug(args.projectSlug);
   if (!p) throw new Error('project_not_found');
 
-  if (args.actorType === 'agent') throw new Error('not_supported');
-  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) throw new Error('not_allowed');
+  const permissionHandle = args.permissionHandle ? String(args.permissionHandle) : args.actorHandle;
+  if (!isProjectOwnerOrMaintainer(p.id, permissionHandle)) throw new Error('not_allowed');
 
   const agentHandle = normalizeHandle(args.agentHandle);
   if (!agentHandle) throw new Error('invalid_agent');
@@ -1420,12 +1421,19 @@ export function discussionReaction(args: {
   return { ok: true };
 }
 
-export function setDiscussionThreadLock(args: { projectSlug: string; threadId: string; locked: boolean; actorHandle: string; actorType: MemberType }) {
+export function setDiscussionThreadLock(args: {
+  projectSlug: string;
+  threadId: string;
+  locked: boolean;
+  actorHandle: string;
+  actorType: MemberType;
+  permissionHandle?: string;
+}) {
   const db = getDb();
   const p = getProjectBySlug(args.projectSlug);
   if (!p) throw new Error('project_not_found');
-  if (args.actorType === 'agent') throw new Error('not_supported');
-  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) {
+  const permissionHandle = args.permissionHandle ? String(args.permissionHandle) : args.actorHandle;
+  if (!isProjectOwnerOrMaintainer(p.id, permissionHandle)) {
     try {
       auditDeny({
         kind: 'discussion.deny',
@@ -1546,13 +1554,19 @@ export function searchDiscussionsForProject(args: { projectSlug: string; q: stri
   }));
 }
 
-export function closeDiscussionThread(args: { projectSlug: string; threadId: string; actorHandle: string; actorType: MemberType }) {
+export function closeDiscussionThread(args: {
+  projectSlug: string;
+  threadId: string;
+  actorHandle: string;
+  actorType: MemberType;
+  permissionHandle?: string;
+}) {
   const db = getDb();
   const p = getProjectBySlug(args.projectSlug);
   if (!p) throw new Error('project_not_found');
 
-  if (args.actorType === 'agent') throw new Error('not_supported');
-  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) throw new Error('not_allowed');
+  const permissionHandle = args.permissionHandle ? String(args.permissionHandle) : args.actorHandle;
+  if (!isProjectOwnerOrMaintainer(p.id, permissionHandle)) throw new Error('not_allowed');
 
   const now = nowIso();
   db.prepare("UPDATE discussion_threads SET status='closed', updated_at=? WHERE id=? AND project_id=?").run(now, args.threadId, p.id);
@@ -3365,11 +3379,14 @@ export function memberAction(args: {
   memberType: MemberType;
   role?: MemberRole;
   actorHandle: string;
+  actorType?: MemberType;
+  permissionHandle?: string;
 }) {
   const db = getDb();
   const p = getProjectBySlug(args.projectSlug);
   if (!p) throw new Error('project_not_found');
-  if (!isProjectOwnerOrMaintainer(p.id, args.actorHandle)) throw new Error('not_allowed');
+  const permissionHandle = args.permissionHandle ? String(args.permissionHandle) : args.actorHandle;
+  if (!isProjectOwnerOrMaintainer(p.id, permissionHandle)) throw new Error('not_allowed');
 
   const now = nowIso();
 
@@ -3396,7 +3413,7 @@ export function memberAction(args: {
           root.id,
           now,
           args.actorHandle,
-          'human',
+          args.actorType || 'human',
           'membership.removed',
           `@${args.memberHandle} (${args.memberType})`,
           null

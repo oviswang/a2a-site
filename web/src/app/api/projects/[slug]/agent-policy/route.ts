@@ -39,6 +39,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const bodyActorType = b.actorType === 'agent' ? 'agent' : 'human';
   let actorHandle: string;
   let actorType: 'human' | 'agent' = 'human';
+  let permissionHandle: string | undefined;
+
   if (bodyActorType === 'agent') {
     const h = String(b.actorHandle || '').trim();
     const ob = requireOwnerBackedAgent(req, h);
@@ -46,6 +48,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     if (!ownerHasOwnerOrMaintainerRole(slug, ob.ownerHandle)) return NextResponse.json({ ok: false, error: 'not_allowed' }, { status: 403 });
     actorHandle = h;
     actorType = 'agent';
+    permissionHandle = ob.ownerHandle;
   } else {
     // Only human owner/maintainer can update (enforced in repo too).
     const cookie =
@@ -53,6 +56,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       readCookieFromHeader(req, sessionCookieName()) ||
       null;
     if (!cookie) return NextResponse.json({ ok: false, error: 'not_signed_in' }, { status: 401 });
+
     let sess: any = null;
     try {
       sess = verifySession(cookie);
@@ -63,9 +67,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       }
       throw e;
     }
+
     if (!sess) return NextResponse.json({ ok: false, error: 'not_signed_in' }, { status: 401 });
     actorHandle = sess.handle;
     actorType = 'human';
+    permissionHandle = undefined;
   }
 
   const agentHandle = String(b.agentHandle || '').trim();
@@ -96,6 +102,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       requireReasonForMention,
       actorHandle,
       actorType,
+      permissionHandle,
     });
     return NextResponse.json({ ok: true, policy });
   } catch (e: unknown) {

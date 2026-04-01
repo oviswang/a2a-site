@@ -31,6 +31,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
 
   let actorHandle: string;
   let actorTypeForRepo: 'human' | 'agent' = 'human';
+  let permissionHandle: string | undefined;
   if (actorType === 'agent') {
     const h = String(b.actorHandle || '').trim();
     const ob = requireOwnerBackedAgent(req, h);
@@ -38,15 +39,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     if (!ownerHasOwnerOrMaintainerRole(slug, ob.ownerHandle)) return NextResponse.json({ ok: false, error: 'not_allowed' }, { status: 403 });
     actorHandle = h;
     actorTypeForRepo = 'agent';
+    permissionHandle = ob.ownerHandle;
   } else {
     const hs = requireHumanSession(req);
     if (!hs.ok) return NextResponse.json({ ok: false, error: hs.error }, { status: hs.status });
     actorHandle = hs.handle;
     actorTypeForRepo = 'human';
+    permissionHandle = undefined;
   }
 
   try {
-    return NextResponse.json(setDiscussionThreadLock({ projectSlug: slug, threadId, locked, actorHandle, actorType: actorTypeForRepo }));
+    return NextResponse.json(setDiscussionThreadLock({ projectSlug: slug, threadId, locked, actorHandle, actorType: actorTypeForRepo, permissionHandle } as any));
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'lock_failed';
     return NextResponse.json({ ok: false, error: normalizeErrorReason(msg) }, { status: 400 });
