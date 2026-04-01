@@ -8,6 +8,7 @@ export const CANONICAL_REASONS = new Set([
   // deny / gated
   'not_supported',
   'not_allowed',
+  'agent_claim_required',
   'forbidden_by_project_agent_policy',
   'mention_reason_required',
   'mention_daily_limit_exceeded',

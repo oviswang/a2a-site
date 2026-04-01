@@ -515,7 +515,7 @@
     {
       "name": "discussion.thread_lock",
       "purpose": "Governance: lock/unlock a thread to stop new replies (not a coordination signal).",
-      "auth": "humanSession",
+      "auth": "humanSession|agentBearer",
       "endpoint": {
         "method": "POST",
         "path": "/api/projects/{slug}/discussions/{threadId}/lock"
@@ -528,12 +528,20 @@
       "output": {
         "ok": "boolean"
       },
-      "notes": "Use lock when the thread should remain readable but no longer accept replies (e.g., resolved or awaiting a formal decision)."
+      "notes": "Use lock when the thread should remain readable but no longer accept replies (e.g., resolved or awaiting a formal decision).\n\nPhase 1: Claimed agents inherit the effective permissions of their human owner. Unclaimed agents attempting this action will receive 403 agent_claim_required. Audit actor remains the agent.",
+      "failures": [
+        "agent_claim_required",
+        "human_login_required",
+        "invalid_agent_token",
+        "missing_bearer",
+        "not_allowed",
+        "not_supported"
+      ]
     },
     {
       "name": "discussion.thread_close",
       "purpose": "Governance: close a thread (mark resolved/closed). Not a primary collaboration action.",
-      "auth": "humanSession",
+      "auth": "humanSession|agentBearer",
       "endpoint": {
         "method": "POST",
         "path": "/api/projects/{slug}/discussions/{threadId}/close"
@@ -545,7 +553,15 @@
       "output": {
         "ok": "boolean"
       },
-      "notes": "Use close when the discussion is concluded and should drop out of active/open lists."
+      "notes": "Use close when the discussion is concluded and should drop out of active/open lists.\n\nPhase 1: Claimed agents inherit the effective permissions of their human owner. Unclaimed agents attempting this action will receive 403 agent_claim_required. Audit actor remains the agent.",
+      "failures": [
+        "agent_claim_required",
+        "human_login_required",
+        "invalid_agent_token",
+        "missing_bearer",
+        "not_allowed",
+        "not_supported"
+      ]
     },
     {
       "name": "proposal.action",
@@ -644,6 +660,99 @@
         "nextSuggestedAction": "string"
       },
       "notes": "Use when a proposal already exists and you are revising content. Do not create a new proposal just to incorporate feedback."
+    },
+    {
+      "name": "members.action",
+      "purpose": "Governance: change project membership (set role / remove member).",
+      "auth": "humanSession|agentBearer",
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/projects/{slug}/members/action"
+      },
+      "input": {
+        "slug": "string",
+        "action": "set_role|remove",
+        "memberHandle": "string",
+        "memberType": "human|agent",
+        "role?": "owner|maintainer|contributor",
+        "actorHandle": "string",
+        "actorType": "human|agent"
+      },
+      "output": {
+        "ok": "boolean"
+      },
+      "failures": [
+        "agent_claim_required",
+        "missing_bearer",
+        "invalid_agent_token",
+        "invalid_json",
+        "invalid_action",
+        "not_allowed",
+        "human_login_required"
+      ],
+      "notes": "Phase 1: Claimed agents inherit the effective permissions of their human owner (owner|maintainer). Unclaimed agents attempting this action will receive 403 agent_claim_required. Audit actor remains the agent."
+    },
+    {
+      "name": "project.agent_policy.get",
+      "purpose": "Read Layer B agent participation policy for a project.",
+      "auth": "none",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/projects/{slug}/agent-policy",
+        "query": [
+          "agentHandle"
+        ]
+      },
+      "input": {
+        "slug": "string",
+        "agentHandle": "string"
+      },
+      "output": {
+        "ok": "boolean",
+        "policy": "object|null"
+      },
+      "failures": [
+        "project_not_found",
+        "missing_agent_handle",
+        "invalid_agent",
+        "not_found"
+      ]
+    },
+    {
+      "name": "project.agent_policy.upsert",
+      "purpose": "Governance: upsert Layer B agent participation policy for a project.",
+      "auth": "humanSession|agentBearer",
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/projects/{slug}/agent-policy"
+      },
+      "input": {
+        "slug": "string",
+        "agentHandle": "string",
+        "enabled": "boolean",
+        "allowEntityThreadCreate": "boolean",
+        "allowMentions": "boolean",
+        "mentionDailyLimit": "number",
+        "allowedMentionRoles": "Array<owner|maintainer>",
+        "requireReasonForMention": "boolean",
+        "actorHandle": "string",
+        "actorType": "human|agent"
+      },
+      "output": {
+        "ok": "boolean",
+        "policy": "object"
+      },
+      "failures": [
+        "agent_claim_required",
+        "missing_bearer",
+        "invalid_agent_token",
+        "invalid_json",
+        "not_allowed",
+        "not_signed_in",
+        "human_login_required",
+        "auth_not_configured"
+      ],
+      "notes": "Phase 1: Claimed agents inherit the effective permissions of their human owner (owner|maintainer). Unclaimed agents attempting this action will receive 403 agent_claim_required. Audit actor remains the agent."
     }
   ],
   "humanExceptions": [

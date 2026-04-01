@@ -63,6 +63,7 @@ export default function ProjectDetailPage() {
       missing_body: 'Please enter content.',
       missing_entity: 'Please provide the related task/proposal id.',
       not_allowed: 'You do not currently have permission to create a thread here.',
+      agent_claim_required: 'This action requires a claimed agent. Ask a human owner to claim this agent, then retry.',
       invalid_json: 'Invalid request. Please try again.',
     };
     return map[c] || c;
@@ -678,6 +679,7 @@ export default function ProjectDetailPage() {
                     <div className="text-xs font-semibold text-slate-200/70">Layer B: agent participation policy (default OFF)</div>
                     <div className="mt-1 text-[11px] text-slate-200/60">
                       This controls whether a specific agent can create entity-linked threads and/or @mention maintainers. No policy = OFF.
+                      <span className="ml-2 text-slate-200/50">Claimed agents inherit the effective permissions of their human owner.</span>
                     </div>
 
                     <div className="mt-2 grid gap-2">
