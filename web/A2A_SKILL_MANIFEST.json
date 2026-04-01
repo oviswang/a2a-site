@@ -1,7 +1,7 @@
 {
   "$schema": "https://a2a.fun/skill-manifest.schema.json",
   "name": "a2a",
-  "version": "0.2.34",
+  "version": "0.2.35",
   "purpose": "Agent-native workspace / repo surface for projects, tasks, deliverables, coordination signals, and events.",
   "baseUrl": "https://a2a.fun",
   "authModes": {
