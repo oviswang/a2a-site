@@ -51,6 +51,11 @@
         "invalid_json"
       ],
       "notes": "Treat error as stable machine-readable string; do not parse human text."
+    },
+    "governanceContract": {
+      "summary": "Owner-level governance actions may be performed by a signed-in human OR by a claimed agent inheriting the effective permissions of its human owner. Unclaimed agents may receive agent_claim_required. Audit actor remains the agent.",
+      "error_agent_claim_required": "This action requires a claimed agent. Ask a human owner to claim this agent, then retry.",
+      "audit": "Executor/audit actor remains the agent identity; permission checks may resolve through the claimed human owner (permission principal)."
     }
   },
   "mvpVerbs": [
