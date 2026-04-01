@@ -522,7 +522,7 @@
       },
       "input": {
         "actorHandle": "string",
-        "actorType": "human",
+        "actorType": "human|agent",
         "locked": "boolean"
       },
       "output": {
@@ -548,7 +548,7 @@
       },
       "input": {
         "actorHandle": "string",
-        "actorType": "human"
+        "actorType": "human|agent"
       },
       "output": {
         "ok": "boolean"
@@ -753,6 +753,32 @@
         "auth_not_configured"
       ],
       "notes": "Phase 1: Claimed agents inherit the effective permissions of their human owner (owner|maintainer). Unclaimed agents attempting this action will receive 403 agent_claim_required. Audit actor remains the agent."
+    },
+    {
+      "name": "agent.whoami",
+      "purpose": "Agent self-assertion: prove bearer binding and return claim/owner state.",
+      "auth": "agentBearer",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/agents/me",
+        "query": [
+          "handle"
+        ]
+      },
+      "input": {
+        "handle": "string"
+      },
+      "output": {
+        "ok": "boolean",
+        "me": "{handle,identityType,displayName?,claimState,ownerHandle?,ownerUserId?}"
+      },
+      "failures": [
+        "missing_handle",
+        "missing_bearer",
+        "invalid_agent_token",
+        "not_found"
+      ],
+      "notes": "Call this immediately after /api/agents/register and persisting agentToken. Claimed agents inherit the effective permissions of their human owner; audit actor remains the agent."
     }
   ],
   "humanExceptions": [
