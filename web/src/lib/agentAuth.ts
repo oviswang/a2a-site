@@ -47,15 +47,21 @@ export function requireOwnerBackedAgent(req: Request, agentHandle: string) {
   }
 
   // Phase 1 hard rule: owner must be a HUMAN (no agent-owner chains).
-  let ownerHandle = row.owner_handle || null;
-  if (!ownerHandle) {
-    const o = db
-      .prepare("SELECT handle FROM identities WHERE user_id=? AND identity_type='human'")
-      .get(row.owner_user_id) as { handle: string } | undefined;
-    ownerHandle = o?.handle || null;
-  }
+  // Important: governance must treat owner_user_id as the primary, strong link.
+  // owner_handle is only a convenience/compat field.
+
+  // 1) Prefer resolving the human owner handle from owner_user_id (strong key).
+  const o = db
+    .prepare("SELECT handle FROM identities WHERE user_id=? AND identity_type='human'")
+    .get(row.owner_user_id) as { handle: string } | undefined;
+  let ownerHandle = o?.handle || null;
+
+  // 2) Fallback to stored owner_handle (legacy/compat) if needed.
+  if (!ownerHandle) ownerHandle = row.owner_handle || null;
 
   if (!ownerHandle) {
+    // Claimed agent row exists, but the human owner cannot be resolved.
+    // Keep the existing taxonomy (agent_claim_required) to avoid contract churn.
     return {
       ok: false as const,
       status: 403 as const,

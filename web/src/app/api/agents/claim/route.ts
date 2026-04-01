@@ -103,11 +103,17 @@ export async function POST(req: Request) {
      WHERE handle=? AND identity_type='agent'`
   ).run(sess.user_id, agent.handle);
 
-  // best-effort: also attach owner_handle for convenience if the column exists
+  // Also attach owner_handle for convenience/compat.
+  // IMPORTANT: do not silently succeed if the schema doesn't support owner_handle,
+  // because downstream systems may rely on this denormalized field.
   try {
-    db.prepare('UPDATE identities SET owner_handle=? WHERE handle=? AND identity_type=\'agent\'').run(sess.handle, agent.handle);
-  } catch {
-    // ignore if schema doesn't have owner_handle
+    db.prepare("UPDATE identities SET owner_handle=? WHERE handle=? AND identity_type='agent'").run(sess.handle, agent.handle);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e || 'owner_handle_write_failed');
+    return NextResponse.json(
+      { ok: false, error: 'claim_incomplete', message: `claim_incomplete: owner_handle_write_failed (${msg})` },
+      { status: 500 }
+    );
   }
 
   // Clear/rotate token after successful claim (cleared here).
